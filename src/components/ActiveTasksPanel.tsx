@@ -17,12 +17,12 @@ const ActiveTasksPanel = () => {
       {/* Animated glow border */}
       <motion.div
         className="absolute inset-0 rounded-xl pointer-events-none"
-        style={{ border: "1px solid hsl(38, 92%, 55%, 0.2)" }}
+        style={{ border: "1px solid hsl(90, 65%, 50%, 0.2)" }}
         animate={{ 
           boxShadow: [
-            "0 0 20px -5px hsl(38, 92%, 55%, 0.15)",
-            "0 0 40px -5px hsl(38, 92%, 55%, 0.3)",
-            "0 0 20px -5px hsl(38, 92%, 55%, 0.15)"
+            "0 0 20px -5px hsl(90, 65%, 50%, 0.1)",
+            "0 0 40px -5px hsl(90, 65%, 50%, 0.25)",
+            "0 0 20px -5px hsl(90, 65%, 50%, 0.1)"
           ] 
         }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
