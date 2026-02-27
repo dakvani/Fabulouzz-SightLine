@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,53 @@ interface AppHeaderProps {
   activeView: "dashboard" | "timeline" | "tasks" | "kanban";
   onViewChange: (view: "dashboard" | "timeline" | "tasks" | "kanban") => void;
 }
+
+const HeaderParticles = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId: number;
+    const dots: { x: number; y: number; vx: number; vy: number; r: number; o: number }[] = [];
+
+    const resize = () => { canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; ctx.scale(2, 2); };
+    resize();
+
+    for (let i = 0; i < 25; i++) {
+      dots.push({
+        x: Math.random() * canvas.offsetWidth,
+        y: Math.random() * canvas.offsetHeight,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.2,
+        r: 1 + Math.random() * 1.5,
+        o: 0.1 + Math.random() * 0.2,
+      });
+    }
+
+    const draw = () => {
+      const w = canvas.offsetWidth, h = canvas.offsetHeight;
+      ctx.clearRect(0, 0, w, h);
+      dots.forEach(d => {
+        d.x += d.vx; d.y += d.vy;
+        if (d.x < 0) d.x = w; if (d.x > w) d.x = 0;
+        if (d.y < 0) d.y = h; if (d.y > h) d.y = 0;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(90, 65%, 50%, ${d.o})`;
+        ctx.fill();
+      });
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
+};
 
 const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
   const [showAuth, setShowAuth] = useState(false);
@@ -36,11 +83,7 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
     setIsAdmin(data?.role === "admin");
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setIsAdmin(false);
-  };
+  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setIsAdmin(false); };
 
   const views = [
     { id: "dashboard" as const, label: "Dashboard", icon: BarChart3 },
@@ -55,63 +98,68 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="sticky top-0 z-50"
+        className="sticky top-2 z-50 mx-4 sm:mx-6"
       >
         <div
-          className="absolute inset-0 bg-card/30 backdrop-blur-2xl border-b border-primary/10"
+          className="absolute inset-0 bg-card/20 backdrop-blur-2xl border border-primary/10 overflow-hidden"
           style={{
-            borderRadius: "0 0 24px 24px",
-            boxShadow: "0 8px 32px -8px hsl(var(--primary) / 0.1), inset 0 -1px 0 0 hsl(var(--primary) / 0.08)",
+            borderRadius: "20px",
+            boxShadow: "0 8px 32px -8px hsl(var(--primary) / 0.12), inset 0 1px 0 0 hsl(var(--primary) / 0.06)",
           }}
-        />
+        >
+          <HeaderParticles />
+        </div>
 
         <motion.div
           className="absolute bottom-0 left-1/2 h-[1px]"
-          style={{ background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent)", borderRadius: "0 0 24px 24px" }}
+          style={{ background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent)", borderRadius: "20px" }}
           initial={{ width: 0, x: 0 }}
-          animate={{ width: "60%", x: "-50%" }}
+          animate={{ width: "50%", x: "-50%" }}
           transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
         />
 
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between relative">
+          {/* Logo section - bigger SightLine, command center tagline */}
           <motion.div className="flex items-center gap-3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-            <motion.img src={fabulouzzLogo} alt="Fabulouzz Technologies" className="h-8 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
-            <div className="hidden sm:block border-l border-primary/20 pl-3">
-              <h1 className="text-sm font-bold tracking-tight">
+            <motion.img src={fabulouzzLogo} alt="Fabulouzz Technologies" className="h-9 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+            <div className="hidden sm:flex flex-col border-l border-primary/20 pl-3">
+              <h1 className="text-base font-extrabold tracking-tight leading-tight flex items-center">
                 <span className="text-foreground">Fab</span>
                 <motion.span
-                  className="text-foreground inline-block"
-                  style={{ filter: "brightness(2)" }}
+                  className="inline-block font-extrabold"
                   animate={{
                     textShadow: [
-                      "0 0 4px hsl(var(--primary) / 0.4)",
-                      "0 0 12px hsl(var(--primary) / 0.8)",
-                      "0 0 4px hsl(var(--primary) / 0.4)",
+                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
+                      "0 0 16px hsla(0, 0%, 100%, 0.9)",
+                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
                     ],
-                    color: ["hsl(0, 0%, 100%)", "hsl(var(--primary))", "hsl(0, 0%, 100%)"],
                   }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  style={{ color: "white" }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                 >
                   u
                 </motion.span>
                 <span className="text-foreground">lo</span>
                 <motion.span
-                  className="text-foreground inline-block"
+                  className="inline-block font-extrabold"
                   animate={{
                     textShadow: [
-                      "0 0 4px hsl(var(--primary) / 0.4)",
-                      "0 0 12px hsl(var(--primary) / 0.8)",
-                      "0 0 4px hsl(var(--primary) / 0.4)",
+                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
+                      "0 0 16px hsla(0, 0%, 100%, 0.9)",
+                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
                     ],
-                    color: ["hsl(0, 0%, 100%)", "hsl(var(--primary))", "hsl(0, 0%, 100%)"],
                   }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+                  style={{ color: "white" }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
                 >
                   u
                 </motion.span>
                 <span className="text-foreground">zz</span>
               </h1>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">SightLine Command Center</p>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-bold text-primary tracking-wide">SIGHTLINE</span>
+                <span className="text-[9px] text-muted-foreground font-medium tracking-widest uppercase">Command Center</span>
+              </div>
             </div>
           </motion.div>
 
@@ -137,37 +185,25 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
 
           <motion.div className="flex items-center gap-2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
             <ExportReport />
-
             {user ? (
               <div className="flex items-center gap-2">
                 {isAdmin && (
-                  <motion.button
-                    onClick={() => setShowAdmin(true)}
-                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    <Shield className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Admin</span>
+                  <motion.button onClick={() => setShowAdmin(true)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-primary/30 text-primary hover:bg-primary/10 transition-colors">
+                    <Shield className="w-3.5 h-3.5" /><span className="hidden sm:inline">Admin</span>
                   </motion.button>
                 )}
                 <span className="text-xs text-muted-foreground hidden md:inline">{user.email}</span>
-                <motion.button
-                  onClick={handleLogout}
-                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium border border-border/30 text-muted-foreground hover:text-foreground hover:border-destructive/30 transition-colors"
-                >
+                <motion.button onClick={handleLogout} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium border border-border/30 text-muted-foreground hover:text-foreground hover:border-destructive/30 transition-colors">
                   <LogOut className="w-3.5 h-3.5" />
                 </motion.button>
               </div>
             ) : (
-              <motion.button
-                onClick={() => setShowAuth(true)}
-                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              <motion.button onClick={() => setShowAuth(true)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-                style={{ boxShadow: "0 0 16px -4px hsl(var(--primary) / 0.2)" }}
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Login</span>
+                style={{ boxShadow: "0 0 16px -4px hsl(var(--primary) / 0.2)" }}>
+                <LogIn className="w-3.5 h-3.5" /><span className="hidden sm:inline">Login</span>
               </motion.button>
             )}
           </motion.div>

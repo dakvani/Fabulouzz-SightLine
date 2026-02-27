@@ -31,27 +31,54 @@ const Index = () => {
 
         <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 relative">
           {activeView === "dashboard" && (
-            <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <motion.div className="lg:col-span-3 glass-card p-6 flex items-center justify-center" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}>
-                  <ProgressRing progress={progress} label="Overall Progress" />
+            <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+              {/* Row 1: Progress ring (tall narrow) + Status/Project (wide) + Weather/Milestone (medium) */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 auto-rows-auto">
+                {/* Progress - tall card */}
+                <motion.div
+                  className="md:col-span-3 glass-card p-5 flex flex-col items-center justify-center min-h-[220px] rounded-2xl"
+                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
+                >
+                  <ProgressRing progress={progress} size={140} label="Overall Progress" />
                 </motion.div>
-                <div className="lg:col-span-5 space-y-3">
-                  <StatusTicker />
-                  <ProjectInfoCard />
+
+                {/* Middle column - stacked horizontal cards */}
+                <div className="md:col-span-5 flex flex-col gap-3">
+                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
+                    <StatusTicker />
+                  </motion.div>
+                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="flex-1">
+                    <ProjectInfoCard />
+                  </motion.div>
                 </div>
-                <div className="lg:col-span-4 space-y-3">
-                  <WeatherWidget />
-                  <MilestoneCountdown />
+
+                {/* Right column - compact cards */}
+                <div className="md:col-span-4 flex flex-col gap-3">
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                    <WeatherWidget />
+                  </motion.div>
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
+                    <MilestoneCountdown />
+                  </motion.div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <ActiveTasksPanel />
-                <LiveNotifications />
+
+              {/* Row 2: Active Tasks (wider) + Notifications (narrower) */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <motion.div className="lg:col-span-3" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                  <ActiveTasksPanel />
+                </motion.div>
+                <motion.div className="lg:col-span-2" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                  <LiveNotifications />
+                </motion.div>
               </div>
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+
+              {/* Row 3: Gantt chart full width */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                 <GanttChart />
               </motion.div>
+
+              {/* Row 4: Email subscription */}
               <EmailSubscription />
             </motion.div>
           )}
