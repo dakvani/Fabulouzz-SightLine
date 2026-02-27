@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { Eye, BarChart3, List } from "lucide-react";
+import { Eye, BarChart3, List, LayoutGrid, Globe } from "lucide-react";
+import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 
 interface AppHeaderProps {
-  activeView: "dashboard" | "timeline" | "tasks";
-  onViewChange: (view: "dashboard" | "timeline" | "tasks") => void;
+  activeView: "dashboard" | "timeline" | "tasks" | "kanban" | "public";
+  onViewChange: (view: "dashboard" | "timeline" | "tasks" | "kanban" | "public") => void;
 }
 
 const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
@@ -11,6 +12,8 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
     { id: "dashboard" as const, label: "Dashboard", icon: BarChart3 },
     { id: "timeline" as const, label: "Timeline", icon: Eye },
     { id: "tasks" as const, label: "Tasks", icon: List },
+    { id: "kanban" as const, label: "Kanban", icon: LayoutGrid },
+    { id: "public" as const, label: "Client View", icon: Globe },
   ];
 
   return (
@@ -19,14 +22,12 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
       animate={{ opacity: 1, y: 0 }}
       className="border-b border-border/50 bg-card/40 backdrop-blur-xl sticky top-0 z-50"
     >
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Eye className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <div>
+          <img src={fabulouzzLogo} alt="Fabulouzz Technologies" className="h-8 w-auto" />
+          <div className="hidden sm:block border-l border-border/50 pl-3">
             <h1 className="text-sm font-bold text-foreground tracking-tight">
-              Fabulouzz <span className="text-gradient">SightLine</span>
+              <span className="text-gradient">SightLine</span>
             </h1>
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Project Command Center</p>
           </div>

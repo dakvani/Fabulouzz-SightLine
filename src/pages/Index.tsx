@@ -6,18 +6,23 @@ import MilestoneCountdown from "@/components/MilestoneCountdown";
 import ProjectInfoCard from "@/components/ProjectInfoCard";
 import GanttChart from "@/components/GanttChart";
 import TaskList from "@/components/TaskList";
+import KanbanBoard from "@/components/KanbanBoard";
+import PublicStatusPage from "@/components/PublicStatusPage";
 import { getOverallProgress } from "@/data/projectData";
 import { motion } from "framer-motion";
 
-type ViewType = "dashboard" | "timeline" | "tasks";
+type ViewType = "dashboard" | "timeline" | "tasks" | "kanban" | "public";
 
 const Index = () => {
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
   const progress = getOverallProgress();
 
+  if (activeView === "public") {
+    return <PublicStatusPage />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Subtle ambient glow */}
       <div className="fixed inset-0 pointer-events-none" style={{ background: "var(--gradient-glow)" }} />
 
       <AppHeader activeView={activeView} onViewChange={setActiveView} />
@@ -53,22 +58,20 @@ const Index = () => {
         )}
 
         {activeView === "timeline" && (
-          <motion.div
-            key="timeline"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
+          <motion.div key="timeline" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <GanttChart />
           </motion.div>
         )}
 
         {activeView === "tasks" && (
-          <motion.div
-            key="tasks"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
+          <motion.div key="tasks" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <TaskList />
+          </motion.div>
+        )}
+
+        {activeView === "kanban" && (
+          <motion.div key="kanban" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <KanbanBoard />
           </motion.div>
         )}
       </main>
