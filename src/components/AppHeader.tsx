@@ -124,7 +124,7 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
             <motion.img src={fabulouzzLogo} alt="Fabulouzz Technologies" className="h-9 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
             <div className="hidden sm:flex flex-col border-l border-primary/20 pl-3">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold text-primary tracking-wide">SIGHTLINE</span>
+                <span className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: '#2fbf2f' }}>SIGHTLINE</span>
                 <span className="text-[9px] text-muted-foreground font-medium tracking-widest uppercase">Command Center</span>
               </div>
             </div>
