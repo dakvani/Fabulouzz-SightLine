@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-// Logo rendered as styled text to match fabulouzz.com
+import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import AuthModal from "./AuthModal";
 import AdminPanel from "./AdminPanel";
 import ExportReport from "./ExportReport";
@@ -120,31 +120,46 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
 
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between relative">
           {/* Logo section - bigger SightLine, command center tagline */}
-          <motion.div className="flex items-center gap-4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-            {/* Logo text matching fabulouzz.com style */}
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-bold tracking-tight leading-none flex items-baseline" style={{ fontFamily: "'Inter', sans-serif" }}>
-                <span className="text-foreground">fabulo</span>
+          <motion.div className="flex items-center gap-3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+            <motion.img src={fabulouzzLogo} alt="Fabulouzz Technologies" className="h-9 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+            <div className="hidden sm:flex flex-col border-l border-primary/20 pl-3">
+              <h1 className="text-base font-extrabold tracking-tight leading-tight flex items-center">
+                <span className="text-foreground">Fab</span>
                 <motion.span
-                  className="inline-block font-bold text-primary"
+                  className="inline-block font-extrabold"
                   animate={{
                     textShadow: [
-                      "0 0 8px hsla(90, 65%, 50%, 0.3)",
-                      "0 0 20px hsla(90, 65%, 50%, 0.8)",
-                      "0 0 8px hsla(90, 65%, 50%, 0.3)",
+                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
+                      "0 0 16px hsla(0, 0%, 100%, 0.9)",
+                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
                     ],
                   }}
+                  style={{ color: "white" }}
                   transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  u
+                </motion.span>
+                <span className="text-foreground">lo</span>
+                <motion.span
+                  className="inline-block font-extrabold"
+                  animate={{
+                    textShadow: [
+                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
+                      "0 0 16px hsla(0, 0%, 100%, 0.9)",
+                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
+                    ],
+                  }}
+                  style={{ color: "white" }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
                 >
                   u
                 </motion.span>
                 <span className="text-foreground">zz</span>
               </h1>
-              <span className="text-[10px] text-muted-foreground font-medium tracking-[0.3em] uppercase mt-0.5">technologies</span>
-            </div>
-            <div className="hidden sm:flex flex-col border-l border-primary/20 pl-4">
-              <span className="text-lg font-extrabold text-primary tracking-wide leading-tight">SIGHTLINE</span>
-              <span className="text-[9px] text-muted-foreground font-medium tracking-[0.2em] uppercase">Command Center</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-bold text-primary tracking-wide">SIGHTLINE</span>
+                <span className="text-[9px] text-muted-foreground font-medium tracking-widest uppercase">Command Center</span>
+              </div>
             </div>
           </motion.div>
 
