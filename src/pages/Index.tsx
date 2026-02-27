@@ -9,8 +9,8 @@ import GanttChart from "@/components/GanttChart";
 import TaskList from "@/components/TaskList";
 import KanbanBoard from "@/components/KanbanBoard";
 import ActiveTasksPanel from "@/components/ActiveTasksPanel";
+import NotificationTicker from "@/components/NotificationTicker";
 import EmailSubscription from "@/components/EmailSubscription";
-import LiveNotifications from "@/components/LiveNotifications";
 import ParticleBackground from "@/components/ParticleBackground";
 import { getOverallProgress } from "@/data/projectData";
 import { motion } from "framer-motion";
@@ -32,46 +32,46 @@ const Index = () => {
         <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-5 relative">
           {activeView === "dashboard" && (
             <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              {/* Row 1: Status ticker full width */}
-              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-                <StatusTicker />
-              </motion.div>
+              {/* Row 1: Status ticker + notification ticker */}
+              <div className="space-y-2">
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+                  <StatusTicker />
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                  <NotificationTicker />
+                </motion.div>
+              </div>
 
-              {/* Row 2: Progress + Project Info + Weather/Milestone */}
+              {/* Row 2: Progress + Milestones (swapped - big) + Weather/ProjectInfo stacked */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                {/* Progress ring - compact square */}
+                {/* Progress ring */}
                 <motion.div
                   className="md:col-span-3 glass-card p-5 flex items-center justify-center rounded-2xl"
-                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
                 >
                   <ProgressRing progress={progress} size={130} label="Overall Progress" />
                 </motion.div>
 
-                {/* Project Info - wide */}
-                <motion.div className="md:col-span-5" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
-                  <ProjectInfoCard />
+                {/* Milestones - wide (swapped from ProjectInfo) */}
+                <motion.div className="md:col-span-5" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                  <MilestoneCountdown />
                 </motion.div>
 
-                {/* Weather + Milestone stacked */}
+                {/* Weather + ProjectInfo stacked (swapped) */}
                 <div className="md:col-span-4 grid grid-rows-2 gap-3">
-                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
                     <WeatherWidget />
                   </motion.div>
-                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
-                    <MilestoneCountdown />
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
+                    <ProjectInfoCard />
                   </motion.div>
                 </div>
               </div>
 
-              {/* Row 3: Active Tasks + Notifications */}
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                <motion.div className="lg:col-span-3" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                  <ActiveTasksPanel />
-                </motion.div>
-                <motion.div className="lg:col-span-2" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
-                  <LiveNotifications />
-                </motion.div>
-              </div>
+              {/* Row 3: Active Tasks - full width, big */}
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                <ActiveTasksPanel />
+              </motion.div>
 
               {/* Row 4: Gantt */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
