@@ -123,39 +123,6 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
           <motion.div className="flex items-center gap-3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
             <motion.img src={fabulouzzLogo} alt="Fabulouzz Technologies" className="h-9 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
             <div className="hidden sm:flex flex-col border-l border-primary/20 pl-3">
-              <h1 className="text-base font-extrabold tracking-tight leading-tight flex items-center">
-                <span className="text-foreground">Fab</span>
-                <motion.span
-                  className="inline-block font-extrabold"
-                  animate={{
-                    textShadow: [
-                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
-                      "0 0 16px hsla(0, 0%, 100%, 0.9)",
-                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
-                    ],
-                  }}
-                  style={{ color: "white" }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  u
-                </motion.span>
-                <span className="text-foreground">lo</span>
-                <motion.span
-                  className="inline-block font-extrabold"
-                  animate={{
-                    textShadow: [
-                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
-                      "0 0 16px hsla(0, 0%, 100%, 0.9)",
-                      "0 0 6px hsla(0, 0%, 100%, 0.4)",
-                    ],
-                  }}
-                  style={{ color: "white" }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
-                >
-                  u
-                </motion.span>
-                <span className="text-foreground">zz</span>
-              </h1>
               <div className="flex items-center gap-1.5">
                 <span className="text-sm font-bold text-primary tracking-wide">SIGHTLINE</span>
                 <span className="text-[9px] text-muted-foreground font-medium tracking-widest uppercase">Command Center</span>
