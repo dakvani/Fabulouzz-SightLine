@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { tasks, getStatusColor, type TaskStatus } from "@/data/projectData";
-import { ChevronRight, Link2 } from "lucide-react";
+import { ChevronRight, Link2, Activity } from "lucide-react";
 
 const statusBadgeClasses: Record<string, string> = {
   completed: "bg-completed/15 text-completed border-completed/30",
@@ -21,36 +21,64 @@ const TaskList = () => {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">All Tasks</h3>
       </div>
       <div className="divide-y divide-border/30">
-        {tasks.map((task, i) => (
-          <motion.div
-            key={task.id}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.7 + i * 0.03 }}
-            className="px-4 py-3 flex items-center gap-3 hover:bg-secondary/30 transition-colors cursor-pointer group"
-          >
-            <span className="text-xs font-mono text-muted-foreground w-6 flex-shrink-0">
-              {String(task.id).padStart(2, "0")}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground truncate">{task.name}</p>
-              {task.dependencies && task.dependencies.length > 0 && (
-                <div className="flex items-center gap-1 mt-0.5">
-                  <Link2 className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground">
-                    Depends on: {task.dependencies.map(d => `#${d}`).join(", ")}
-                  </span>
-                </div>
+        {tasks.map((task, i) => {
+          const isProcessing = task.status === "Processing";
+          return (
+            <motion.div
+              key={task.id}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.7 + i * 0.03 }}
+              className={`px-4 py-3 flex items-center gap-3 transition-colors cursor-pointer group relative ${
+                isProcessing
+                  ? "bg-processing/5 hover:bg-processing/10"
+                  : "hover:bg-secondary/30"
+              }`}
+            >
+              {/* Processing pulse indicator */}
+              {isProcessing && (
+                <motion.div
+                  className="absolute left-0 top-0 bottom-0 w-1 bg-processing rounded-r"
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                />
               )}
-            </div>
-            <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full border ${
-              statusBadgeClasses[getStatusColor(task.status)]
-            }`}>
-              {task.status}
-            </span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-          </motion.div>
-        ))}
+
+              <span className="text-xs font-mono text-muted-foreground w-6 flex-shrink-0">
+                {String(task.id).padStart(2, "0")}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className={`text-sm truncate ${isProcessing ? "text-foreground font-medium" : "text-foreground"}`}>
+                    {task.name}
+                  </p>
+                  {isProcessing && (
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      <Activity className="w-3.5 h-3.5 text-processing flex-shrink-0" />
+                    </motion.div>
+                  )}
+                </div>
+                {task.dependencies && task.dependencies.length > 0 && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <Link2 className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">
+                      Depends on: {task.dependencies.map(d => `#${d}`).join(", ")}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full border ${
+                statusBadgeClasses[getStatusColor(task.status)]
+              } ${isProcessing ? "animate-pulse" : ""}`}>
+                {task.status}
+              </span>
+              <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </motion.div>
+          );
+        })}
       </div>
     </motion.div>
   );

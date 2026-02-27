@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
-import { tasks, getCalendarDays, getStatusColor, type TaskStatus } from "@/data/projectData";
+import { tasks as initialTasks, getCalendarDays, getStatusColor, type TaskStatus, type ProjectTask } from "@/data/projectData";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 
 const statusBgMap: Record<string, string> = {
   completed: "bg-completed",
@@ -13,12 +13,58 @@ const statusBgMap: Record<string, string> = {
 const GanttChart = () => {
   const days = getCalendarDays();
   const [hoveredTask, setHoveredTask] = useState<number | null>(null);
+  const [taskList, setTaskList] = useState<ProjectTask[]>([...initialTasks]);
+  const [dragging, setDragging] = useState<{ id: number; type: "move" | "resize"; startX: number; origStart: number; origDuration: number } | null>(null);
   const cellWidth = 44;
 
-  // today offset
   const today = new Date(2026, 1, 27);
   const projectStart = new Date(2026, 1, 21);
   const todayOffset = Math.floor((today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
+
+  const handleMouseDown = useCallback((e: React.MouseEvent, task: ProjectTask, type: "move" | "resize") => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging({ id: task.id, type, startX: e.clientX, origStart: task.startDay, origDuration: task.duration });
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragging) return;
+    const dx = e.clientX - dragging.startX;
+    const dayDelta = Math.round(dx / cellWidth);
+
+    setTaskList(prev => {
+      const updated = prev.map(t => {
+        if (t.id !== dragging.id) return t;
+        if (dragging.type === "move") {
+          const newStart = Math.max(0, dragging.origStart + dayDelta);
+          return { ...t, startDay: newStart };
+        } else {
+          const newDuration = Math.max(1, dragging.origDuration + dayDelta);
+          return { ...t, duration: newDuration };
+        }
+      });
+
+      // Recalculate dependencies
+      const taskMap = new Map(updated.map(t => [t.id, t]));
+      const recalculated = updated.map(t => {
+        if (!t.dependencies || t.dependencies.length === 0 || t.id === dragging.id) return t;
+        const minStart = Math.max(...t.dependencies.map(depId => {
+          const dep = taskMap.get(depId);
+          return dep ? dep.startDay + dep.duration : 0;
+        }));
+        if (t.startDay < minStart) {
+          return { ...t, startDay: minStart };
+        }
+        return t;
+      });
+
+      return recalculated;
+    });
+  }, [dragging, cellWidth]);
+
+  const handleMouseUp = useCallback(() => {
+    setDragging(null);
+  }, []);
 
   return (
     <motion.div
@@ -26,9 +72,15 @@ const GanttChart = () => {
       animate={{ opacity: 1 }}
       transition={{ delay: 0.4 }}
       className="glass-card overflow-hidden"
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
     >
       <div className="p-4 border-b border-border/50 flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Project Timeline</h3>
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Project Timeline</h3>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Drag bars to reschedule • Drag edges to resize</p>
+        </div>
         <div className="flex items-center gap-4 text-xs">
           {(["Completed", "Processing", "Initiating", "Planning"] as TaskStatus[]).map(s => (
             <div key={s} className="flex items-center gap-1.5">
@@ -39,29 +91,31 @@ const GanttChart = () => {
         </div>
       </div>
       <ScrollArea className="w-full">
-        <div className="flex min-w-max">
+        <div className="flex min-w-max select-none">
           {/* Task Names Column */}
           <div className="w-72 flex-shrink-0 border-r border-border/50 bg-card/50">
             <div className="h-14 border-b border-border/50 flex items-center px-4">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scope of Work</span>
             </div>
-            {tasks.map((task, i) => (
+            {taskList.map((task) => (
               <div
                 key={task.id}
                 className={`h-10 flex items-center px-4 border-b border-border/30 transition-colors ${
                   hoveredTask === task.id ? "bg-secondary/50" : ""
-                }`}
+                } ${task.status === "Processing" ? "bg-processing/5" : ""}`}
                 onMouseEnter={() => setHoveredTask(task.id)}
                 onMouseLeave={() => setHoveredTask(null)}
               >
                 <span className="text-xs font-mono text-muted-foreground mr-2 w-5 flex-shrink-0">{task.id}</span>
-                <span className="text-xs text-foreground truncate">{task.name}</span>
+                <span className={`text-xs truncate ${task.status === "Processing" ? "text-processing font-medium" : "text-foreground"}`}>
+                  {task.name}
+                </span>
               </div>
             ))}
           </div>
 
           {/* Timeline Grid */}
-          <div className="flex-1">
+          <div className="flex-1 relative">
             {/* Header */}
             <div className="flex h-14 border-b border-border/50">
               {days.map((day, i) => (
@@ -84,7 +138,7 @@ const GanttChart = () => {
             </div>
 
             {/* Bars */}
-            {tasks.map((task) => (
+            {taskList.map((task) => (
               <div
                 key={task.id}
                 className={`h-10 flex items-center relative border-b border-border/20 ${
@@ -104,23 +158,41 @@ const GanttChart = () => {
                   />
                 ))}
 
-                {/* Gantt bar */}
+                {/* Gantt bar - draggable */}
                 <motion.div
-                  className={`gantt-bar absolute h-6 ${statusBgMap[getStatusColor(task.status)]}`}
+                  className={`gantt-bar absolute h-6 ${statusBgMap[getStatusColor(task.status)]} ${
+                    task.status === "Processing" ? "ring-1 ring-processing/50" : ""
+                  }`}
                   style={{
                     left: task.startDay * cellWidth + 4,
                     width: task.duration * cellWidth - 8,
+                    cursor: dragging ? "grabbing" : "grab",
                   }}
                   initial={{ scaleX: 0, opacity: 0 }}
-                  animate={{ scaleX: 1, opacity: 1 }}
-                  transition={{ delay: 0.5 + task.id * 0.04, duration: 0.4, ease: "easeOut" }}
-                  title={`${task.name} (${task.status})`}
+                  animate={{
+                    scaleX: 1,
+                    opacity: 1,
+                    ...(task.status === "Processing" ? { boxShadow: ["0 0 0px hsl(var(--processing))", "0 0 12px hsl(var(--processing))", "0 0 0px hsl(var(--processing))"] } : {}),
+                  }}
+                  transition={
+                    task.status === "Processing"
+                      ? { scaleX: { delay: 0.5 + task.id * 0.04, duration: 0.4 }, boxShadow: { duration: 2, repeat: Infinity } }
+                      : { delay: 0.5 + task.id * 0.04, duration: 0.4, ease: "easeOut" }
+                  }
+                  onMouseDown={e => handleMouseDown(e, task, "move")}
+                  title={`${task.name} (${task.status}) — Drag to move`}
                 >
                   {task.duration >= 3 && (
-                    <span className="absolute inset-0 flex items-center px-2 text-[9px] font-medium text-background/90 truncate">
+                    <span className="absolute inset-0 flex items-center px-2 text-[9px] font-medium text-background/90 truncate pointer-events-none">
                       {task.name.split(" ").slice(0, 3).join(" ")}
                     </span>
                   )}
+                  {/* Resize handle */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-foreground/20 rounded-r-md"
+                    onMouseDown={e => handleMouseDown(e, task, "resize")}
+                    title="Drag to resize"
+                  />
                 </motion.div>
               </div>
             ))}
@@ -128,7 +200,7 @@ const GanttChart = () => {
             {/* Today line */}
             <div
               className="absolute top-14 bottom-0 w-0.5 bg-primary/60 z-10"
-              style={{ left: 288 + todayOffset * cellWidth + cellWidth / 2 }}
+              style={{ left: todayOffset * cellWidth + cellWidth / 2 }}
             />
           </div>
         </div>
