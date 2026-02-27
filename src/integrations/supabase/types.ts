@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      notifications: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          media_url: string | null
+          message: string
+          project_id: string | null
+          task_id: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          media_url?: string | null
+          message: string
+          project_id?: string | null
+          task_id?: string | null
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          media_url?: string | null
+          message?: string
+          project_id?: string | null
+          task_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -168,7 +216,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "pm" | "engineer" | "client"
+      app_role: "pm" | "engineer" | "client" | "admin"
       task_status: "Completed" | "Processing" | "Initiating" | "Planning"
     }
     CompositeTypes: {
@@ -297,7 +345,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["pm", "engineer", "client"],
+      app_role: ["pm", "engineer", "client", "admin"],
       task_status: ["Completed", "Processing", "Initiating", "Planning"],
     },
   },
