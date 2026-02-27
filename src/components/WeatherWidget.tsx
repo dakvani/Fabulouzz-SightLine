@@ -91,8 +91,8 @@ const WeatherWidget = () => {
       <motion.div
         className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none"
         style={{ background: weather.isDay 
-          ? "radial-gradient(circle, hsl(38, 92%, 55%, 0.1), transparent 70%)" 
-          : "radial-gradient(circle, hsl(210, 80%, 55%, 0.08), transparent 70%)" 
+          ? "radial-gradient(circle, hsl(90, 65%, 50%, 0.08), transparent 70%)" 
+          : "radial-gradient(circle, hsl(210, 80%, 55%, 0.08), transparent 70%)"
         }}
         animate={{ scale: [1, 1.2, 1] }}
         transition={{ duration: 4, repeat: Infinity }}

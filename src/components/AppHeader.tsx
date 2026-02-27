@@ -44,16 +44,16 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="sticky top-0 z-50"
       >
-        <div className="absolute inset-0 bg-card/30 backdrop-blur-2xl border-b border-primary/10"
+      <div className="absolute inset-0 bg-card/30 backdrop-blur-2xl border-b border-primary/10"
           style={{
             borderRadius: "0 0 24px 24px",
-            boxShadow: "0 8px 32px -8px hsl(38, 92%, 55%, 0.1), inset 0 -1px 0 0 hsl(38, 92%, 55%, 0.08)"
+            boxShadow: "0 8px 32px -8px hsl(90, 65%, 50%, 0.1), inset 0 -1px 0 0 hsl(90, 65%, 50%, 0.08)"
           }}
         />
 
         <motion.div
           className="absolute bottom-0 left-1/2 h-[1px]"
-          style={{ background: "linear-gradient(90deg, transparent, hsl(38, 92%, 55%, 0.6), transparent)", borderRadius: "0 0 24px 24px" }}
+          style={{ background: "linear-gradient(90deg, transparent, hsl(90, 65%, 50%, 0.5), transparent)", borderRadius: "0 0 24px 24px" }}
           initial={{ width: 0, x: 0 }}
           animate={{ width: "60%", x: "-50%" }}
           transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
@@ -78,7 +78,7 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
               >
                 {activeView === v.id && (
-                  <motion.div layoutId="activeTab" className="absolute inset-0 rounded-full" style={{ background: "var(--gradient-primary)", boxShadow: "0 2px 12px -2px hsl(38, 92%, 55%, 0.4)" }} transition={{ type: "spring", stiffness: 400, damping: 30 }} />
+                  <motion.div layoutId="activeTab" className="absolute inset-0 rounded-full" style={{ background: "var(--gradient-primary)", boxShadow: "0 2px 12px -2px hsl(90, 65%, 50%, 0.4)" }} transition={{ type: "spring", stiffness: 400, damping: 30 }} />
                 )}
                 <span className="relative z-10 flex items-center gap-1.5">
                   <v.icon className="w-3.5 h-3.5" />
@@ -105,7 +105,7 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
                 onClick={() => setShowAuth(true)}
                 whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-                style={{ boxShadow: "0 0 16px -4px hsl(38, 92%, 55%, 0.2)" }}
+                style={{ boxShadow: "0 0 16px -4px hsl(90, 65%, 50%, 0.2)" }}
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Login</span>

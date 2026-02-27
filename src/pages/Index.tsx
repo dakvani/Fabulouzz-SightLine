@@ -24,7 +24,7 @@ const Index = () => {
       <div className="fixed inset-0 pointer-events-none" style={{ background: "var(--gradient-glow)" }} />
       <motion.div
         className="fixed top-0 left-1/4 w-96 h-96 rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, hsl(38, 92%, 55%, 0.04), transparent 70%)" }}
+        style={{ background: "radial-gradient(circle, hsl(90, 65%, 50%, 0.04), transparent 70%)" }}
         animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />
