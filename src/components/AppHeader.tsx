@@ -121,7 +121,7 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between relative">
           {/* Logo section - bigger SightLine, command center tagline */}
           <motion.div className="flex items-center gap-3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-            <motion.img src={fabulouzzLogo} alt="Fabulouzz Technologies" className="h-9 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+            <motion.img src={fabulouzzLogo} alt="Fabulouzz Technologies" className="h-9 w-auto" style={{ filter: "brightness(0) invert(1)" }} whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
             <div className="hidden sm:flex flex-col border-l border-primary/20 pl-3">
               <h1 className="text-base font-extrabold tracking-tight leading-tight flex items-center">
                 <span className="text-foreground">Fab</span>
