@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin, Clock } from "lucide-react";
+import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin } from "lucide-react";
 
 interface WeatherData {
   temperature: number;
@@ -107,48 +107,39 @@ const WeatherWidget = () => {
       .catch(() => { setWeather({ temperature: 28, windSpeed: 12, humidity: 55, weatherCode: 0, isDay: true, apparentTemp: 30, windDirection: 315 }); setLoading(false); });
   }, []);
 
-  if (loading) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-4"><div className="animate-pulse h-28 bg-secondary rounded-xl" /></motion.div>;
+  if (loading) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-4 h-full"><div className="animate-pulse h-full bg-secondary rounded-xl" /></motion.div>;
   if (!weather) return null;
 
   const info = getWeatherInfo(weather.weatherCode);
-  const Icon = info.icon;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card overflow-hidden">
-      <div className="relative h-28 overflow-hidden rounded-t-xl">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card overflow-hidden h-full flex flex-col">
+      <div className="relative h-20 overflow-hidden rounded-t-xl flex-shrink-0">
         <WeatherScene code={weather.weatherCode} isDay={weather.isDay} />
-        <div className="absolute inset-0 flex items-end p-3">
-          <div className="flex items-end justify-between w-full">
-            <div>
-              <div className="flex items-center gap-1 mb-0.5">
-                <MapPin className="w-2.5 h-2.5 text-primary" />
-                <span className="text-[9px] font-semibold text-foreground/80 uppercase tracking-wider">KAEC, Saudi Arabia</span>
-              </div>
-              <p className="text-2xl font-bold font-mono text-foreground leading-none">{weather.temperature}°<span className="text-xs text-muted-foreground ml-0.5">C</span></p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{info.label} • Feels {weather.apparentTemp}°</p>
+        <div className="absolute inset-0 flex items-center justify-between px-3">
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <MapPin className="w-2.5 h-2.5 text-primary" />
+              <span className="text-[8px] font-semibold text-foreground/70 uppercase tracking-widest">KAEC</span>
             </div>
-            <div className="flex items-center gap-1 text-[8px] text-muted-foreground">
-              <Clock className="w-2.5 h-2.5" />
-              <span>Live</span>
-              <motion.div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--completed))]" animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 2, repeat: Infinity }} />
-            </div>
+            <p className="text-2xl font-bold font-mono text-foreground leading-none">{weather.temperature}°</p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">{info.label}</p>
           </div>
+          <motion.div
+            className="w-2 h-2 rounded-full bg-[hsl(var(--completed))]"
+            animate={{ opacity: [1, 0.3, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
         </div>
       </div>
-      <div className="p-3 flex gap-3">
-        <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/20 border border-border/20">
-          <Wind className="w-3 h-3 text-primary/70" />
-          <div>
-            <span className="text-xs font-bold font-mono text-foreground">{weather.windSpeed}</span>
-            <span className="text-[8px] text-muted-foreground ml-0.5">km/h {getWindDir(weather.windDirection)}</span>
-          </div>
+      <div className="p-2.5 flex gap-2 mt-auto">
+        <div className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/30">
+          <Wind className="w-3 h-3 text-primary/60" />
+          <span className="text-[10px] font-mono font-semibold text-foreground">{weather.windSpeed}<span className="text-muted-foreground ml-0.5">{getWindDir(weather.windDirection)}</span></span>
         </div>
-        <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/20 border border-border/20">
-          <Droplets className="w-3 h-3 text-[hsl(var(--info))]/70" />
-          <div>
-            <span className="text-xs font-bold font-mono text-foreground">{weather.humidity}%</span>
-            <span className="text-[8px] text-muted-foreground ml-0.5">Humidity</span>
-          </div>
+        <div className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/30">
+          <Droplets className="w-3 h-3 text-[hsl(var(--info))]/60" />
+          <span className="text-[10px] font-mono font-semibold text-foreground">{weather.humidity}%</span>
         </div>
       </div>
     </motion.div>

@@ -6,29 +6,34 @@ const StatusTicker = () => {
   const counts = getStatusCounts();
 
   const items = [
-    { label: "Completed", count: counts.completed, icon: CheckCircle2, colorClass: "text-completed" },
-    { label: "Processing", count: counts.processing, icon: Loader2, colorClass: "text-processing" },
-    { label: "Initiating", count: counts.initiating, icon: Zap, colorClass: "text-initiating" },
-    { label: "Planning", count: counts.planning, icon: Clock, colorClass: "text-planning" },
+    { label: "Done", count: counts.completed, icon: CheckCircle2, color: "var(--completed)" },
+    { label: "Active", count: counts.processing, icon: Loader2, color: "var(--processing)" },
+    { label: "Init", count: counts.initiating, icon: Zap, color: "var(--initiating)" },
+    { label: "Plan", count: counts.planning, icon: Clock, color: "var(--planning)" },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-4 gap-2">
       {items.map((item, i) => (
         <motion.div
           key={item.label}
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 * i, duration: 0.4 }}
-          className="glass-card p-4 flex items-center gap-3"
+          transition={{ delay: 0.08 * i, duration: 0.4 }}
+          className="glass-card p-3 flex flex-col items-center text-center gap-1 relative overflow-hidden"
         >
-          <div className={`p-2 rounded-lg bg-secondary ${item.colorClass}`}>
-            <item.icon className="w-5 h-5" />
+          <motion.div
+            className="absolute inset-0 opacity-[0.06]"
+            style={{ background: `radial-gradient(circle at 50% 100%, hsl(${item.color}), transparent 70%)` }}
+          />
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center mb-0.5"
+            style={{ background: `hsl(${item.color} / 0.15)`, color: `hsl(${item.color})` }}
+          >
+            <item.icon className="w-4 h-4" />
           </div>
-          <div>
-            <p className="text-2xl font-bold font-mono text-foreground">{item.count}</p>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">{item.label}</p>
-          </div>
+          <p className="text-xl font-bold font-mono text-foreground leading-none">{item.count}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">{item.label}</p>
         </motion.div>
       ))}
     </div>
