@@ -123,10 +123,8 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
           <motion.div className="flex items-center gap-3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
             <motion.img src={fabulouzzLogo} alt="Fabulouzz Technologies" className="h-9 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
             <div className="hidden sm:flex flex-col border-l border-primary/20 pl-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: '#2fbf2f' }}>SIGHTLINE</span>
-                <span className="text-[9px] text-muted-foreground font-medium tracking-widest uppercase">Command Center</span>
-              </div>
+              <span className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: '#2fbf2f' }}>SIGHTLINE</span>
+              <span className="text-[9px] text-white/70 font-medium tracking-widest uppercase leading-tight">Command Center</span>
             </div>
           </motion.div>
 
