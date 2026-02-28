@@ -122,7 +122,7 @@ const GanttChart = () => {
               {days.map((day, i) => (
                 <div
                   key={i}
-                  className={`flex flex-col items-center justify-center border-r border-border/20 ${day.isWeekend ? "bg-secondary/30" : ""} ${i === todayOffset ? "bg-primary/10" : ""}`}
+                  className={`flex flex-col items-center justify-center border-r border-border/20 ${day.isWeekend ? "bg-secondary/30" : ""}`}
                   style={{ width: cellWidth, minWidth: cellWidth }}
                 >
                   {day.monthLabel && <span className="text-[9px] font-semibold text-primary uppercase">{day.monthLabel}</span>}
@@ -150,7 +150,7 @@ const GanttChart = () => {
                   {days.map((day, i) => (
                     <div
                       key={i}
-                      className={`absolute top-0 bottom-0 ${day.isWeekend ? "bg-secondary/20" : ""} ${i === todayOffset ? "border-l-2 border-primary/40" : ""}`}
+                      className={`absolute top-0 bottom-0 ${day.isWeekend ? "bg-secondary/20" : ""}`}
                       style={{ left: i * cellWidth, width: cellWidth }}
                     />
                   ))}
@@ -223,11 +223,6 @@ const GanttChart = () => {
               })}
             </svg>
 
-            {/* Today marker line */}
-            <div
-              className="absolute bottom-0 w-0.5 bg-primary/60 z-10"
-              style={{ left: todayOffset * cellWidth + cellWidth / 2, top: headerHeight }}
-            />
           </div>
         </div>
       </div>
