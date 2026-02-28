@@ -1,13 +1,22 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { tasks, projectInfo, getOverallProgress, getStatusCounts } from "@/data/projectData";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 import ProgressRing from "./ProgressRing";
 import { Mail, CheckCircle2, Loader2, Clock, Zap, ExternalLink } from "lucide-react";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 
 const PublicStatusPage = () => {
-  const progress = getOverallProgress();
-  const counts = getStatusCounts();
+  const { tasks, projectInfo } = useProjectData();
+  
+  const weights: Record<string, number> = { Completed: 1, Processing: 0.5, Initiating: 0.2, Planning: 0 };
+  const progress = tasks.length > 0 ? Math.round((tasks.reduce((sum, t) => sum + (weights[t.status] || 0), 0) / tasks.length) * 100) : 0;
+  const counts = {
+    completed: tasks.filter(t => t.status === "Completed").length,
+    processing: tasks.filter(t => t.status === "Processing").length,
+    initiating: tasks.filter(t => t.status === "Initiating").length,
+    planning: tasks.filter(t => t.status === "Planning").length,
+    total: tasks.length,
+  };
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 

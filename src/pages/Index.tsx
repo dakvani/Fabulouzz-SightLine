@@ -12,14 +12,20 @@ import ActiveTasksPanel from "@/components/ActiveTasksPanel";
 import NotificationTicker from "@/components/NotificationTicker";
 import EmailSubscription from "@/components/EmailSubscription";
 import ParticleBackground from "@/components/ParticleBackground";
-import { getOverallProgress } from "@/data/projectData";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 import { motion } from "framer-motion";
 
 type ViewType = "dashboard" | "timeline" | "tasks" | "kanban";
 
 const Index = () => {
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
-  const progress = getOverallProgress();
+  const { tasks } = useProjectData();
+
+  // Calculate progress from context data
+  const weights: Record<string, number> = { Completed: 1, Processing: 0.5, Initiating: 0.2, Planning: 0 };
+  const progress = tasks.length > 0
+    ? Math.round((tasks.reduce((sum, t) => sum + (weights[t.status] || 0), 0) / tasks.length) * 100)
+    : 0;
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -32,7 +38,6 @@ const Index = () => {
         <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-5 relative">
           {activeView === "dashboard" && (
             <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              {/* Row 1: Status ticker + notification ticker */}
               <div className="space-y-2">
                 <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
                   <StatusTicker />
@@ -42,22 +47,14 @@ const Index = () => {
                 </motion.div>
               </div>
 
-              {/* Row 2: Progress + Milestones (swapped - big) + Weather/ProjectInfo stacked */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                {/* Progress ring */}
-                <motion.div
-                  className="md:col-span-3 glass-card p-5 flex items-center justify-center rounded-2xl"
-                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
-                >
+                <motion.div className="md:col-span-3 glass-card p-5 flex items-center justify-center rounded-2xl"
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}>
                   <ProgressRing progress={progress} size={130} label="Overall Progress" />
                 </motion.div>
-
-                {/* Milestones - wide (swapped from ProjectInfo) */}
                 <motion.div className="md:col-span-5" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
                   <MilestoneCountdown />
                 </motion.div>
-
-                {/* Weather + ProjectInfo stacked (swapped) */}
                 <div className="md:col-span-4 grid grid-rows-2 gap-3">
                   <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
                     <WeatherWidget />
@@ -68,16 +65,12 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* Row 3: Active Tasks - full width, big */}
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
                 <ActiveTasksPanel />
               </motion.div>
-
-              {/* Row 4: Gantt */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                 <GanttChart />
               </motion.div>
-
               <EmailSubscription />
             </motion.div>
           )}

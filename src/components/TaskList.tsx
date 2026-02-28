@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { tasks, getStatusColor, type TaskStatus } from "@/data/projectData";
+import { getStatusColor, type TaskStatus } from "@/data/projectData";
 import { ChevronRight, Link2, Activity, Edit3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 import StatusUpdateModal from "./StatusUpdateModal";
 
 const statusBadgeClasses: Record<string, string> = {
@@ -13,6 +14,7 @@ const statusBadgeClasses: Record<string, string> = {
 };
 
 const TaskList = () => {
+  const { tasks } = useProjectData();
   const [selectedTask, setSelectedTask] = useState<{ id: number; name: string; status: TaskStatus } | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -29,12 +31,7 @@ const TaskList = () => {
 
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="glass-card overflow-hidden"
-      >
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="glass-card overflow-hidden">
         <div className="p-4 border-b border-border/50">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">All Tasks</h3>
         </div>
@@ -42,33 +39,15 @@ const TaskList = () => {
           {tasks.map((task, i) => {
             const isProcessing = task.status === "Processing";
             return (
-              <motion.div
-                key={task.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.7 + i * 0.03 }}
-                className={`px-4 py-3 flex items-center gap-3 transition-colors cursor-pointer group relative ${
-                  isProcessing
-                    ? "bg-processing/5 hover:bg-processing/10"
-                    : "hover:bg-secondary/30"
-                }`}
-              >
+              <motion.div key={task.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 + i * 0.03 }}
+                className={`px-4 py-3 flex items-center gap-3 transition-colors cursor-pointer group relative ${isProcessing ? "bg-processing/5 hover:bg-processing/10" : "hover:bg-secondary/30"}`}>
                 {isProcessing && (
-                  <motion.div
-                    className="absolute left-0 top-0 bottom-0 w-1 bg-processing rounded-r"
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  />
+                  <motion.div className="absolute left-0 top-0 bottom-0 w-1 bg-processing rounded-r" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} />
                 )}
-
-                <span className="text-xs font-mono text-muted-foreground w-6 flex-shrink-0">
-                  {String(task.id).padStart(2, "0")}
-                </span>
+                <span className="text-xs font-mono text-muted-foreground w-6 flex-shrink-0">{String(task.id).padStart(2, "0")}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className={`text-sm truncate ${isProcessing ? "text-foreground font-medium" : "text-foreground"}`}>
-                      {task.name}
-                    </p>
+                    <p className={`text-sm truncate ${isProcessing ? "text-foreground font-medium" : "text-foreground"}`}>{task.name}</p>
                     {isProcessing && (
                       <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
                         <Activity className="w-3.5 h-3.5 text-processing flex-shrink-0" />
@@ -78,24 +57,17 @@ const TaskList = () => {
                   {task.dependencies && task.dependencies.length > 0 && (
                     <div className="flex items-center gap-1 mt-0.5">
                       <Link2 className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">
-                        Depends on: {task.dependencies.map(d => `#${d}`).join(", ")}
-                      </span>
+                      <span className="text-[10px] text-muted-foreground">Depends on: {task.dependencies.map(d => `#${d}`).join(", ")}</span>
                     </div>
                   )}
                 </div>
-                <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full border ${
-                  statusBadgeClasses[getStatusColor(task.status)]
-                } ${isProcessing ? "animate-pulse" : ""}`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full border ${statusBadgeClasses[getStatusColor(task.status)]} ${isProcessing ? "animate-pulse" : ""}`}>
                   {task.status}
                 </span>
                 {canUpdate && (
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
+                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                     onClick={() => setSelectedTask({ id: task.id, name: task.name, status: task.status })}
-                    className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
-                  >
+                    className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
                     <Edit3 className="w-3.5 h-3.5" />
                   </motion.button>
                 )}
@@ -105,15 +77,9 @@ const TaskList = () => {
           })}
         </div>
       </motion.div>
-
       {selectedTask && (
-        <StatusUpdateModal
-          isOpen={!!selectedTask}
-          onClose={() => setSelectedTask(null)}
-          taskId={selectedTask.id}
-          taskName={selectedTask.name}
-          currentStatus={selectedTask.status}
-        />
+        <StatusUpdateModal isOpen={!!selectedTask} onClose={() => setSelectedTask(null)}
+          taskId={selectedTask.id} taskName={selectedTask.name} currentStatus={selectedTask.status} />
       )}
     </>
   );
