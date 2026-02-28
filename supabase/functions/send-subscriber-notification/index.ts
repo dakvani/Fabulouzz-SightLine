@@ -124,8 +124,8 @@ Deno.serve(async (req) => {
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px 16px 0 0; padding: 32px; text-align: center;">
       <table style="width:100%;border-collapse:collapse;"><tr>
-        <td style="text-align:left;vertical-align:middle;width:80px;">
-          <img src="https://dxohbmgalsxswmpptyqy.supabase.co/storage/v1/object/public/email-assets/fab-logo.png" alt="Fabulouzz" style="width:70px;height:auto;" />
+        <td style="text-align:left;vertical-align:middle;width:120px;">
+          <img src="https://dxohbmgalsxswmpptyqy.supabase.co/storage/v1/object/public/email-assets/fab-logo.png" alt="Fabulouzz" style="width:110px;height:auto;" />
         </td>
         <td style="text-align:center;vertical-align:middle;">
           <h1 style="color: #2fbf2f; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin: 0 0 8px;">SIGHTLINE Command Center</h1>
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
           <div style="width: 60px; height: 3px; background: #2fbf2f; margin: 12px auto;"></div>
           <p style="color: #9ca3af; font-size: 13px; margin: 8px 0 0;">${today}</p>
         </td>
-        <td style="width:80px;"></td>
+        <td style="width:120px;"></td>
       </tr></table>
     </div>
 
