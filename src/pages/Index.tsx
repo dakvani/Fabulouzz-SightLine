@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import LandingPage from "@/components/LandingPage";
 import AppHeader from "@/components/AppHeader";
 import ProgressRing from "@/components/ProgressRing";
 import StatusTicker from "@/components/StatusTicker";
@@ -18,8 +20,38 @@ import { motion } from "framer-motion";
 type ViewType = "dashboard" | "timeline" | "tasks" | "kanban";
 
 const Index = () => {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
   const { tasks } = useProjectData();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
+          className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingPage onAuthSuccess={() => {}} />;
+  }
 
   const weights: Record<string, number> = { Completed: 1, Processing: 0.5, Initiating: 0.2, Planning: 0 };
   const progress = tasks.length > 0
