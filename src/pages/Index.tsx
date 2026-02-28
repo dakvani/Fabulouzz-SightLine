@@ -21,7 +21,6 @@ const Index = () => {
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
   const { tasks } = useProjectData();
 
-  // Calculate progress from context data
   const weights: Record<string, number> = { Completed: 1, Processing: 0.5, Initiating: 0.2, Planning: 0 };
   const progress = tasks.length > 0
     ? Math.round((tasks.reduce((sum, t) => sum + (weights[t.status] || 0), 0) / tasks.length) * 100)
@@ -29,14 +28,13 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
-
       <div className="relative z-10">
         <AppHeader activeView={activeView} onViewChange={setActiveView} />
 
-        <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 relative">
+        <main className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-6 relative">
           {activeView === "dashboard" && (
-            <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
-              <div className="space-y-3">
+            <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-5">
+              <div className="space-y-2 sm:space-y-3">
                 <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
                   <StatusTicker />
                 </motion.div>
@@ -45,8 +43,8 @@ const Index = () => {
                 </motion.div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-5">
-                <motion.div className="sm:col-span-1 md:col-span-3 glass-card p-6 flex items-center justify-center"
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-4 sm:gap-5">
+                <motion.div className="sm:col-span-1 md:col-span-3 glass-card p-4 sm:p-6 flex items-center justify-center"
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}>
                   <ProgressRing progress={progress} size={130} label="Overall Progress" />
                 </motion.div>
@@ -84,7 +82,7 @@ const Index = () => {
           )}
         </main>
 
-        <motion.footer initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="text-center text-xs text-muted-foreground py-6 border-t border-border/30">
+        <motion.footer initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="text-center text-[10px] sm:text-xs text-muted-foreground py-4 sm:py-6 border-t border-border/30">
           <p>Powered by <span className="text-primary font-semibold">Fabulouzz Technologies</span> • SightLine Project Command Center</p>
         </motion.footer>
       </div>

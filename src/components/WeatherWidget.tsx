@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin, Gauge, ShieldCheck, ShieldAlert, Clock, TrendingUp } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface WeatherData {
   temperature: number;
@@ -43,7 +44,9 @@ const weatherDescriptions: Record<number, { label: string; icon: typeof Sun }> =
 const getWeatherInfo = (code: number) => weatherDescriptions[code] || { label: "Clear", icon: Sun };
 const getWindDir = (deg: number) => ["N","NE","E","SE","S","SW","W","NW"][Math.round(deg / 45) % 8];
 
-const getSafetyStatus = (temp: number, wind: number, uv: number) => {
+type SafetyResult = { safe: boolean; label: string; reason: string };
+
+const getSafetyStatus = (temp: number, wind: number, uv: number): SafetyResult => {
   if (temp >= 48 || wind >= 50 || uv >= 11) return { safe: false, label: "Danger", reason: temp >= 48 ? "Extreme heat" : wind >= 50 ? "High winds" : "Extreme UV" };
   if (temp >= 42 || wind >= 35 || uv >= 8) return { safe: false, label: "Caution", reason: temp >= 42 ? "High heat" : wind >= 35 ? "Strong winds" : "Very high UV" };
   return { safe: true, label: "Safe", reason: "Conditions OK" };
@@ -153,11 +156,8 @@ const ForecastMiniChart = ({ forecast }: { forecast: ForecastDay[] }) => {
       </div>
       <div className="relative">
         <svg viewBox={`-2 -2 ${w + 4} ${h + 12}`} className="w-full" style={{ height: 40 }}>
-          {/* Max temp line */}
           <polyline points={maxPoints} fill="none" stroke="hsl(var(--warning))" strokeWidth="1.2" strokeLinejoin="round" />
-          {/* Min temp line */}
           <polyline points={minPoints} fill="none" stroke="hsl(var(--info))" strokeWidth="1.2" strokeLinejoin="round" opacity="0.7" />
-          {/* Dots and labels */}
           {forecast.map((d, i) => (
             <g key={i}>
               <circle cx={i * stepX} cy={toY(d.tempMax)} r="1.5" fill="hsl(var(--warning))" />
@@ -177,6 +177,7 @@ const WeatherWidget = () => {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [forecast, setForecast] = useState<ForecastDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const prevSafetyRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     fetch("https://api.open-meteo.com/v1/forecast?latitude=22.41&longitude=39.10&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day,apparent_temperature,wind_direction_10m,surface_pressure,cloud_cover,wind_gusts_10m,dew_point_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&timezone=Asia/Riyadh&forecast_days=6")
@@ -197,7 +198,6 @@ const WeatherWidget = () => {
           cloudCover: d.current.cloud_cover ?? 0,
           windGusts: Math.round(d.current.wind_gusts_10m ?? 0),
         });
-        // Parse 5-day forecast (skip today = index 0, take indices 1-5)
         if (d.daily) {
           const days: ForecastDay[] = [];
           for (let i = 1; i <= 5 && i < d.daily.time.length; i++) {
@@ -224,6 +224,20 @@ const WeatherWidget = () => {
         setLoading(false); 
       });
   }, []);
+
+  // Toast alert when safety status changes from Safe to Caution/Danger
+  useEffect(() => {
+    if (!weather) return;
+    const safety = getSafetyStatus(weather.temperature, weather.windSpeed, weather.uvIndex);
+    if (prevSafetyRef.current !== null && prevSafetyRef.current === true && !safety.safe) {
+      toast({
+        title: `⚠️ Weather Alert: ${safety.label}`,
+        description: `${safety.reason} — outdoor conditions are no longer safe at KAEC site.`,
+        variant: "destructive",
+      });
+    }
+    prevSafetyRef.current = safety.safe;
+  }, [weather]);
 
   if (loading) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-4 h-full"><div className="animate-pulse h-full bg-secondary rounded-xl" /></motion.div>;
   if (!weather) return null;
