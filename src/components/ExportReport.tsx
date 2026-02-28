@@ -103,12 +103,19 @@ const ExportReport = () => {
 
       // Large centered logo
       if (logoData) {
-        doc.addImage(logoData, "PNG", pageWidth / 2 - 45, 55, 90, 28);
+        doc.addImage(logoData, "PNG", pageWidth / 2 - 45, 50, 90, 28);
+        // Add "SIGHTLINE Command Center" under logo
+        doc.setTextColor(...brandGreen);
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("SIGHTLINE Command Center", pageWidth / 2, 86, { align: "center" });
       } else {
         doc.setTextColor(...brandGreen);
         doc.setFontSize(28);
         doc.setFont("helvetica", "bold");
         doc.text("FABULOUZZ TECHNOLOGIES", pageWidth / 2, 72, { align: "center" });
+        doc.setFontSize(12);
+        doc.text("SIGHTLINE Command Center", pageWidth / 2, 82, { align: "center" });
       }
 
       // Divider line
@@ -347,7 +354,7 @@ const ExportReport = () => {
 
       // Gantt chart layout
       const ganttTop = 28;
-      const labelWidth = 72;
+      const labelWidth = 90;
       const ganttLeft = labelWidth + 12;
       const ganttRight = lw - 10;
       const ganttWidth = ganttRight - ganttLeft;
@@ -419,7 +426,7 @@ const ExportReport = () => {
         doc.setTextColor(...textWhite);
         doc.setFontSize(5.5);
         doc.setFont("helvetica", "normal");
-        const maxChars = 42;
+        const maxChars = 55;
         const name = task.name.length > maxChars ? task.name.slice(0, maxChars - 1) + "…" : task.name;
         doc.text(name, 20, ry + rowHeight / 2 + 1.2);
 

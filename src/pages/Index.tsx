@@ -45,15 +45,15 @@ const Index = () => {
                 </motion.div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-                <motion.div className="md:col-span-3 glass-card p-6 flex items-center justify-center"
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-5">
+                <motion.div className="sm:col-span-1 md:col-span-3 glass-card p-6 flex items-center justify-center"
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}>
                   <ProgressRing progress={progress} size={130} label="Overall Progress" />
                 </motion.div>
-                <motion.div className="md:col-span-5" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                <motion.div className="sm:col-span-2 md:col-span-5" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
                   <MilestoneCountdown />
                 </motion.div>
-                <div className="md:col-span-4 grid grid-rows-2 gap-4">
+                <div className="sm:col-span-2 md:col-span-4 grid grid-rows-2 gap-4">
                   <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
                     <WeatherWidget />
                   </motion.div>

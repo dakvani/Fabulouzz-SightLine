@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { type ProjectTask, type TaskStatus } from "@/data/projectData";
 import { GripVertical, Link2 } from "lucide-react";
 import { useProjectData } from "@/contexts/ProjectDataContext";
+import { supabase } from "@/integrations/supabase/client";
 
 type KanbanColumn = "To-Do" | "In Progress" | "Done";
 
@@ -23,6 +24,18 @@ const KanbanBoard = () => {
   const { tasks: contextTasks } = useProjectData();
   const [taskList, setTaskList] = useState<ProjectTask[]>([...contextTasks]);
   const [draggedTask, setDraggedTask] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id).single();
+        setIsAdmin(data?.role === "admin");
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const columns: KanbanColumn[] = ["To-Do", "In Progress", "Done"];
 
@@ -42,7 +55,7 @@ const KanbanBoard = () => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
       <div className="glass-card p-4 border-b border-border/50">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Kanban Board</h3>
-        <p className="text-xs text-muted-foreground mt-1">Drag tasks between columns to update status</p>
+        {isAdmin && <p className="text-xs text-muted-foreground mt-1">Drag tasks between columns to update status</p>}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {columns.map(col => {
