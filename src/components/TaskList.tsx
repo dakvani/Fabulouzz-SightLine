@@ -61,7 +61,7 @@ const TaskList = () => {
                     </div>
                   )}
                 </div>
-                <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full border ${statusBadgeClasses[getStatusColor(task.status)]} ${isProcessing ? "animate-pulse" : ""}`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full border ${statusBadgeClasses[getStatusColor(task.status)]}`}>
                   {task.status}
                 </span>
                 {canUpdate && (

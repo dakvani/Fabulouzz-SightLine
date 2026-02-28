@@ -173,15 +173,6 @@ const GanttChart = () => {
                       />
                     )}
 
-                    {/* Loading bar for processing (CSS animation, not vibrating) */}
-                    {isProcessing && (
-                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-background/20 overflow-hidden">
-                        <div
-                          className="h-full bg-background/50 rounded-full animate-[slideBar_2s_ease-in-out_infinite]"
-                          style={{ width: "40%" }}
-                        />
-                      </div>
-                    )}
 
                     {/* Label + percentage */}
                     <span className="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-medium text-background/90 pointer-events-none">
