@@ -69,7 +69,7 @@ const KanbanBoard = () => {
                             <span className="text-[10px] font-mono text-primary">#{task.id}</span>
                             <span className={`text-[9px] uppercase font-semibold tracking-wider px-1.5 py-0.5 rounded-full border ${
                               task.status === "Completed" ? "bg-completed/15 text-completed border-completed/30" :
-                              task.status === "Processing" ? "bg-processing/15 text-processing border-processing/30" :
+                              task.status === "Processing" ? "bg-processing/15 text-processing border-processing/30 animate-pulse" :
                               task.status === "Initiating" ? "bg-initiating/15 text-initiating border-initiating/30" :
                               "bg-planning/15 text-planning border-planning/30"
                             }`}>{task.status}</span>
