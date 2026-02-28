@@ -38,19 +38,16 @@ const ParticleBackground = () => {
       particles.forEach((p, i) => {
         p.x += p.vx;
         p.y += p.vy;
-        p.pulse += 0.01;
 
         if (p.x < 0) p.x = canvas.width;
         if (p.x > canvas.width) p.x = 0;
         if (p.y < 0) p.y = canvas.height;
         if (p.y > canvas.height) p.y = 0;
 
-        const pulseOpacity = p.opacity + Math.sin(p.pulse) * 0.15;
-
-        // Draw particle
+        // Draw particle (static opacity, no pulse)
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(90, 65%, 50%, ${pulseOpacity})`;
+        ctx.fillStyle = `hsla(90, 65%, 50%, ${p.opacity})`;
         ctx.fill();
 
         // Draw connections
