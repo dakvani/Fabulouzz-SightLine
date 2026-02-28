@@ -76,10 +76,9 @@ const ActiveTasksPanel = () => {
       <div className="px-5 py-3 border-t border-border/30 flex items-center gap-2">
         <Activity className="w-3 h-3 text-muted-foreground" />
         <span className="text-[10px] text-muted-foreground">Last activity: just now</span>
-        <div className="ml-auto flex gap-1">
+        <div className="ml-auto flex gap-1 items-end">
           {[...Array(5)].map((_, i) => (
-            <motion.div key={i} className="w-1 bg-processing/40 rounded-full"
-              animate={{ height: [4, 12 + Math.random() * 8, 4] }} transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }} />
+            <div key={i} className="w-1 rounded-full bg-processing/40" style={{ height: `${6 + i * 3}px` }} />
           ))}
         </div>
       </div>
