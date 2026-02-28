@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin, Thermometer, Eye, Gauge } from "lucide-react";
+import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin, Gauge, ShieldCheck, ShieldAlert, Clock } from "lucide-react";
 
 interface WeatherData {
   temperature: number;
@@ -35,6 +35,12 @@ const weatherDescriptions: Record<number, { label: string; icon: typeof Sun }> =
 
 const getWeatherInfo = (code: number) => weatherDescriptions[code] || { label: "Clear", icon: Sun };
 const getWindDir = (deg: number) => ["N","NE","E","SE","S","SW","W","NW"][Math.round(deg / 45) % 8];
+
+const getSafetyStatus = (temp: number, wind: number, uv: number) => {
+  if (temp >= 48 || wind >= 50 || uv >= 11) return { safe: false, label: "Danger", reason: temp >= 48 ? "Extreme heat" : wind >= 50 ? "High winds" : "Extreme UV" };
+  if (temp >= 42 || wind >= 35 || uv >= 8) return { safe: false, label: "Caution", reason: temp >= 42 ? "High heat" : wind >= 35 ? "Strong winds" : "Very high UV" };
+  return { safe: true, label: "Safe", reason: "Conditions OK" };
+};
 
 const WeatherScene = ({ code, isDay }: { code: number; isDay: boolean }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -88,7 +94,27 @@ const WeatherScene = ({ code, isDay }: { code: number; isDay: boolean }) => {
     return () => cancelAnimationFrame(animId);
   }, [code, isDay]);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full rounded-xl" />;
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full rounded-t-xl" />;
+};
+
+const KAECClock = () => {
+  const [time, setTime] = useState("");
+
+  useEffect(() => {
+    const update = () => {
+      setTime(new Date().toLocaleTimeString("en-US", { timeZone: "Asia/Riyadh", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-1">
+      <Clock className="w-2.5 h-2.5 text-primary/60" />
+      <span className="text-[9px] font-mono font-semibold text-foreground tabular-nums">{time}</span>
+    </div>
+  );
 };
 
 const WeatherWidget = () => {
@@ -123,9 +149,11 @@ const WeatherWidget = () => {
   if (!weather) return null;
 
   const info = getWeatherInfo(weather.weatherCode);
+  const safety = getSafetyStatus(weather.temperature, weather.windSpeed, weather.uvIndex);
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card overflow-hidden h-full flex flex-col">
+      {/* Sky scene */}
       <div className="relative h-16 overflow-hidden rounded-t-xl flex-shrink-0">
         <WeatherScene code={weather.weatherCode} isDay={weather.isDay} />
         <div className="absolute inset-0 flex items-center justify-between px-3">
@@ -140,14 +168,19 @@ const WeatherWidget = () => {
             </div>
             <p className="text-[9px] text-muted-foreground mt-0.5">{info.label} • UV {weather.uvIndex.toFixed(1)}</p>
           </div>
-          <motion.div
-            className="w-2 h-2 rounded-full bg-[hsl(var(--completed))]"
-            animate={{ opacity: [1, 0.3, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
+          <div className="flex flex-col items-end gap-1">
+            <KAECClock />
+            <motion.div
+              className="w-2 h-2 rounded-full bg-[hsl(var(--completed))]"
+              animate={{ opacity: [1, 0.3, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+          </div>
         </div>
       </div>
-      <div className="p-2 grid grid-cols-3 gap-1.5 mt-auto">
+
+      {/* Data grid */}
+      <div className="p-2 grid grid-cols-3 gap-1.5">
         <div className="flex items-center gap-1 px-1.5 py-1 rounded-md bg-secondary/30">
           <Wind className="w-2.5 h-2.5 text-primary/60 flex-shrink-0" />
           <div className="min-w-0">
@@ -169,6 +202,17 @@ const WeatherWidget = () => {
             <span className="text-[7px] text-muted-foreground">hPa ☁{weather.cloudCover}%</span>
           </div>
         </div>
+      </div>
+
+      {/* Safety banner */}
+      <div className={`mx-2 mb-2 mt-auto px-2 py-1 rounded-md flex items-center gap-1.5 text-[9px] font-semibold ${
+        safety.safe
+          ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
+          : "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]"
+      }`}>
+        {safety.safe ? <ShieldCheck className="w-3 h-3 flex-shrink-0" /> : <ShieldAlert className="w-3 h-3 flex-shrink-0" />}
+        <span>Outdoor: {safety.label}</span>
+        <span className="text-[8px] font-normal opacity-70 ml-auto">{safety.reason}</span>
       </div>
     </motion.div>
   );
