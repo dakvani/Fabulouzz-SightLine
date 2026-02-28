@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Fabulouzz</title>
+    <meta name="description" content="Fabulouzz - Expert solutions in Solar, Security, Networking & IT Services" />
+    <meta name="author" content="Fabulouzz" />
+
+    <meta property="og:title" content="Fabulouzz" />
+    <meta property="og:description" content="Fabulouzz - Expert solutions in Solar, Security, Networking & IT Services" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@Lovable" />
+    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <script type="module" crossorigin src="/assets/index-BprnI0By.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BomwiKjd.css">
+  </head>
+
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
