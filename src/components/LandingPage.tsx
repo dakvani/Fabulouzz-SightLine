@@ -181,7 +181,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
 
               <p className="text-center text-xs text-muted-foreground">
                 Need access?{" "}
-                <a href="https://www.fabulouzz.com/get-quote" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                <a href="https://www.fabulouzz.com/#contact" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
                   Contact Fabulouzz
                 </a>
               </p>
