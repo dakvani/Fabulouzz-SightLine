@@ -13,10 +13,10 @@ interface AuthModalProps {
 
 type RoleOption = "admin" | "pm_engineer" | "client";
 
-const roleLabels: Record<RoleOption, { label: string; icon: typeof Shield; description: string }> = {
-  admin: { label: "Admin", icon: Shield, description: "Full system control" },
-  pm_engineer: { label: "PM / Engineer", icon: Briefcase, description: "Project management" },
-  client: { label: "Client", icon: Users, description: "View project status" },
+const roleLabels: Record<RoleOption, { label: string; icon: typeof Shield }> = {
+  admin: { label: "Admin", icon: Shield },
+  pm_engineer: { label: "PM / Engineer", icon: Briefcase },
+  client: { label: "Client", icon: Users },
 };
 
 const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
@@ -110,7 +110,6 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   <div className="flex items-center gap-2">
                     <CurrentRoleIcon className="w-4 h-4 text-primary" />
                     <span>{roleLabels[selectedRole].label}</span>
-                    <span className="text-[10px] text-muted-foreground">— {roleLabels[selectedRole].description}</span>
                   </div>
                   <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${roleDropdownOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -124,7 +123,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                       className="absolute z-10 mt-1 w-full bg-background border border-border/50 rounded-lg shadow-lg overflow-hidden"
                     >
                       {(Object.keys(roleLabels) as RoleOption[]).map((key) => {
-                        const { label, icon: Icon, description } = roleLabels[key];
+                        const { label, icon: Icon } = roleLabels[key];
                         return (
                           <button
                             key={key}
@@ -134,7 +133,6 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                           >
                             <Icon className="w-4 h-4" />
                             <span className="font-medium">{label}</span>
-                            <span className="text-[10px] text-muted-foreground">— {description}</span>
                           </button>
                         );
                       })}
