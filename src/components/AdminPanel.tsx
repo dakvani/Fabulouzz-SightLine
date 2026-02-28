@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Shield, X, Users, Loader2, CheckCircle2, LayoutList, Building2, Send, Mail } from "lucide-react";
+import { UserPlus, Shield, X, Users, Loader2, LayoutList, Send, Mail, Shuffle, Copy, Check } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import TaskManagement from "./TaskManagement";
@@ -25,6 +26,10 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"admin" | "pm" | "client">("client");
+  const [generatePassword, setGeneratePassword] = useState(true);
+  const [sendInvite, setSendInvite] = useState(true);
+  const [generatedPwd, setGeneratedPwd] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -97,21 +102,38 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setGeneratedPwd(null);
     try {
       const res = await supabase.functions.invoke("admin-create-user", {
-        body: { email, password, fullName, role },
+        body: { email, password: generatePassword ? undefined : password, fullName, role, generatePassword, sendInvite },
       });
 
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
 
-      toast({ title: "User created", description: `${email} added as ${roleLabels[role].label}` });
-      setEmail(""); setPassword(""); setFullName(""); setRole("client");
+      const desc = sendInvite
+        ? `${email} added as ${roleLabels[role].label} — invitation email sent`
+        : `${email} added as ${roleLabels[role].label}`;
+      toast({ title: "User created", description: desc });
+
+      if (res.data?.generatedPassword && !sendInvite) {
+        setGeneratedPwd(res.data.generatedPassword);
+      } else {
+        setEmail(""); setPassword(""); setFullName(""); setRole("client");
+      }
       fetchUsers();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
     setLoading(false);
+  };
+
+  const copyPassword = () => {
+    if (generatedPwd) {
+      navigator.clipboard.writeText(generatedPwd);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (!isOpen) return null;
@@ -210,8 +232,10 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                     className="bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
                   <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required
                     className="bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" required minLength={6}
-                    className="bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  {!generatePassword && (
+                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" required minLength={6}
+                      className="bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  )}
                   <select value={role} onChange={e => setRole(e.target.value as any)}
                     className="bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
                     <option value="admin">Admin</option>
@@ -219,11 +243,39 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                     <option value="client">Client</option>
                   </select>
                 </div>
+
+                {/* Toggles */}
+                <div className="flex flex-col gap-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Shuffle className="w-3.5 h-3.5" /> Generate random password
+                    </label>
+                    <Switch checked={generatePassword} onCheckedChange={setGeneratePassword} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5" /> Send invitation email with credentials
+                    </label>
+                    <Switch checked={sendInvite} onCheckedChange={setSendInvite} />
+                  </div>
+                </div>
+
+                {/* Generated password display */}
+                {generatedPwd && !sendInvite && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <span className="text-xs text-muted-foreground">Generated:</span>
+                    <code className="text-sm font-mono text-foreground flex-1">{generatedPwd}</code>
+                    <button type="button" onClick={copyPassword} className="p-1 rounded hover:bg-secondary/50 text-muted-foreground">
+                      {copied ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                )}
+
                 <motion.button type="submit" disabled={loading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50"
                   style={{ background: "var(--gradient-primary)" }}>
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                  {loading ? "Creating..." : "Create User"}
+                  {loading ? "Creating..." : sendInvite ? "Create & Send Invite" : "Create User"}
                 </motion.button>
               </form>
 
