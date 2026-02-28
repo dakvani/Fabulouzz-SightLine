@@ -15,8 +15,8 @@ interface AdminPanelProps {
 }
 
 const roleLabels: Record<string, { label: string; color: string }> = {
-  pm: { label: "Project Manager", color: "text-primary" },
-  engineer: { label: "Project Engineer", color: "text-processing" },
+  admin: { label: "Admin", color: "text-destructive" },
+  pm: { label: "PM / Engineer", color: "text-primary" },
   client: { label: "Client", color: "text-initiating" },
 };
 
@@ -24,7 +24,7 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<"pm" | "engineer" | "client">("client");
+  const [role, setRole] = useState<"admin" | "pm" | "client">("client");
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -214,8 +214,8 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                     className="bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
                   <select value={role} onChange={e => setRole(e.target.value as any)}
                     className="bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
-                    <option value="pm">Project Manager</option>
-                    <option value="engineer">Project Engineer</option>
+                    <option value="admin">Admin</option>
+                    <option value="pm">PM / Engineer</option>
                     <option value="client">Client</option>
                   </select>
                 </div>
