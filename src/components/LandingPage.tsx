@@ -161,7 +161,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
           transition={{ duration: 0.6, delay: 1.0 }}
         >
           <a
-            href="https://fabulouzz.com"
+            href="https://www.fabulouzz.com/"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
