@@ -109,7 +109,12 @@ Deno.serve(async (req) => {
       </tr>
     `).join("");
 
-    const htmlBody = `
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+
+    const buildHtml = (recipientEmail: string) => {
+      const unsubscribeUrl = `${SUPABASE_URL}/functions/v1/unsubscribe?email=${encodeURIComponent(recipientEmail)}`;
+
+      return `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -118,7 +123,6 @@ Deno.serve(async (req) => {
 
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px 16px 0 0; padding: 32px; text-align: center;">
-      <div style="border-left: 3px solid #2fbf2f; border-top: 3px solid #2fbf2f; width: 40px; height: 40px; display: inline-block; position: relative; top: -8px; left: -60px;"></div>
       <h1 style="color: #2fbf2f; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin: 0 0 8px;">SIGHTLINE Command Center</h1>
       <h2 style="color: #ffffff; font-size: 22px; margin: 0 0 4px; font-weight: 700;">PROJECT STATUS REPORT</h2>
       <div style="width: 60px; height: 3px; background: #2fbf2f; margin: 12px auto;"></div>
@@ -194,52 +198,65 @@ Deno.serve(async (req) => {
     <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 0 0 16px 16px; padding: 20px 32px; text-align: center;">
       <div style="width: 60px; height: 2px; background: #2fbf2f; margin: 0 auto 12px;"></div>
       <p style="color: #6b7280; font-size: 11px; margin: 0 0 4px;">Powered by Fabulouzz Technologies • SightLine Command Center</p>
-      <p style="color: #4b5563; font-size: 10px; margin: 0;">You're receiving this because you subscribed to project updates.</p>
-      ${pdfBase64 ? '<p style="color: #9ca3af; font-size: 10px; margin: 8px 0 0;">📎 Full PDF report attached</p>' : ''}
+      <p style="color: #4b5563; font-size: 10px; margin: 0 0 8px;">You're receiving this because you subscribed to project updates.</p>
+      ${pdfBase64 ? '<p style="color: #9ca3af; font-size: 10px; margin: 0 0 8px;">📎 Full PDF report attached</p>' : ''}
+      <a href="${unsubscribeUrl}" style="color: #6b7280; font-size: 10px; text-decoration: underline;">Unsubscribe from updates</a>
     </div>
 
   </div>
 </body>
 </html>`;
-
-    // Build Resend payload
-    const resendPayload: any = {
-      from: "SIGHTLINE Updates <support@fabulouzz.com>",
-      to: emails,
-      subject: `Project Update: ${subject}`,
-      html: htmlBody,
     };
 
-    // Attach PDF if provided
-    if (pdfBase64) {
-      resendPayload.attachments = [
-        {
-          filename: `SightLine_Report_${(projectInfo?.projectRef || "Report").replace(/\s/g, "_")}_${today.replace(/\s/g, "-")}.pdf`,
-          content: pdfBase64,
-        },
-      ];
-    }
+    // Send individual emails with personalized unsubscribe links
+    let sentCount = 0;
+    const errors: string[] = [];
 
-    const resendRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(resendPayload),
-    });
+    for (const recipientEmail of emails) {
+      const resendPayload: any = {
+        from: "SIGHTLINE Updates <support@fabulouzz.com>",
+        to: [recipientEmail],
+        subject: `Project Update: ${subject}`,
+        html: buildHtml(recipientEmail),
+      };
 
-    const resendData = await resendRes.json();
+      if (pdfBase64) {
+        resendPayload.attachments = [
+          {
+            filename: `SightLine_Report_${(projectInfo?.projectRef || "Report").replace(/\s/g, "_")}_${today.replace(/\s/g, "-")}.pdf`,
+            content: pdfBase64,
+          },
+        ];
+      }
 
-    if (!resendRes.ok) {
-      console.error("Resend error:", resendData);
-      throw new Error(resendData.message || "Failed to send emails");
+      try {
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(resendPayload),
+        });
+
+        const resendData = await resendRes.json();
+
+        if (!resendRes.ok) {
+          console.error(`Resend error for ${recipientEmail}:`, resendData);
+          errors.push(`${recipientEmail}: ${resendData.message}`);
+        } else {
+          sentCount++;
+        }
+      } catch (e) {
+        errors.push(`${recipientEmail}: ${e.message}`);
+      }
     }
 
     return new Response(
       JSON.stringify({
-        message: `Notification sent to ${emails.length} subscriber(s)`,
-        sent: emails.length,
+        message: `Notification sent to ${sentCount} subscriber(s)${errors.length ? `, ${errors.length} failed` : ""}`,
+        sent: sentCount,
+        errors: errors.length ? errors : undefined,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
