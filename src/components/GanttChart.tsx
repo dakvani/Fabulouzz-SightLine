@@ -1,7 +1,5 @@
-import { motion } from "framer-motion";
 import { getCalendarDays, getStatusColor, type TaskStatus } from "@/data/projectData";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 
 const statusBgMap: Record<string, string> = {
@@ -11,6 +9,20 @@ const statusBgMap: Record<string, string> = {
   planning: "bg-planning",
 };
 
+const statusProgress: Record<TaskStatus, number> = {
+  Completed: 100,
+  Processing: 50,
+  Initiating: 20,
+  Planning: 0,
+};
+
+const statusColorVar: Record<string, string> = {
+  completed: "hsl(var(--completed))",
+  processing: "hsl(var(--processing))",
+  initiating: "hsl(var(--initiating))",
+  planning: "hsl(var(--planning))",
+};
+
 const GanttChart = () => {
   const { tasks } = useProjectData();
   const days = getCalendarDays();
@@ -18,12 +30,41 @@ const GanttChart = () => {
   const cellWidth = 44;
   const scopeColWidth = 360;
   const rowHeight = 44;
+  const headerHeight = 56;
 
   const today = new Date(2026, 1, 27);
   const projectStart = new Date(2026, 1, 21);
   const todayOffset = Math.floor((today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Build dependency arrows
+  const arrows = useMemo(() => {
+    const taskMap = new Map(tasks.map(t => [t.id, t]));
+    const result: { fromX: number; fromY: number; toX: number; toY: number; color: string }[] = [];
+
+    tasks.forEach((task, idx) => {
+      if (!task.dependencies) return;
+      task.dependencies.forEach(depId => {
+        const dep = taskMap.get(depId);
+        if (!dep) return;
+        const depIdx = tasks.findIndex(t => t.id === depId);
+        if (depIdx === -1) return;
+
+        const fromX = (dep.startDay + dep.duration) * cellWidth - 4;
+        const fromY = depIdx * rowHeight + rowHeight / 2;
+        const toX = task.startDay * cellWidth + 4;
+        const toY = idx * rowHeight + rowHeight / 2;
+        const colorKey = getStatusColor(task.status);
+
+        result.push({ fromX, fromY, toX, toY, color: statusColorVar[colorKey] || "hsl(var(--muted-foreground))" });
+      });
+    });
+    return result;
+  }, [tasks]);
+
+  const svgHeight = tasks.length * rowHeight;
+  const svgWidth = days.length * cellWidth;
 
   return (
     <div className="glass-card overflow-hidden">
@@ -42,7 +83,6 @@ const GanttChart = () => {
         </div>
       </div>
 
-      {/* Gantt body with sticky scope column and sticky day headers */}
       <div className="relative overflow-auto max-h-[600px]" ref={scrollContainerRef}>
         <div className="flex min-w-max">
           {/* Sticky Scope Column */}
@@ -50,14 +90,12 @@ const GanttChart = () => {
             className="flex-shrink-0 border-r border-border/50 bg-card z-20 sticky left-0"
             style={{ width: scopeColWidth }}
           >
-            {/* Scope header - sticky top+left */}
             <div
               className="border-b border-border/50 flex items-center px-4 bg-card z-30 sticky top-0"
-              style={{ height: 56 }}
+              style={{ height: headerHeight }}
             >
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scope of Work</span>
             </div>
-            {/* Scope rows */}
             {tasks.map((task) => (
               <div
                 key={task.id}
@@ -80,7 +118,7 @@ const GanttChart = () => {
           {/* Timeline area */}
           <div className="flex-1 relative">
             {/* Day headers - sticky top */}
-            <div className="flex border-b border-border/50 sticky top-0 bg-card z-10" style={{ height: 56 }}>
+            <div className="flex border-b border-border/50 sticky top-0 bg-card z-10" style={{ height: headerHeight }}>
               {days.map((day, i) => (
                 <div
                   key={i}
@@ -96,7 +134,10 @@ const GanttChart = () => {
 
             {/* Task bars */}
             {tasks.map((task) => {
-              const isActive = task.status === "Processing";
+              const progress = statusProgress[task.status];
+              const barWidth = task.duration * cellWidth - 8;
+              const isProcessing = task.status === "Processing";
+
               return (
                 <div
                   key={task.id}
@@ -114,69 +155,90 @@ const GanttChart = () => {
                     />
                   ))}
 
-                  {/* Task bar — only animate active (Processing) tasks */}
-                  {isActive ? (
-                    <motion.div
-                      className={`absolute rounded-md ${statusBgMap[getStatusColor(task.status)]} ring-1 ring-processing/50 overflow-hidden`}
-                      style={{
-                        left: task.startDay * cellWidth + 4,
-                        width: task.duration * cellWidth - 8,
-                        height: rowHeight - 14,
-                      }}
-                      animate={{
-                        boxShadow: [
-                          "0 0 0px hsl(var(--processing))",
-                          "0 0 12px hsl(var(--processing))",
-                          "0 0 0px hsl(var(--processing))",
-                        ],
-                      }}
-                      transition={{ boxShadow: { duration: 2, repeat: Infinity } }}
-                      title={`${task.name} (${task.status}) — Day ${task.startDay + 1} to ${task.startDay + task.duration}`}
-                    >
-                      {/* Animated loading bar for Processing */}
+                  {/* Task bar — static, no vibrating animation */}
+                  <div
+                    className={`absolute rounded-md ${statusBgMap[getStatusColor(task.status)]} ${isProcessing ? "ring-1 ring-processing/50" : ""} overflow-hidden`}
+                    style={{
+                      left: task.startDay * cellWidth + 4,
+                      width: barWidth,
+                      height: rowHeight - 14,
+                    }}
+                    title={`${task.name} (${task.status} ${progress}%) — Day ${task.startDay + 1} to ${task.startDay + task.duration}`}
+                  >
+                    {/* Progress fill overlay */}
+                    {progress > 0 && progress < 100 && (
+                      <div
+                        className="absolute inset-y-0 left-0 bg-background/15 rounded-l-md"
+                        style={{ width: `${progress}%` }}
+                      />
+                    )}
+
+                    {/* Loading bar for processing (CSS animation, not vibrating) */}
+                    {isProcessing && (
                       <div className="absolute bottom-0 left-0 right-0 h-1 bg-background/20 overflow-hidden">
-                        <motion.div
-                          className="h-full bg-background/50 rounded-full"
-                          animate={{ x: ["-100%", "200%"] }}
-                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                        <div
+                          className="h-full bg-background/50 rounded-full animate-[slideBar_2s_ease-in-out_infinite]"
                           style={{ width: "40%" }}
                         />
                       </div>
-                      {task.duration >= 3 && (
-                        <span className="absolute inset-0 flex items-center px-2 text-[9px] font-medium text-background/90 truncate pointer-events-none">
-                          {task.name.split(" ").slice(0, 3).join(" ")}
-                        </span>
-                      )}
-                    </motion.div>
-                  ) : (
-                    <div
-                      className={`absolute rounded-md ${statusBgMap[getStatusColor(task.status)]}`}
-                      style={{
-                        left: task.startDay * cellWidth + 4,
-                        width: task.duration * cellWidth - 8,
-                        height: rowHeight - 14,
-                      }}
-                      title={`${task.name} (${task.status}) — Day ${task.startDay + 1} to ${task.startDay + task.duration}`}
-                    >
-                      {task.duration >= 3 && (
-                        <span className="absolute inset-0 flex items-center px-2 text-[9px] font-medium text-background/90 truncate pointer-events-none">
-                          {task.name.split(" ").slice(0, 3).join(" ")}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                    )}
+
+                    {/* Label + percentage */}
+                    <span className="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-medium text-background/90 pointer-events-none">
+                      <span className="truncate">
+                        {task.duration >= 3 ? task.name.split(" ").slice(0, 3).join(" ") : ""}
+                      </span>
+                      <span className="flex-shrink-0 ml-1 font-bold text-[8px] bg-background/20 rounded px-1">
+                        {progress}%
+                      </span>
+                    </span>
+                  </div>
                 </div>
               );
             })}
 
+            {/* Dependency arrows SVG overlay */}
+            <svg
+              className="absolute pointer-events-none"
+              style={{ top: headerHeight, left: 0, width: svgWidth, height: svgHeight }}
+            >
+              <defs>
+                <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+                  <polygon points="0 0, 6 2, 0 4" fill="hsl(var(--muted-foreground))" opacity="0.5" />
+                </marker>
+              </defs>
+              {arrows.map((a, i) => {
+                const midX = (a.fromX + a.toX) / 2;
+                return (
+                  <path
+                    key={i}
+                    d={`M ${a.fromX} ${a.fromY} C ${midX} ${a.fromY}, ${midX} ${a.toY}, ${a.toX} ${a.toY}`}
+                    fill="none"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeWidth="1"
+                    strokeOpacity="0.35"
+                    markerEnd="url(#arrowhead)"
+                  />
+                );
+              })}
+            </svg>
+
             {/* Today marker line */}
             <div
               className="absolute bottom-0 w-0.5 bg-primary/60 z-10"
-              style={{ left: todayOffset * cellWidth + cellWidth / 2, top: 56 }}
+              style={{ left: todayOffset * cellWidth + cellWidth / 2, top: headerHeight }}
             />
           </div>
         </div>
       </div>
+
+      {/* CSS animation for loading bar */}
+      <style>{`
+        @keyframes slideBar {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(300%); }
+        }
+      `}</style>
     </div>
   );
 };
