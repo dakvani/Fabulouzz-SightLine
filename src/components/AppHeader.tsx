@@ -4,6 +4,7 @@ import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon } fr
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
+import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 import AuthModal from "./AuthModal";
 import AdminPanel from "./AdminPanel";
 import ExportReport from "./ExportReport";
@@ -90,10 +91,10 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between relative">
           {/* Logo section - bigger SightLine, command center tagline */}
           <motion.div className="flex items-center gap-3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-            <motion.img src={fabulouzzLogo} alt="Fabulouzz Technologies" className="h-9 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+            <motion.img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz Technologies" className="h-9 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
             <div className="hidden sm:flex flex-col border-l border-primary/20 pl-3">
               <span className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: '#2fbf2f' }}>SIGHTLINE</span>
-              <span className="text-[9px] text-white/70 font-medium tracking-widest uppercase leading-tight">Command Center</span>
+              <span className="text-[9px] text-muted-foreground font-medium tracking-widest uppercase leading-tight">Command Center</span>
             </div>
           </motion.div>
 
