@@ -132,10 +132,10 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                 {loading ? "Signing in..." : "Sign In"}
               </motion.button>
               <p className="text-center text-xs text-muted-foreground">
-                Don't have an account?{" "}
-                <button type="button" onClick={() => setMode("signup")} className="text-primary hover:underline font-medium">
-                  Sign Up
-                </button>
+                Need access?{" "}
+                <a href="https://fabulouzz.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                  Contact Fabulouzz
+                </a>
               </p>
             </form>
           )}

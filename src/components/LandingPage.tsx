@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { LogIn, Shield, Briefcase, Users, ChevronRight, Eye } from "lucide-react";
+import { LogIn, ChevronRight, Eye } from "lucide-react";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
@@ -17,32 +17,8 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
 
   useEffect(() => setMounted(true), []);
 
-  const roles = [
-    {
-      icon: Shield,
-      title: "Admin",
-      description: "Full system control, user management & project oversight",
-      color: "hsl(var(--destructive))",
-      gradient: "from-red-500/10 to-orange-500/10",
-      borderColor: "border-red-500/20 hover:border-red-500/40",
-    },
-    {
-      icon: Briefcase,
-      title: "Project Management",
-      description: "Manage tasks, update progress & coordinate schedules",
-      color: "hsl(var(--primary))",
-      gradient: "from-primary/10 to-emerald-500/10",
-      borderColor: "border-primary/20 hover:border-primary/40",
-    },
-    {
-      icon: Users,
-      title: "Client",
-      description: "View project status, milestones & real-time updates",
-      color: "hsl(var(--info))",
-      gradient: "from-blue-500/10 to-cyan-500/10",
-      borderColor: "border-blue-500/20 hover:border-blue-500/40",
-    },
-  ];
+
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -177,31 +153,22 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
           </motion.button>
         </motion.div>
 
-        {/* Role cards */}
+        {/* Fabulouzz home link */}
         <motion.div
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 max-w-3xl w-full"
-          initial={{ opacity: 0, y: 40 }}
+          className="mt-10"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.0 }}
+          transition={{ duration: 0.6, delay: 1.0 }}
         >
-          {roles.map((role, i) => (
-            <motion.div
-              key={role.title}
-              className={`glass-card p-5 sm:p-6 text-center cursor-default border ${role.borderColor} transition-all duration-300`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.1 + i * 0.1 }}
-              whileHover={{ y: -4, transition: { duration: 0.2 } }}
-            >
-              <div
-                className={`w-10 h-10 rounded-xl bg-gradient-to-br ${role.gradient} flex items-center justify-center mx-auto mb-3`}
-              >
-                <role.icon className="w-5 h-5" style={{ color: role.color }} />
-              </div>
-              <h3 className="text-sm font-bold text-foreground mb-1.5">{role.title}</h3>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">{role.description}</p>
-            </motion.div>
-          ))}
+          <a
+            href="https://fabulouzz.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+            Visit Fabulouzz Home
+          </a>
         </motion.div>
       </main>
 
