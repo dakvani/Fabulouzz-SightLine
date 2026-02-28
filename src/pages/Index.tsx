@@ -11,7 +11,7 @@ import KanbanBoard from "@/components/KanbanBoard";
 import ActiveTasksPanel from "@/components/ActiveTasksPanel";
 import NotificationTicker from "@/components/NotificationTicker";
 import EmailSubscription from "@/components/EmailSubscription";
-import ParticleBackground from "@/components/ParticleBackground";
+
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { motion } from "framer-motion";
 
@@ -29,8 +29,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
-      <ParticleBackground />
-      <div className="fixed inset-0 pointer-events-none z-[1]" style={{ background: "var(--gradient-glow)" }} />
 
       <div className="relative z-10">
         <AppHeader activeView={activeView} onViewChange={setActiveView} />
