@@ -12,6 +12,16 @@ interface AppHeaderProps {
   onViewChange: (view: "dashboard" | "timeline" | "tasks" | "kanban") => void;
 }
 
+const useScrolled = () => {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return scrolled;
+};
+
 const HeaderParticles = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -85,6 +95,8 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
 
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setIsAdmin(false); };
 
+  const scrolled = useScrolled();
+
   const views = [
     { id: "dashboard" as const, label: "Dashboard", icon: BarChart3 },
     { id: "timeline" as const, label: "Timeline", icon: Eye },
@@ -98,13 +110,15 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="sticky top-2 z-50 mx-4 sm:mx-6"
+        className={`sticky top-2 z-50 mx-4 sm:mx-6 transition-all duration-300 ${scrolled ? "top-1 mx-2 sm:mx-3" : ""}`}
       >
         <div
-          className="absolute inset-0 bg-card/20 backdrop-blur-2xl border border-primary/10 overflow-hidden"
+          className={`absolute inset-0 backdrop-blur-2xl border border-primary/10 overflow-hidden transition-all duration-300 ${scrolled ? "bg-card/60 shadow-lg" : "bg-card/20"}`}
           style={{
-            borderRadius: "20px",
-            boxShadow: "0 8px 32px -8px hsl(var(--primary) / 0.12), inset 0 1px 0 0 hsl(var(--primary) / 0.06)",
+            borderRadius: scrolled ? "14px" : "20px",
+            boxShadow: scrolled
+              ? "0 12px 40px -8px hsl(var(--primary) / 0.2), inset 0 1px 0 0 hsl(var(--primary) / 0.1)"
+              : "0 8px 32px -8px hsl(var(--primary) / 0.12), inset 0 1px 0 0 hsl(var(--primary) / 0.06)",
           }}
         >
           <HeaderParticles />
