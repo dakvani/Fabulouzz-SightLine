@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin } from "lucide-react";
+import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin, Thermometer, Eye, Gauge } from "lucide-react";
 
 interface WeatherData {
   temperature: number;
@@ -10,6 +10,12 @@ interface WeatherData {
   isDay: boolean;
   apparentTemp: number;
   windDirection: number;
+  pressure: number;
+  visibility: number;
+  uvIndex: number;
+  dewPoint: number;
+  cloudCover: number;
+  windGusts: number;
 }
 
 const weatherDescriptions: Record<number, { label: string; icon: typeof Sun }> = {
@@ -90,7 +96,7 @@ const WeatherWidget = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("https://api.open-meteo.com/v1/forecast?latitude=22.41&longitude=39.10&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day,apparent_temperature,wind_direction_10m&timezone=Asia/Riyadh")
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=22.41&longitude=39.10&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day,apparent_temperature,wind_direction_10m,surface_pressure,cloud_cover,wind_gusts_10m,dew_point_2m&daily=uv_index_max&timezone=Asia/Riyadh&forecast_days=1")
       .then(r => r.json())
       .then(d => {
         if (d.current) setWeather({
@@ -101,10 +107,16 @@ const WeatherWidget = () => {
           isDay: d.current.is_day === 1,
           apparentTemp: Math.round(d.current.apparent_temperature ?? d.current.temperature_2m),
           windDirection: d.current.wind_direction_10m ?? 0,
+          pressure: Math.round(d.current.surface_pressure ?? 1013),
+          visibility: 10,
+          uvIndex: d.daily?.uv_index_max?.[0] ?? 0,
+          dewPoint: Math.round(d.current.dew_point_2m ?? 0),
+          cloudCover: d.current.cloud_cover ?? 0,
+          windGusts: Math.round(d.current.wind_gusts_10m ?? 0),
         });
         setLoading(false);
       })
-      .catch(() => { setWeather({ temperature: 28, windSpeed: 12, humidity: 55, weatherCode: 0, isDay: true, apparentTemp: 30, windDirection: 315 }); setLoading(false); });
+      .catch(() => { setWeather({ temperature: 28, windSpeed: 12, humidity: 55, weatherCode: 0, isDay: true, apparentTemp: 30, windDirection: 315, pressure: 1013, visibility: 10, uvIndex: 8, dewPoint: 18, cloudCover: 10, windGusts: 22 }); setLoading(false); });
   }, []);
 
   if (loading) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-4 h-full"><div className="animate-pulse h-full bg-secondary rounded-xl" /></motion.div>;
@@ -114,7 +126,7 @@ const WeatherWidget = () => {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card overflow-hidden h-full flex flex-col">
-      <div className="relative h-20 overflow-hidden rounded-t-xl flex-shrink-0">
+      <div className="relative h-16 overflow-hidden rounded-t-xl flex-shrink-0">
         <WeatherScene code={weather.weatherCode} isDay={weather.isDay} />
         <div className="absolute inset-0 flex items-center justify-between px-3">
           <div>
@@ -122,8 +134,11 @@ const WeatherWidget = () => {
               <MapPin className="w-2.5 h-2.5 text-primary" />
               <span className="text-[8px] font-semibold text-foreground/70 uppercase tracking-widest">KAEC</span>
             </div>
-            <p className="text-2xl font-bold font-mono text-foreground leading-none">{weather.temperature}°</p>
-            <p className="text-[9px] text-muted-foreground mt-0.5">{info.label}</p>
+            <div className="flex items-baseline gap-1.5">
+              <p className="text-2xl font-bold font-mono text-foreground leading-none">{weather.temperature}°</p>
+              <span className="text-[9px] text-muted-foreground">Feels {weather.apparentTemp}°</span>
+            </div>
+            <p className="text-[9px] text-muted-foreground mt-0.5">{info.label} • UV {weather.uvIndex.toFixed(1)}</p>
           </div>
           <motion.div
             className="w-2 h-2 rounded-full bg-[hsl(var(--completed))]"
@@ -132,14 +147,27 @@ const WeatherWidget = () => {
           />
         </div>
       </div>
-      <div className="p-2.5 flex gap-2 mt-auto">
-        <div className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/30">
-          <Wind className="w-3 h-3 text-primary/60" />
-          <span className="text-[10px] font-mono font-semibold text-foreground">{weather.windSpeed}<span className="text-muted-foreground ml-0.5">{getWindDir(weather.windDirection)}</span></span>
+      <div className="p-2 grid grid-cols-3 gap-1.5 mt-auto">
+        <div className="flex items-center gap-1 px-1.5 py-1 rounded-md bg-secondary/30">
+          <Wind className="w-2.5 h-2.5 text-primary/60 flex-shrink-0" />
+          <div className="min-w-0">
+            <span className="text-[9px] font-mono font-semibold text-foreground block leading-tight">{weather.windSpeed}<span className="text-muted-foreground text-[8px]">km/h</span></span>
+            <span className="text-[7px] text-muted-foreground">{getWindDir(weather.windDirection)} G{weather.windGusts}</span>
+          </div>
         </div>
-        <div className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-secondary/30">
-          <Droplets className="w-3 h-3 text-[hsl(var(--info))]/60" />
-          <span className="text-[10px] font-mono font-semibold text-foreground">{weather.humidity}%</span>
+        <div className="flex items-center gap-1 px-1.5 py-1 rounded-md bg-secondary/30">
+          <Droplets className="w-2.5 h-2.5 text-[hsl(var(--info))]/60 flex-shrink-0" />
+          <div className="min-w-0">
+            <span className="text-[9px] font-mono font-semibold text-foreground block leading-tight">{weather.humidity}%</span>
+            <span className="text-[7px] text-muted-foreground">Dew {weather.dewPoint}°</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 px-1.5 py-1 rounded-md bg-secondary/30">
+          <Gauge className="w-2.5 h-2.5 text-muted-foreground/60 flex-shrink-0" />
+          <div className="min-w-0">
+            <span className="text-[9px] font-mono font-semibold text-foreground block leading-tight">{weather.pressure}</span>
+            <span className="text-[7px] text-muted-foreground">hPa ☁{weather.cloudCover}%</span>
+          </div>
         </div>
       </div>
     </motion.div>

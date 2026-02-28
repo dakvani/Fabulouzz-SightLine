@@ -1,4 +1,5 @@
 import { getCalendarDays, getStatusColor, type TaskStatus } from "@/data/projectData";
+import { motion } from "framer-motion";
 import { useRef, useState, useMemo } from "react";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 
@@ -32,7 +33,8 @@ const GanttChart = () => {
   const rowHeight = 44;
   const headerHeight = 56;
 
-  const today = new Date(2026, 1, 27);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const projectStart = new Date(2026, 1, 21);
   const todayOffset = Math.floor((today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -119,17 +121,27 @@ const GanttChart = () => {
           <div className="flex-1 relative">
             {/* Day headers - sticky top */}
             <div className="flex border-b border-border/50 sticky top-0 bg-card z-10" style={{ height: headerHeight }}>
-              {days.map((day, i) => (
-                <div
-                  key={i}
-                  className={`flex flex-col items-center justify-center border-r border-border/20 ${day.isWeekend ? "bg-secondary/30" : ""}`}
-                  style={{ width: cellWidth, minWidth: cellWidth }}
-                >
-                  {day.monthLabel && <span className="text-[9px] font-semibold text-primary uppercase">{day.monthLabel}</span>}
-                  <span className="text-[10px] text-muted-foreground">{day.dayOfWeek}</span>
-                  <span className={`text-xs font-mono ${i === todayOffset ? "text-primary font-bold" : "text-foreground"}`}>{day.label}</span>
-                </div>
-              ))}
+              {days.map((day, i) => {
+                const isToday = i === todayOffset;
+                return (
+                  <div
+                    key={i}
+                    className={`flex flex-col items-center justify-center border-r border-border/20 relative ${day.isWeekend ? "bg-secondary/30" : ""} ${isToday ? "bg-primary/15" : ""}`}
+                    style={{ width: cellWidth, minWidth: cellWidth }}
+                  >
+                    {day.monthLabel && <span className="text-[9px] font-semibold text-primary uppercase">{day.monthLabel}</span>}
+                    <span className="text-[10px] text-muted-foreground">{day.dayOfWeek}</span>
+                    <span className={`text-xs font-mono ${isToday ? "text-primary font-bold" : "text-foreground"}`}>{day.label}</span>
+                    {isToday && (
+                      <motion.div
+                        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary"
+                        animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Task bars */}
@@ -147,13 +159,16 @@ const GanttChart = () => {
                   onMouseLeave={() => setHoveredTask(null)}
                 >
                   {/* Weekend / today column shading */}
-                  {days.map((day, i) => (
-                    <div
-                      key={i}
-                      className={`absolute top-0 bottom-0 ${day.isWeekend ? "bg-secondary/20" : ""}`}
-                      style={{ left: i * cellWidth, width: cellWidth }}
-                    />
-                  ))}
+                  {days.map((day, i) => {
+                    const isToday = i === todayOffset;
+                    return (
+                      <div
+                        key={i}
+                        className={`absolute top-0 bottom-0 ${day.isWeekend ? "bg-secondary/20" : ""} ${isToday ? "bg-primary/10" : ""}`}
+                        style={{ left: i * cellWidth, width: cellWidth }}
+                      />
+                    );
+                  })}
 
                   {/* Task bar — static, no vibrating animation */}
                   <div
@@ -197,7 +212,37 @@ const GanttChart = () => {
               );
             })}
 
-            {/* Dependency arrows SVG overlay */}
+            {/* Today reference line + Dependency arrows SVG overlay */}
+            <svg
+              className="absolute pointer-events-none"
+              style={{ top: headerHeight, left: 0, width: svgWidth, height: svgHeight }}
+            >
+              {/* Today vertical reference line */}
+              {todayOffset >= 0 && todayOffset < days.length && (
+                <>
+                  <line
+                    x1={todayOffset * cellWidth + cellWidth / 2}
+                    y1={0}
+                    x2={todayOffset * cellWidth + cellWidth / 2}
+                    y2={svgHeight}
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="2"
+                    strokeDasharray="6 3"
+                    opacity="0.6"
+                  />
+                  <circle
+                    cx={todayOffset * cellWidth + cellWidth / 2}
+                    cy={0}
+                    r="3"
+                    fill="hsl(var(--primary))"
+                    opacity="0.8"
+                  >
+                    <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.8;0.4;0.8" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                </>
+              )}
+            </svg>
             <svg
               className="absolute pointer-events-none"
               style={{ top: headerHeight, left: 0, width: svgWidth, height: svgHeight }}
