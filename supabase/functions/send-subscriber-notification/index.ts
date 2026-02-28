@@ -123,6 +123,7 @@ Deno.serve(async (req) => {
 
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px 16px 0 0; padding: 32px; text-align: center;">
+      <img src="https://dxohbmgalsxswmpptyqy.supabase.co/storage/v1/object/public/email-assets/fab-logo.png" alt="Fabulouzz Technologies" style="max-width: 200px; height: auto; margin: 0 auto 16px;" />
       <h1 style="color: #2fbf2f; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin: 0 0 8px;">SIGHTLINE Command Center</h1>
       <h2 style="color: #ffffff; font-size: 22px; margin: 0 0 4px; font-weight: 700;">PROJECT STATUS REPORT</h2>
       <div style="width: 60px; height: 3px; background: #2fbf2f; margin: 12px auto;"></div>
