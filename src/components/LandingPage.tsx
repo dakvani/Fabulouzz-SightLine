@@ -1,199 +1,326 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { LogIn, ChevronRight, Eye } from "lucide-react";
+import { LogIn, Mail, Lock, Eye, EyeOff, ChevronDown, ChevronRight, Shield, Briefcase, Users, ArrowLeft, Home } from "lucide-react";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
-import AuthModal from "./AuthModal";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface LandingPageProps {
   onAuthSuccess: () => void;
 }
 
+type RoleOption = "admin" | "pm_engineer" | "client";
+
+const roleLabels: Record<RoleOption, { label: string; icon: typeof Shield }> = {
+  admin: { label: "Admin", icon: Shield },
+  pm_engineer: { label: "PM / Engineer", icon: Briefcase },
+  client: { label: "Client", icon: Users },
+};
+
 const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
-  const [showAuth, setShowAuth] = useState(false);
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [mode, setMode] = useState<"login" | "forgot">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<RoleOption>("client");
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Welcome back!" });
+      onAuthSuccess();
+    }
+  };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Email sent", description: "Check your inbox for a reset link." });
+      setMode("login");
+    }
+  };
 
+  const CurrentRoleIcon = roleLabels[selectedRole].icon;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Ambient background effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-30%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/[0.03] blur-[120px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-primary/[0.04] blur-[100px]" />
-        <div className="absolute top-[40%] right-[20%] w-[30%] h-[30%] rounded-full bg-info/[0.02] blur-[80px]" />
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+      {/* LEFT SIDE — Auth Form */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-24 py-12 lg:py-0 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7 }}
+          className="max-w-md w-full mx-auto"
+        >
+          {/* Small logo for left side */}
+          <div className="flex items-center gap-2.5 mb-10">
+            {mounted && (
+              <img
+                src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
+                alt="Fabulouzz"
+                className="h-7 w-auto"
+              />
+            )}
+            <div className="flex flex-col border-l border-border/30 pl-2.5">
+              <span
+                className="text-[10px] font-bold tracking-wide text-primary"
+                style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
+              >
+                SIGHTLINE
+              </span>
+              <span className="text-[7px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
+                Command Center
+              </span>
+            </div>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
+            {mode === "login" ? "Welcome Back" : "Reset Password"}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-8">
+            {mode === "login"
+              ? "Sign in to your SightLine account"
+              : "Enter your email to receive a reset link"}
+          </p>
+
+          {mode === "login" && (
+            <form onSubmit={handleLogin} className="space-y-4">
+              {/* Role Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <CurrentRoleIcon className="w-4 h-4 text-primary" />
+                    <span>{roleLabels[selectedRole].label}</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${roleDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+                {roleDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute z-10 mt-1 w-full bg-background border border-border/50 rounded-lg shadow-lg overflow-hidden"
+                  >
+                    {(Object.keys(roleLabels) as RoleOption[]).map((key) => {
+                      const { label, icon: Icon } = roleLabels[key];
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => { setSelectedRole(key); setRoleDropdownOpen(false); }}
+                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-secondary/50 transition-colors ${selectedRole === key ? "bg-primary/10 text-primary" : "text-foreground"}`}
+                        >
+                          <Icon className="w-4 h-4" />
+                          <span className="font-medium">{label}</span>
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Email */}
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                  placeholder="Email"
+                  className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+
+              {/* Password */}
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required
+                  placeholder="Password"
+                  className="w-full pl-10 pr-10 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <button type="button" onClick={() => setMode("forgot")} className="text-xs text-primary hover:underline">
+                Forgot password?
+              </button>
+
+              <motion.button
+                type="submit" disabled={loading}
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ background: "var(--gradient-primary)" }}
+              >
+                <LogIn className="w-4 h-4" />
+                {loading ? "Signing in..." : "Sign In"}
+              </motion.button>
+
+              <p className="text-center text-xs text-muted-foreground">
+                Need access?{" "}
+                <a href="https://www.fabulouzz.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                  Contact Fabulouzz
+                </a>
+              </p>
+            </form>
+          )}
+
+          {mode === "forgot" && (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                  placeholder="Email"
+                  className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <motion.button
+                type="submit" disabled={loading}
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                style={{ background: "var(--gradient-primary)" }}
+              >
+                {loading ? "Sending..." : "Send Reset Link"}
+              </motion.button>
+              <button type="button" onClick={() => setMode("login")} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mx-auto">
+                <ArrowLeft className="w-3 h-3" /> Back to login
+              </button>
+            </form>
+          )}
+
+          {/* Footer */}
+          <p className="mt-10 text-[10px] text-muted-foreground">
+            Powered by <span className="text-primary font-semibold">Fabulouzz Technologies</span>
+          </p>
+        </motion.div>
       </div>
 
-      {/* Header bar */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="relative z-10 mx-3 sm:mx-5 mt-3"
-      >
-        <div className="bg-background/10 backdrop-blur-xl border border-border/20 rounded-2xl">
-          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              {mounted && (
-                <motion.img
-                  src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
-                  alt="Fabulouzz Technologies"
-                  className="h-8 w-auto"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ type: "spring", stiffness: 400 }}
-                />
-              )}
-              <div className="hidden sm:flex flex-col border-l border-border/30 pl-2.5">
-                <span
-                  className="text-[11px] font-bold tracking-wide text-primary"
-                  style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
-                >
-                  SIGHTLINE
-                </span>
-                <span className="text-[8px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
-                  Command Center
-                </span>
-              </div>
-            </div>
-            <motion.button
-              onClick={() => setShowAuth(true)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11px] font-semibold border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Sign In</span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.header>
+      {/* RIGHT SIDE — Branding */}
+      <div className="hidden lg:flex w-1/2 relative overflow-hidden items-center justify-center">
+        {/* Background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--primary)/0.08)] via-[hsl(var(--card))] to-[hsl(var(--primary)/0.05)]" />
+        <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-primary/[0.06] blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/[0.04] blur-[100px]" />
 
-      {/* Hero section */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-20">
+        {/* Subtle grid pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
+            backgroundSize: "60px 60px",
+          }}
+        />
+
         <motion.div
-          className="text-center max-w-3xl mx-auto mb-12 sm:mb-16"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="relative z-10 flex flex-col items-center text-center px-12"
         >
-          {/* Logo mark */}
-          <motion.div
-            className="mb-8 flex justify-center"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.3, type: "spring", stiffness: 200 }}
-          >
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl scale-150" />
-              {mounted && (
-                <img
-                  src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
-                  alt="Fabulouzz Technologies"
-                  className="h-20 sm:h-24 w-auto relative z-10"
-                />
-              )}
-            </div>
-          </motion.div>
+          {/* Company Logo */}
+          {mounted && (
+            <motion.img
+              src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
+              alt="Fabulouzz Technologies"
+              className="h-24 xl:h-28 w-auto mb-10"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+            />
+          )}
 
-          <motion.h1
-            className="text-primary font-bold tracking-[0.25em] text-lg sm:text-xl mb-3"
+          {/* App Name */}
+          <motion.h2
+            className="text-primary font-bold tracking-[0.3em] text-2xl xl:text-3xl mb-3"
             style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.6 }}
           >
             SIGHTLINE
-          </motion.h1>
+          </motion.h2>
 
           <motion.p
-            className="text-muted-foreground font-semibold tracking-[0.2em] uppercase text-[10px] sm:text-xs mb-8"
+            className="text-muted-foreground font-semibold tracking-[0.25em] uppercase text-xs mb-8"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.7 }}
           >
             Command Center
           </motion.p>
 
           <motion.div
-            className="w-16 h-[2px] mx-auto mb-8"
+            className="w-20 h-[2px] mb-8"
             style={{ background: "var(--gradient-primary)" }}
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
-            transition={{ delay: 0.7, duration: 0.6 }}
+            transition={{ delay: 0.8, duration: 0.6 }}
           />
 
           <motion.p
-            className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-10"
+            className="text-muted-foreground text-sm leading-relaxed max-w-sm mb-10"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
+            transition={{ delay: 0.9 }}
           >
             Real-time project monitoring, intelligent task management, and seamless collaboration — all in one place.
           </motion.p>
 
-          <motion.button
-            onClick={() => setShowAuth(true)}
-            className="group relative inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm font-semibold text-primary-foreground overflow-hidden transition-all"
-            style={{ background: "var(--gradient-primary)" }}
-            whileHover={{ scale: 1.03, boxShadow: "0 8px 30px -8px hsl(var(--primary) / 0.5)" }}
-            whileTap={{ scale: 0.98 }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9 }}
-          >
-            <Eye className="w-4 h-4" />
-            Get Started
-            <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-          </motion.button>
-        </motion.div>
-
-        {/* Fabulouzz home link */}
-        <motion.div
-          className="mt-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.0 }}
-        >
-          <a
+          {/* Go Home button */}
+          <motion.a
             href="https://www.fabulouzz.com/"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
           >
+            <Home className="w-4 h-4" />
+            Go to Fabulouzz Home
             <ChevronRight className="w-4 h-4" />
-            Visit Fabulouzz Home
-          </a>
+          </motion.a>
         </motion.div>
-      </main>
+      </div>
 
-      {/* Footer */}
-      <motion.footer
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="relative z-10 text-center text-[10px] sm:text-xs text-muted-foreground py-6 border-t border-border/30"
-      >
-        <p>
-          Powered by{" "}
-          <span className="text-primary font-semibold">Fabulouzz Technologies</span> •
-          SightLine Project Command Center
-        </p>
-      </motion.footer>
-
-      <AuthModal
-        isOpen={showAuth}
-        onClose={() => setShowAuth(false)}
-        onSuccess={() => {
-          setShowAuth(false);
-          onAuthSuccess();
-        }}
-      />
+      {/* Mobile branding footer (visible only on small screens) */}
+      <div className="lg:hidden flex flex-col items-center py-8 px-6 border-t border-border/30">
+        <a
+          href="https://www.fabulouzz.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-medium border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+        >
+          <Home className="w-3.5 h-3.5" />
+          Go to Fabulouzz Home
+        </a>
+      </div>
     </div>
   );
 };
