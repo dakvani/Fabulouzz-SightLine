@@ -295,16 +295,27 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
             href="https://www.fabulouzz.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+            className="inline-flex items-center gap-3 px-8 py-3.5 rounded-full text-base font-semibold border-2 border-primary/40 text-primary hover:border-primary hover:shadow-[0_0_20px_-4px_hsl(var(--primary)/0.4)] transition-all duration-300"
             initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0 }}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              boxShadow: [
+                "0 0 0px 0px hsl(142, 60%, 45%, 0)",
+                "0 0 16px 2px hsl(142, 60%, 45%, 0.15)",
+                "0 0 0px 0px hsl(142, 60%, 45%, 0)",
+              ],
+            }}
+            transition={{
+              delay: 1.0,
+              boxShadow: { duration: 2.5, repeat: Infinity, ease: "easeInOut" },
+            }}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.96 }}
           >
-            <Home className="w-4 h-4" />
+            <Home className="w-5 h-5" />
             Go to Fabulouzz Home
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5" />
           </motion.a>
         </motion.div>
       </div>
