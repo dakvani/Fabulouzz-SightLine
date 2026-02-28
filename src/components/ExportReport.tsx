@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { FileDown, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { projectInfo, tasks, getStatusCounts, getOverallProgress } from "@/data/projectData";
+import { projectInfo, tasks, getStatusCounts, getOverallProgress, getCalendarDays } from "@/data/projectData";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 
 const ExportReport = () => {
@@ -33,6 +33,7 @@ const ExportReport = () => {
 
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
       const counts = getStatusCounts();
       const progress = getOverallProgress();
       const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -43,93 +44,171 @@ const ExportReport = () => {
       const textWhite: [number, number, number] = [240, 240, 240];
       const textMuted: [number, number, number] = [160, 160, 170];
 
-      // Full page dark background
-      doc.setFillColor(...darkBg);
-      doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), "F");
+      const statusColors: Record<string, [number, number, number]> = {
+        Completed: [34, 197, 94],
+        Processing: [59, 130, 246],
+        Initiating: [251, 191, 36],
+        Planning: [168, 162, 158],
+      };
 
-      // Header band
-      doc.setFillColor(...cardBg);
-      doc.rect(0, 0, pageWidth, 38, "F");
-
-      // Green accent line
-      doc.setFillColor(...brandGreen);
-      doc.rect(0, 38, pageWidth, 1, "F");
-
-      // Logo
+      let logoData: string | null = null;
       try {
-        const logoData = await loadImageAsBase64(fabulouzzLogo);
-        doc.addImage(logoData, "PNG", 14, 8, 50, 16);
+        logoData = await loadImageAsBase64(fabulouzzLogo);
       } catch {
-        doc.setTextColor(...brandGreen);
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text("FABULOUZZ TECHNOLOGIES", 14, 20);
+        // fallback to text
       }
 
-      // Header right side
-      doc.setTextColor(...textMuted);
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.text("PROJECT STATUS REPORT", pageWidth - 14, 14, { align: "right" });
+      const drawPageFooter = (doc: any, pageNum: number, totalPages: number) => {
+        doc.setFillColor(...cardBg);
+        doc.rect(0, pageHeight - 14, pageWidth, 14, "F");
+        doc.setFillColor(...brandGreen);
+        doc.rect(0, pageHeight - 14, pageWidth, 0.5, "F");
+        doc.setTextColor(...textMuted);
+        doc.setFontSize(6.5);
+        doc.setFont("helvetica", "normal");
+        doc.text("Powered by Fabulouzz Technologies  •  SightLine Project Command Center", 14, pageHeight - 5);
+        doc.text(`Page ${pageNum} of ${totalPages}`, pageWidth - 14, pageHeight - 5, { align: "right" });
+      };
+
+      // ═══════════════════════════════════════════════════════════
+      // PAGE 1 — COVER PAGE
+      // ═══════════════════════════════════════════════════════════
+      doc.setFillColor(...darkBg);
+      doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+      // Decorative corner accents
+      doc.setDrawColor(...brandGreen);
+      doc.setLineWidth(0.8);
+      doc.line(14, 20, 50, 20);
+      doc.line(14, 20, 14, 56);
+      doc.line(pageWidth - 14, pageHeight - 40, pageWidth - 50, pageHeight - 40);
+      doc.line(pageWidth - 14, pageHeight - 40, pageWidth - 14, pageHeight - 76);
+
+      // Large centered logo
+      if (logoData) {
+        doc.addImage(logoData, "PNG", pageWidth / 2 - 45, 55, 90, 28);
+      } else {
+        doc.setTextColor(...brandGreen);
+        doc.setFontSize(28);
+        doc.setFont("helvetica", "bold");
+        doc.text("FABULOUZZ TECHNOLOGIES", pageWidth / 2, 72, { align: "center" });
+      }
+
+      // Divider line
+      doc.setFillColor(...brandGreen);
+      doc.rect(pageWidth / 2 - 30, 92, 60, 0.8, "F");
+
+      // "PROJECT STATUS REPORT" label
       doc.setTextColor(...brandGreen);
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
-      doc.text(projectInfo.projectRef, pageWidth - 14, 21, { align: "right" });
-      doc.setTextColor(...textMuted);
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Generated: ${today}`, pageWidth - 14, 28, { align: "right" });
+      const labelText = "PROJECT STATUS REPORT";
+      doc.text(labelText, pageWidth / 2, 103, { align: "center", charSpace: 2 });
 
-      let y = 48;
-
-      // Project Title
+      // Project title
       doc.setTextColor(...textWhite);
-      doc.setFontSize(16);
+      doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
-      doc.text(projectInfo.title, pageWidth / 2, y, { align: "center" });
-      y += 7;
-      doc.setTextColor(...textMuted);
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${projectInfo.client}  •  ${projectInfo.location}  •  ${projectInfo.startDate} to ${projectInfo.endDate}`, pageWidth / 2, y, { align: "center" });
-      y += 12;
+      const titleLines = doc.splitTextToSize(projectInfo.title, pageWidth - 60);
+      doc.text(titleLines, pageWidth / 2, 120, { align: "center" });
 
-      // Progress & Summary Cards Row
-      const cardY = y;
-      const cardH = 30;
-      const gap = 6;
-      const cardW = (pageWidth - 28 - gap * 3) / 4;
+      // Subtitle info
+      const subtitleY = 120 + titleLines.length * 9 + 6;
+      doc.setTextColor(...textMuted);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${projectInfo.client}  •  ${projectInfo.location}`, pageWidth / 2, subtitleY, { align: "center" });
+
+      // Summary card block on cover
+      const coverCardY = subtitleY + 18;
+      const coverCardW = (pageWidth - 28 - 18) / 4;
+      const coverCardH = 32;
 
       const summaryCards = [
         { label: "Overall Progress", value: `${progress}%`, color: brandGreen },
-        { label: "Completed", value: `${counts.completed}`, color: [34, 197, 94] as [number, number, number] },
-        { label: "In Progress", value: `${counts.processing + counts.initiating}`, color: [59, 130, 246] as [number, number, number] },
-        { label: "Planning", value: `${counts.planning}`, color: [168, 162, 158] as [number, number, number] },
+        { label: "Completed", value: `${counts.completed}`, color: statusColors.Completed },
+        { label: "In Progress", value: `${counts.processing + counts.initiating}`, color: statusColors.Processing },
+        { label: "Planning", value: `${counts.planning}`, color: statusColors.Planning },
       ];
 
       summaryCards.forEach((card, i) => {
-        const cx = 14 + i * (cardW + gap);
-        // Card background
+        const cx = 14 + i * (coverCardW + 6);
         doc.setFillColor(...cardBg);
-        doc.roundedRect(cx, cardY, cardW, cardH, 2, 2, "F");
-        // Top accent
+        doc.roundedRect(cx, coverCardY, coverCardW, coverCardH, 2, 2, "F");
         doc.setFillColor(...card.color);
-        doc.rect(cx, cardY, cardW, 1.5, "F");
-        // Value
+        doc.rect(cx, coverCardY, coverCardW, 1.5, "F");
         doc.setTextColor(...card.color);
-        doc.setFontSize(18);
+        doc.setFontSize(20);
         doc.setFont("helvetica", "bold");
-        doc.text(card.value, cx + cardW / 2, cardY + 15, { align: "center" });
-        // Label
+        doc.text(card.value, cx + coverCardW / 2, coverCardY + 16, { align: "center" });
         doc.setTextColor(...textMuted);
         doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
-        doc.text(card.label.toUpperCase(), cx + cardW / 2, cardY + 23, { align: "center" });
+        doc.text(card.label.toUpperCase(), cx + coverCardW / 2, coverCardY + 25, { align: "center" });
       });
 
-      y = cardY + cardH + 10;
+      // Project details on cover
+      const detailY = coverCardY + coverCardH + 16;
+      doc.setFillColor(...cardBg);
+      doc.roundedRect(30, detailY, pageWidth - 60, 52, 2, 2, "F");
+      doc.setFillColor(...brandGreen);
+      doc.rect(30, detailY, 1.5, 52, "F");
+
+      const coverDetails = [
+        ["Project Ref", projectInfo.projectRef],
+        ["Project Manager", projectInfo.projectManager],
+        ["Reporting To", projectInfo.reportingTo],
+        ["Project Engineer", projectInfo.projectEngineer],
+        ["Duration", `${projectInfo.startDate}  to  ${projectInfo.endDate}`],
+        ["Report Date", today],
+      ];
+
+      coverDetails.forEach((item, i) => {
+        const dy = detailY + 9 + i * 7;
+        doc.setTextColor(...textMuted);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${item[0]}:`, 38, dy);
+        doc.setTextColor(...textWhite);
+        doc.setFont("helvetica", "bold");
+        doc.text(item[1], 78, dy);
+      });
+
+      // Confidential notice
+      doc.setTextColor(...textMuted);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.text("CONFIDENTIAL — For authorized use only", pageWidth / 2, pageHeight - 22, { align: "center" });
+
+      drawPageFooter(doc, 1, 3);
+
+      // ═══════════════════════════════════════════════════════════
+      // PAGE 2 — TASK BREAKDOWN (existing content)
+      // ═══════════════════════════════════════════════════════════
+      doc.addPage();
+      doc.setFillColor(...darkBg);
+      doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+      // Header band
+      doc.setFillColor(...cardBg);
+      doc.rect(0, 0, pageWidth, 24, "F");
+      doc.setFillColor(...brandGreen);
+      doc.rect(0, 24, pageWidth, 0.8, "F");
+
+      if (logoData) {
+        doc.addImage(logoData, "PNG", 14, 4, 40, 13);
+      }
+      doc.setTextColor(...textMuted);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.text("TASK BREAKDOWN", pageWidth - 14, 10, { align: "right" });
+      doc.setTextColor(...brandGreen);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text(projectInfo.projectRef, pageWidth - 14, 17, { align: "right" });
 
       // Project Information Section
+      let y = 32;
       doc.setFillColor(...cardBg);
       doc.roundedRect(14, y, pageWidth - 28, 42, 2, 2, "F");
       doc.setFillColor(...brandGreen);
@@ -156,7 +235,6 @@ const ExportReport = () => {
         doc.setTextColor(...textWhite);
         doc.setFont("helvetica", "bold");
         doc.text(row[1], 55, iy);
-
         doc.setTextColor(...textMuted);
         doc.setFont("helvetica", "normal");
         doc.text(`${row[2]}:`, pageWidth / 2 + 5, iy);
@@ -167,19 +245,12 @@ const ExportReport = () => {
 
       y += 50;
 
-      // Task Breakdown Table
+      // Task Table
       doc.setTextColor(...brandGreen);
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
       doc.text("TASK BREAKDOWN", 14, y);
       y += 4;
-
-      const statusColors: Record<string, [number, number, number]> = {
-        Completed: [34, 197, 94],
-        Processing: [59, 130, 246],
-        Initiating: [251, 191, 36],
-        Planning: [168, 162, 158],
-      };
 
       autoTable(doc, {
         startY: y,
@@ -227,20 +298,161 @@ const ExportReport = () => {
         },
       });
 
-      // Footer
-      const finalY = (doc as any).lastAutoTable?.finalY || y + 60;
-      const footerY = Math.max(finalY + 10, doc.internal.pageSize.getHeight() - 20);
+      drawPageFooter(doc, 2, 3);
 
+      // ═══════════════════════════════════════════════════════════
+      // PAGE 3 — GANTT CHART TIMELINE (landscape)
+      // ═══════════════════════════════════════════════════════════
+      doc.addPage("a4", "landscape");
+      const lw = doc.internal.pageSize.getWidth();
+      const lh = doc.internal.pageSize.getHeight();
+
+      doc.setFillColor(...darkBg);
+      doc.rect(0, 0, lw, lh, "F");
+
+      // Header
       doc.setFillColor(...cardBg);
-      doc.rect(0, footerY - 2, pageWidth, 20, "F");
+      doc.rect(0, 0, lw, 20, "F");
       doc.setFillColor(...brandGreen);
-      doc.rect(0, footerY - 2, pageWidth, 0.5, "F");
+      doc.rect(0, 20, lw, 0.8, "F");
 
+      if (logoData) {
+        doc.addImage(logoData, "PNG", 10, 3, 36, 11);
+      }
+      doc.setTextColor(...brandGreen);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("PROJECT TIMELINE — GANTT CHART", lw / 2, 13, { align: "center" });
       doc.setTextColor(...textMuted);
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
-      doc.text("Powered by Fabulouzz Technologies  •  SightLine Project Command Center", pageWidth / 2, footerY + 5, { align: "center" });
-      doc.text("CONFIDENTIAL — For authorized use only", pageWidth / 2, footerY + 10, { align: "center" });
+      doc.text(projectInfo.projectRef, lw - 10, 13, { align: "right" });
+
+      // Gantt chart layout
+      const ganttTop = 28;
+      const labelWidth = 72;
+      const ganttLeft = labelWidth + 12;
+      const ganttRight = lw - 10;
+      const ganttWidth = ganttRight - ganttLeft;
+      const calendarDays = getCalendarDays();
+      const totalDays = calendarDays.length;
+      const dayWidth = ganttWidth / totalDays;
+      const rowHeight = 7.5;
+      const headerHeight = 14;
+
+      // Calendar header background
+      doc.setFillColor(...cardBg);
+      doc.rect(ganttLeft, ganttTop, ganttWidth, headerHeight, "F");
+
+      // Month labels + day numbers
+      const monthNames = ["Jan", "Feb", "Mar", "Apr"];
+      let lastMonth = -1;
+      calendarDays.forEach((day, i) => {
+        const x = ganttLeft + i * dayWidth;
+        const month = day.date.getMonth();
+
+        // Month label
+        if (month !== lastMonth) {
+          doc.setTextColor(...brandGreen);
+          doc.setFontSize(6.5);
+          doc.setFont("helvetica", "bold");
+          doc.text(monthNames[month] || "", x + 1, ganttTop + 5);
+          lastMonth = month;
+        }
+
+        // Day number
+        doc.setTextColor(day.isWeekend ? 80 : 140, day.isWeekend ? 80 : 140, day.isWeekend ? 85 : 150);
+        doc.setFontSize(5);
+        doc.setFont("helvetica", "normal");
+        doc.text(day.label, x + dayWidth / 2, ganttTop + 11, { align: "center" });
+
+        // Weekend shading
+        if (day.isWeekend) {
+          doc.setFillColor(25, 25, 35);
+          doc.rect(x, ganttTop + headerHeight, dayWidth, tasks.length * rowHeight, "F");
+        }
+
+        // Vertical grid line
+        doc.setDrawColor(35, 35, 48);
+        doc.setLineWidth(0.15);
+        doc.line(x, ganttTop + headerHeight, x, ganttTop + headerHeight + tasks.length * rowHeight);
+      });
+
+      // Separator line under header
+      doc.setFillColor(...brandGreen);
+      doc.rect(ganttLeft, ganttTop + headerHeight - 0.4, ganttWidth, 0.4, "F");
+
+      // Task rows
+      tasks.forEach((task, i) => {
+        const ry = ganttTop + headerHeight + i * rowHeight;
+
+        // Alternating row bg
+        if (i % 2 === 0) {
+          doc.setFillColor(22, 22, 30);
+          doc.rect(10, ry, ganttRight - 10, rowHeight, "F");
+        }
+
+        // Row number
+        doc.setTextColor(...textMuted);
+        doc.setFontSize(5);
+        doc.setFont("helvetica", "normal");
+        doc.text(String(task.id).padStart(2, "0"), 12, ry + rowHeight / 2 + 1.2);
+
+        // Task name (truncated)
+        doc.setTextColor(...textWhite);
+        doc.setFontSize(5.5);
+        doc.setFont("helvetica", "normal");
+        const maxChars = 42;
+        const name = task.name.length > maxChars ? task.name.slice(0, maxChars - 1) + "…" : task.name;
+        doc.text(name, 20, ry + rowHeight / 2 + 1.2);
+
+        // Gantt bar
+        const barX = ganttLeft + task.startDay * dayWidth + 0.5;
+        const barW = task.duration * dayWidth - 1;
+        const barY = ry + 1.5;
+        const barH = rowHeight - 3;
+        const color = statusColors[task.status] || textMuted;
+
+        // Bar shadow
+        doc.setFillColor(color[0], color[1], color[2]);
+        doc.setGState(doc.GState({ opacity: 0.25 }));
+        doc.roundedRect(barX + 0.3, barY + 0.3, barW, barH, 1, 1, "F");
+        doc.setGState(doc.GState({ opacity: 1 }));
+
+        // Bar fill
+        doc.setFillColor(...color);
+        doc.roundedRect(barX, barY, barW, barH, 1, 1, "F");
+
+        // Horizontal grid line
+        doc.setDrawColor(35, 35, 48);
+        doc.setLineWidth(0.1);
+        doc.line(10, ry + rowHeight, ganttRight, ry + rowHeight);
+      });
+
+      // Legend
+      const legendY = ganttTop + headerHeight + tasks.length * rowHeight + 8;
+      doc.setTextColor(...textMuted);
+      doc.setFontSize(6.5);
+      doc.setFont("helvetica", "bold");
+      doc.text("LEGEND:", 10, legendY);
+
+      let legendX = 30;
+      Object.entries(statusColors).forEach(([status, color]) => {
+        doc.setFillColor(...color);
+        doc.roundedRect(legendX, legendY - 3, 8, 3.5, 0.8, 0.8, "F");
+        doc.setTextColor(...textWhite);
+        doc.setFontSize(6);
+        doc.setFont("helvetica", "normal");
+        doc.text(status, legendX + 10, legendY);
+        legendX += 35;
+      });
+
+      // Weekend note
+      doc.setTextColor(...textMuted);
+      doc.setFontSize(5.5);
+      doc.text("Shaded columns = Weekends (Fri/Sat — Saudi calendar)", legendX + 10, legendY);
+
+      drawPageFooter(doc, 3, 3);
 
       doc.save(`SightLine_Report_${projectInfo.projectRef}_${today.replace(/\s/g, "-")}.pdf`);
     } catch (err) {
