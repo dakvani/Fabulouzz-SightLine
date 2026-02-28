@@ -172,7 +172,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
             transition={{ delay: 0.9 }}
           >
             <Eye className="w-4 h-4" />
-            Access Your Projects
+            Get Started
             <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           </motion.button>
         </motion.div>
