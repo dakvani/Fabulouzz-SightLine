@@ -27,14 +27,14 @@ const KanbanBoard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const checkAdmin = async () => {
+    const checkRole = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id).single();
-        setIsAdmin(data?.role === "admin");
+        setIsAdmin(data?.role === "admin" || data?.role === "pm" || data?.role === "engineer");
       }
     };
-    checkAdmin();
+    checkRole();
   }, []);
 
   const columns: KanbanColumn[] = ["To-Do", "In Progress", "Done"];
@@ -73,10 +73,10 @@ const KanbanBoard = () => {
                 <AnimatePresence>
                   {colTasks.map(task => (
                     <motion.div key={task.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-                      draggable onDragStart={() => handleDragStart(task.id)} onDragEnd={() => setDraggedTask(null)}
-                      className={`glass-card p-3 cursor-grab active:cursor-grabbing transition-all hover:border-primary/30 ${draggedTask === task.id ? "opacity-50 scale-95" : ""}`}>
+                      draggable={isAdmin} onDragStart={() => isAdmin && handleDragStart(task.id)} onDragEnd={() => setDraggedTask(null)}
+                      className={`glass-card p-3 ${isAdmin ? "cursor-grab active:cursor-grabbing" : "cursor-default"} transition-all hover:border-primary/30 ${draggedTask === task.id ? "opacity-50 scale-95" : ""}`}>
                       <div className="flex items-start gap-2">
-                        <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        {isAdmin && <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-mono text-primary">#{task.id}</span>
