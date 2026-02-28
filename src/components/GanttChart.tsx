@@ -1,7 +1,8 @@
 import { getCalendarDays, getStatusColor, type TaskStatus } from "@/data/projectData";
 import { motion } from "framer-motion";
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { useProjectData } from "@/contexts/ProjectDataContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const statusBgMap: Record<string, string> = {
   completed: "bg-completed",
@@ -28,19 +29,27 @@ const GanttChart = () => {
   const { tasks } = useProjectData();
   const days = getCalendarDays();
   const [hoveredTask, setHoveredTask] = useState<number | null>(null);
-  const cellWidth = 44;
-  const scopeColWidth = 360;
-  const rowHeight = 44;
-  const headerHeight = 56;
+  const isMobile = useIsMobile();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const cellWidth = isMobile ? 32 : 44;
+  const scopeColWidth = isMobile ? 180 : 360;
+  const rowHeight = isMobile ? 36 : 44;
+  const headerHeight = isMobile ? 44 : 56;
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const projectStart = new Date(2026, 1, 21);
   const todayOffset = Math.floor((today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Auto-scroll to today on mount
+  useEffect(() => {
+    if (scrollContainerRef.current && todayOffset > 0) {
+      const scrollTo = Math.max(0, todayOffset * cellWidth - scrollContainerRef.current.clientWidth / 2);
+      scrollContainerRef.current.scrollLeft = scrollTo;
+    }
+  }, [todayOffset, cellWidth]);
 
-  // Build dependency arrows
   const arrows = useMemo(() => {
     const taskMap = new Map(tasks.map(t => [t.id, t]));
     const result: { fromX: number; fromY: number; toX: number; toY: number; color: string }[] = [];
@@ -63,29 +72,29 @@ const GanttChart = () => {
       });
     });
     return result;
-  }, [tasks]);
+  }, [tasks, cellWidth, rowHeight]);
 
   const svgHeight = tasks.length * rowHeight;
   const svgWidth = days.length * cellWidth;
 
   return (
     <div className="glass-card overflow-hidden">
-      <div className="p-4 border-b border-border/50 flex items-center justify-between">
+      <div className="p-3 sm:p-4 border-b border-border/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Project Timeline</h3>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Assigned schedule • View only</p>
+          <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground">Project Timeline</h3>
+          <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">Assigned schedule • View only</p>
         </div>
-        <div className="flex items-center gap-4 text-xs">
+        <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs flex-wrap">
           {(["Completed", "Processing", "Initiating", "Planning"] as TaskStatus[]).map(s => (
-            <div key={s} className="flex items-center gap-1.5">
-              <div className={`w-2.5 h-2.5 rounded-sm ${statusBgMap[getStatusColor(s)]}`} />
+            <div key={s} className="flex items-center gap-1">
+              <div className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-sm ${statusBgMap[getStatusColor(s)]}`} />
               <span className="text-muted-foreground">{s}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="relative overflow-auto max-h-[600px]" ref={scrollContainerRef}>
+      <div className="relative overflow-auto max-h-[400px] sm:max-h-[600px]" ref={scrollContainerRef}>
         <div className="flex min-w-max">
           {/* Sticky Scope Column */}
           <div
@@ -93,25 +102,25 @@ const GanttChart = () => {
             style={{ width: scopeColWidth }}
           >
             <div
-              className="border-b border-border/50 flex items-center px-4 bg-card z-30 sticky top-0"
+              className="border-b border-border/50 flex items-center px-3 sm:px-4 bg-card z-30 sticky top-0"
               style={{ height: headerHeight }}
             >
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scope of Work</span>
+              <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scope of Work</span>
             </div>
             {tasks.map((task) => (
               <div
                 key={task.id}
-                className={`flex items-center px-4 border-b border-border/30 transition-colors ${hoveredTask === task.id ? "bg-secondary/50" : ""} ${task.status === "Processing" ? "bg-processing/5" : ""}`}
+                className={`flex items-center px-3 sm:px-4 border-b border-border/30 transition-colors ${hoveredTask === task.id ? "bg-secondary/50" : ""} ${task.status === "Processing" ? "bg-processing/5" : ""}`}
                 style={{ height: rowHeight }}
                 onMouseEnter={() => setHoveredTask(task.id)}
                 onMouseLeave={() => setHoveredTask(null)}
               >
-                <span className="text-xs font-mono text-muted-foreground mr-3 w-6 flex-shrink-0">{task.id}</span>
+                <span className="text-[10px] sm:text-xs font-mono text-muted-foreground mr-2 sm:mr-3 w-5 sm:w-6 flex-shrink-0">{task.id}</span>
                 <span
-                  className={`text-xs leading-tight ${task.status === "Processing" ? "text-processing font-medium" : "text-foreground"}`}
+                  className={`text-[10px] sm:text-xs leading-tight ${task.status === "Processing" ? "text-processing font-medium" : "text-foreground"}`}
                   style={{ wordBreak: "break-word", whiteSpace: "normal" }}
                 >
-                  {task.name}
+                  {isMobile ? task.name.slice(0, 30) + (task.name.length > 30 ? "…" : "") : task.name}
                 </span>
               </div>
             ))}
@@ -119,7 +128,7 @@ const GanttChart = () => {
 
           {/* Timeline area */}
           <div className="flex-1 relative">
-            {/* Day headers - sticky top */}
+            {/* Day headers */}
             <div className="flex border-b border-border/50 sticky top-0 bg-card z-10" style={{ height: headerHeight }}>
               {days.map((day, i) => {
                 const isToday = i === todayOffset;
@@ -129,9 +138,9 @@ const GanttChart = () => {
                     className={`flex flex-col items-center justify-center border-r border-border/20 relative ${day.isWeekend ? "bg-secondary/30" : ""} ${isToday ? "bg-primary/15" : ""}`}
                     style={{ width: cellWidth, minWidth: cellWidth }}
                   >
-                    {day.monthLabel && <span className="text-[9px] font-semibold text-primary uppercase">{day.monthLabel}</span>}
-                    <span className="text-[10px] text-muted-foreground">{day.dayOfWeek}</span>
-                    <span className={`text-xs font-mono ${isToday ? "text-primary font-bold" : "text-foreground"}`}>{day.label}</span>
+                    {day.monthLabel && <span className={`text-[7px] sm:text-[9px] font-semibold text-primary uppercase`}>{day.monthLabel}</span>}
+                    <span className={`text-[8px] sm:text-[10px] text-muted-foreground`}>{day.dayOfWeek}</span>
+                    <span className={`text-[10px] sm:text-xs font-mono ${isToday ? "text-primary font-bold" : "text-foreground"}`}>{day.label}</span>
                     {isToday && (
                       <motion.div
                         className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary"
@@ -149,6 +158,7 @@ const GanttChart = () => {
               const progress = statusProgress[task.status];
               const barWidth = task.duration * cellWidth - 8;
               const isProcessing = task.status === "Processing";
+              const barHeight = rowHeight - (isMobile ? 10 : 14);
 
               return (
                 <div
@@ -158,7 +168,6 @@ const GanttChart = () => {
                   onMouseEnter={() => setHoveredTask(task.id)}
                   onMouseLeave={() => setHoveredTask(null)}
                 >
-                  {/* Weekend / today column shading */}
                   {days.map((day, i) => {
                     const isToday = i === todayOffset;
                     return (
@@ -170,40 +179,28 @@ const GanttChart = () => {
                     );
                   })}
 
-                  {/* Task bar — static, no vibrating animation */}
                   <div
                     className={`absolute rounded-md ${statusBgMap[getStatusColor(task.status)]} ${isProcessing ? "ring-1 ring-processing/50" : ""} overflow-hidden`}
                     style={{
                       left: task.startDay * cellWidth + 4,
                       width: barWidth,
-                      height: rowHeight - 14,
+                      height: barHeight,
                     }}
                     title={`${task.name} (${task.status} ${progress}%) — Day ${task.startDay + 1} to ${task.startDay + task.duration}`}
                   >
-                    {/* Progress fill overlay */}
                     {progress > 0 && progress < 100 && (
-                      <div
-                        className="absolute inset-y-0 left-0 bg-background/15 rounded-l-md"
-                        style={{ width: `${progress}%` }}
-                      />
+                      <div className="absolute inset-y-0 left-0 bg-background/15 rounded-l-md" style={{ width: `${progress}%` }} />
                     )}
-
-                    {/* Loading bar for processing (CSS animation, not vibrating) */}
                     {isProcessing && (
                       <div className="absolute bottom-0 left-0 right-0 h-1 bg-background/20 overflow-hidden">
-                        <div
-                          className="h-full bg-background/50 rounded-full animate-[slideBar_2s_ease-in-out_infinite]"
-                          style={{ width: "40%" }}
-                        />
+                        <div className="h-full bg-background/50 rounded-full animate-[slideBar_2s_ease-in-out_infinite]" style={{ width: "40%" }} />
                       </div>
                     )}
-
-                    {/* Label + percentage */}
-                    <span className="absolute inset-0 flex items-center justify-between px-2 text-[9px] font-medium text-background/90 pointer-events-none">
+                    <span className="absolute inset-0 flex items-center justify-between px-1.5 sm:px-2 text-[7px] sm:text-[9px] font-medium text-background/90 pointer-events-none">
                       <span className="truncate">
-                        {task.duration >= 3 ? task.name.split(" ").slice(0, 3).join(" ") : ""}
+                        {task.duration >= 3 ? (isMobile ? task.name.split(" ").slice(0, 2).join(" ") : task.name.split(" ").slice(0, 3).join(" ")) : ""}
                       </span>
-                      <span className="flex-shrink-0 ml-1 font-bold text-[8px] bg-background/20 rounded px-1">
+                      <span className="flex-shrink-0 ml-1 font-bold text-[7px] sm:text-[8px] bg-background/20 rounded px-0.5 sm:px-1">
                         {progress}%
                       </span>
                     </span>
@@ -212,67 +209,42 @@ const GanttChart = () => {
               );
             })}
 
-            {/* Today reference line + Dependency arrows SVG overlay */}
-            <svg
-              className="absolute pointer-events-none"
-              style={{ top: headerHeight, left: 0, width: svgWidth, height: svgHeight }}
-            >
-              {/* Today vertical reference line */}
+            {/* Today reference line + Dependency arrows */}
+            <svg className="absolute pointer-events-none" style={{ top: headerHeight, left: 0, width: svgWidth, height: svgHeight }}>
               {todayOffset >= 0 && todayOffset < days.length && (
                 <>
                   <line
-                    x1={todayOffset * cellWidth + cellWidth / 2}
-                    y1={0}
-                    x2={todayOffset * cellWidth + cellWidth / 2}
-                    y2={svgHeight}
-                    stroke="hsl(var(--primary))"
-                    strokeWidth="2"
-                    strokeDasharray="6 3"
-                    opacity="0.6"
+                    x1={todayOffset * cellWidth + cellWidth / 2} y1={0}
+                    x2={todayOffset * cellWidth + cellWidth / 2} y2={svgHeight}
+                    stroke="hsl(var(--primary))" strokeWidth="2" strokeDasharray="6 3" opacity="0.6"
                   />
-                  <circle
-                    cx={todayOffset * cellWidth + cellWidth / 2}
-                    cy={0}
-                    r="3"
-                    fill="hsl(var(--primary))"
-                    opacity="0.8"
-                  >
+                  <circle cx={todayOffset * cellWidth + cellWidth / 2} cy={0} r="3" fill="hsl(var(--primary))" opacity="0.8">
                     <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite" />
                     <animate attributeName="opacity" values="0.8;0.4;0.8" dur="2s" repeatCount="indefinite" />
                   </circle>
                 </>
               )}
             </svg>
-            <svg
-              className="absolute pointer-events-none"
-              style={{ top: headerHeight, left: 0, width: svgWidth, height: svgHeight }}
-            >
-              <defs>
-                <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
-                  <polygon points="0 0, 6 2, 0 4" fill="hsl(var(--muted-foreground))" opacity="0.5" />
-                </marker>
-              </defs>
-              {arrows.map((a, i) => {
-                const midX = (a.fromX + a.toX) / 2;
-                return (
-                  <path
-                    key={i}
-                    d={`M ${a.fromX} ${a.fromY} C ${midX} ${a.fromY}, ${midX} ${a.toY}, ${a.toX} ${a.toY}`}
-                    fill="none"
-                    stroke="hsl(var(--muted-foreground))"
-                    strokeWidth="1"
-                    strokeOpacity="0.35"
-                    markerEnd="url(#arrowhead)"
-                  />
-                );
-              })}
-            </svg>
-
+            {!isMobile && (
+              <svg className="absolute pointer-events-none" style={{ top: headerHeight, left: 0, width: svgWidth, height: svgHeight }}>
+                <defs>
+                  <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+                    <polygon points="0 0, 6 2, 0 4" fill="hsl(var(--muted-foreground))" opacity="0.5" />
+                  </marker>
+                </defs>
+                {arrows.map((a, i) => {
+                  const midX = (a.fromX + a.toX) / 2;
+                  return (
+                    <path key={i} d={`M ${a.fromX} ${a.fromY} C ${midX} ${a.fromY}, ${midX} ${a.toY}, ${a.toX} ${a.toY}`}
+                      fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="1" strokeOpacity="0.35" markerEnd="url(#arrowhead)" />
+                  );
+                })}
+              </svg>
+            )}
           </div>
         </div>
       </div>
 
-      {/* CSS animation for loading bar */}
       <style>{`
         @keyframes slideBar {
           0% { transform: translateX(-100%); }
