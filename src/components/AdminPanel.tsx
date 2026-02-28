@@ -6,6 +6,8 @@ import { toast } from "@/hooks/use-toast";
 import TaskManagement from "./TaskManagement";
 import ProjectInfoEditor from "./ProjectInfoEditor";
 import { useProjectData } from "@/contexts/ProjectDataContext";
+import { useTheme } from "next-themes";
+import { generateReportPdf } from "@/lib/generateReportPdf";
 
 interface AdminPanelProps {
   isOpen: boolean;
@@ -46,17 +48,21 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
     setSubscriberCount(count || 0);
   };
 
+  const { theme } = useTheme();
+
   const sendNotificationToSubscribers = async () => {
     setSendingNotification(true);
     try {
-      const changesHtml = tasks
-        .map(t => `<p style="margin:4px 0;font-size:14px;color:#374151;"><strong>#${t.id} ${t.name}</strong> — <span style="color:${t.status === 'Completed' ? '#10b981' : t.status === 'Processing' ? '#f59e0b' : '#6366f1'}">${t.status}</span> (Day ${t.startDay}, ${t.duration}d)</p>`)
-        .join("");
+      // Generate PDF report
+      const isDark = theme === "dark";
+      const { base64: pdfBase64 } = await generateReportPdf({ tasks, projectInfo, isDark });
 
       const { data, error } = await supabase.functions.invoke("send-subscriber-notification", {
         body: {
           subject: `${projectInfo.title} — Timeline Update`,
-          changes: changesHtml,
+          tasks: tasks.map(t => ({ id: t.id, name: t.name, status: t.status, duration: t.duration, startDay: t.startDay })),
+          projectInfo,
+          pdfBase64,
         },
       });
 
