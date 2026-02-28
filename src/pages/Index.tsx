@@ -13,6 +13,7 @@ import KanbanBoard from "@/components/KanbanBoard";
 import ActiveTasksPanel from "@/components/ActiveTasksPanel";
 import NotificationTicker from "@/components/NotificationTicker";
 import EmailSubscription from "@/components/EmailSubscription";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { motion } from "framer-motion";
@@ -23,16 +24,25 @@ const Index = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const { tasks } = useProjectData();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null);
+      const u = session?.user ?? null;
+      setUser(u);
       setLoading(false);
+      if (u?.user_metadata?.must_change_password) {
+        setMustChangePassword(true);
+      }
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      const u = session?.user ?? null;
+      setUser(u);
       setLoading(false);
+      if (u?.user_metadata?.must_change_password) {
+        setMustChangePassword(true);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -60,6 +70,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
+      <ChangePasswordModal
+        isOpen={mustChangePassword}
+        onSuccess={() => setMustChangePassword(false)}
+      />
       <div className="relative z-10">
         <AppHeader activeView={activeView} onViewChange={setActiveView} />
 
