@@ -422,13 +422,14 @@ const ExportReport = () => {
         doc.setFont("helvetica", "normal");
         doc.text(String(task.id).padStart(2, "0"), 12, ry + rowHeight / 2 + 1.2);
 
-        // Task name (truncated)
+        // Task name — allow wrapping for long names
         doc.setTextColor(...textWhite);
-        doc.setFontSize(5.5);
+        doc.setFontSize(5);
         doc.setFont("helvetica", "normal");
-        const maxChars = 55;
-        const name = task.name.length > maxChars ? task.name.slice(0, maxChars - 1) + "…" : task.name;
-        doc.text(name, 20, ry + rowHeight / 2 + 1.2);
+        const maxNameWidth = labelWidth - 12;
+        const nameLines = doc.splitTextToSize(task.name, maxNameWidth);
+        const nameText = nameLines.length > 2 ? nameLines.slice(0, 2).join(" ").slice(0, 70) + "…" : nameLines.join(" ");
+        doc.text(nameText, 20, ry + rowHeight / 2 + 1.2);
 
         // Gantt bar
         const barX = ganttLeft + task.startDay * dayWidth + 0.5;

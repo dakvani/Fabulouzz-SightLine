@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield } from "lucide-react";
+import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import AuthModal from "./AuthModal";
 import AdminPanel from "./AdminPanel";
@@ -59,6 +60,7 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setIsAdmin(false); };
 
   const { hidden, scrolled } = useScrollDirection();
+  const { theme, setTheme } = useTheme();
 
   const views = [
     { id: "dashboard" as const, label: "Dashboard", icon: BarChart3 },
@@ -116,6 +118,14 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
           </motion.nav>
 
           <motion.div className="flex items-center gap-2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
+            <motion.button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              className="flex items-center justify-center w-8 h-8 rounded-full border border-border/30 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+            </motion.button>
             <ExportReport />
             {user ? (
               <div className="flex items-center gap-2">
