@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
 import { Building2, MapPin, User, Users } from "lucide-react";
-import { projectInfo } from "@/data/projectData";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 
 const ProjectInfoCard = () => {
+  const { projectInfo } = useProjectData();
   const infoItems = [
     { icon: Building2, label: "Client", value: projectInfo.client },
     { icon: MapPin, label: "Location", value: projectInfo.location },

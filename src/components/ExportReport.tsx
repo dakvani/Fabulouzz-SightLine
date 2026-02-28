@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { FileDown, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { projectInfo, tasks, getStatusCounts, getOverallProgress, getCalendarDays } from "@/data/projectData";
+import { getCalendarDays } from "@/data/projectData";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 
 const ExportReport = () => {
@@ -22,6 +23,22 @@ const ExportReport = () => {
       img.onerror = reject;
       img.src = src;
     });
+  };
+
+  const { tasks, projectInfo } = useProjectData();
+
+  const getStatusCounts = () => ({
+    completed: tasks.filter(t => t.status === "Completed").length,
+    processing: tasks.filter(t => t.status === "Processing").length,
+    initiating: tasks.filter(t => t.status === "Initiating").length,
+    planning: tasks.filter(t => t.status === "Planning").length,
+    total: tasks.length,
+  });
+
+  const getOverallProgress = () => {
+    const weights: Record<string, number> = { Completed: 1, Processing: 0.5, Initiating: 0.2, Planning: 0 };
+    const total = tasks.reduce((sum, t) => sum + (weights[t.status] || 0), 0);
+    return Math.round((total / tasks.length) * 100);
   };
 
   const exportReport = async () => {

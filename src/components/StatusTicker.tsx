@@ -1,9 +1,16 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, Loader2, Zap, Clock } from "lucide-react";
-import { getStatusCounts } from "@/data/projectData";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 
 const StatusTicker = () => {
-  const counts = getStatusCounts();
+  const { tasks } = useProjectData();
+  
+  const counts = {
+    completed: tasks.filter(t => t.status === "Completed").length,
+    processing: tasks.filter(t => t.status === "Processing").length,
+    initiating: tasks.filter(t => t.status === "Initiating").length,
+    planning: tasks.filter(t => t.status === "Planning").length,
+  };
 
   const items = [
     { label: "Done", count: counts.completed, icon: CheckCircle2, color: "var(--completed)" },
