@@ -3,10 +3,13 @@ import { FileDown, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { getCalendarDays } from "@/data/projectData";
 import { useProjectData } from "@/contexts/ProjectDataContext";
+import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
+import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 
 const ExportReport = () => {
   const [loading, setLoading] = useState(false);
+  const { theme } = useTheme();
 
   const loadImageAsBase64 = (src: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -48,6 +51,7 @@ const ExportReport = () => {
       const { default: jsPDF } = await import("jspdf");
       const autoTable = (await import("jspdf-autotable")).default;
 
+      const isDark = theme === "dark";
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -56,10 +60,16 @@ const ExportReport = () => {
       const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
       const brandGreen: [number, number, number] = [47, 191, 47];
-      const darkBg: [number, number, number] = [18, 18, 24];
-      const cardBg: [number, number, number] = [28, 28, 38];
-      const textWhite: [number, number, number] = [240, 240, 240];
-      const textMuted: [number, number, number] = [160, 160, 170];
+
+      // Theme-aware colors
+      const bgColor: [number, number, number] = isDark ? [18, 18, 24] : [255, 255, 255];
+      const cardBgColor: [number, number, number] = isDark ? [28, 28, 38] : [245, 245, 248];
+      const textPrimary: [number, number, number] = isDark ? [240, 240, 240] : [30, 30, 40];
+      const textSecondary: [number, number, number] = isDark ? [160, 160, 170] : [100, 100, 110];
+      const altRowColor: [number, number, number] = isDark ? [23, 23, 32] : [250, 250, 252];
+      const gridLineColor: [number, number, number] = isDark ? [40, 40, 55] : [220, 220, 230];
+      const weekendBg: [number, number, number] = isDark ? [25, 25, 35] : [240, 240, 245];
+      const altGanttRow: [number, number, number] = isDark ? [22, 22, 30] : [248, 248, 252];
 
       const statusColors: Record<string, [number, number, number]> = {
         Completed: [34, 197, 94],
@@ -70,27 +80,36 @@ const ExportReport = () => {
 
       let logoData: string | null = null;
       try {
-        logoData = await loadImageAsBase64(fabulouzzLogo);
+        logoData = await loadImageAsBase64(isDark ? fabulouzzLogo : fabulouzzLogoLight);
       } catch {
         // fallback to text
       }
 
-      const drawPageFooter = (doc: any, pageNum: number, totalPages: number) => {
-        doc.setFillColor(...cardBg);
-        doc.rect(0, pageHeight - 14, pageWidth, 14, "F");
+      // Calculate today's day index for Gantt highlight
+      const calendarDays = getCalendarDays();
+      const now = new Date();
+      const todayIndex = calendarDays.findIndex(d =>
+        d.date.getFullYear() === now.getFullYear() &&
+        d.date.getMonth() === now.getMonth() &&
+        d.date.getDate() === now.getDate()
+      );
+
+      const drawPageFooter = (doc: any, pageNum: number, totalPages: number, pw: number, ph: number) => {
+        doc.setFillColor(...cardBgColor);
+        doc.rect(0, ph - 14, pw, 14, "F");
         doc.setFillColor(...brandGreen);
-        doc.rect(0, pageHeight - 14, pageWidth, 0.5, "F");
-        doc.setTextColor(...textMuted);
+        doc.rect(0, ph - 14, pw, 0.5, "F");
+        doc.setTextColor(...textSecondary);
         doc.setFontSize(6.5);
         doc.setFont("helvetica", "normal");
-        doc.text("Powered by Fabulouzz Technologies  •  SightLine Project Command Center", 14, pageHeight - 5);
-        doc.text(`Page ${pageNum} of ${totalPages}`, pageWidth - 14, pageHeight - 5, { align: "right" });
+        doc.text("Powered by Fabulouzz Technologies  •  SightLine Project Command Center", 14, ph - 5);
+        doc.text(`Page ${pageNum} of ${totalPages}`, pw - 14, ph - 5, { align: "right" });
       };
 
       // ═══════════════════════════════════════════════════════════
       // PAGE 1 — COVER PAGE
       // ═══════════════════════════════════════════════════════════
-      doc.setFillColor(...darkBg);
+      doc.setFillColor(...bgColor);
       doc.rect(0, 0, pageWidth, pageHeight, "F");
 
       // Decorative corner accents
@@ -104,7 +123,6 @@ const ExportReport = () => {
       // Large centered logo
       if (logoData) {
         doc.addImage(logoData, "PNG", pageWidth / 2 - 45, 50, 90, 28);
-        // Add "SIGHTLINE Command Center" under logo
         doc.setTextColor(...brandGreen);
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
@@ -126,11 +144,10 @@ const ExportReport = () => {
       doc.setTextColor(...brandGreen);
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
-      const labelText = "PROJECT STATUS REPORT";
-      doc.text(labelText, pageWidth / 2, 103, { align: "center", charSpace: 2 });
+      doc.text("PROJECT STATUS REPORT", pageWidth / 2, 103, { align: "center", charSpace: 2 });
 
       // Project title
-      doc.setTextColor(...textWhite);
+      doc.setTextColor(...textPrimary);
       doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
       const titleLines = doc.splitTextToSize(projectInfo.title, pageWidth - 60);
@@ -138,12 +155,12 @@ const ExportReport = () => {
 
       // Subtitle info
       const subtitleY = 120 + titleLines.length * 9 + 6;
-      doc.setTextColor(...textMuted);
+      doc.setTextColor(...textSecondary);
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.text(`${projectInfo.client}  •  ${projectInfo.location}`, pageWidth / 2, subtitleY, { align: "center" });
 
-      // Summary card block on cover
+      // Summary card block
       const coverCardY = subtitleY + 18;
       const coverCardW = (pageWidth - 28 - 18) / 4;
       const coverCardH = 32;
@@ -157,7 +174,7 @@ const ExportReport = () => {
 
       summaryCards.forEach((card, i) => {
         const cx = 14 + i * (coverCardW + 6);
-        doc.setFillColor(...cardBg);
+        doc.setFillColor(...cardBgColor);
         doc.roundedRect(cx, coverCardY, coverCardW, coverCardH, 2, 2, "F");
         doc.setFillColor(...card.color);
         doc.rect(cx, coverCardY, coverCardW, 1.5, "F");
@@ -165,7 +182,7 @@ const ExportReport = () => {
         doc.setFontSize(20);
         doc.setFont("helvetica", "bold");
         doc.text(card.value, cx + coverCardW / 2, coverCardY + 16, { align: "center" });
-        doc.setTextColor(...textMuted);
+        doc.setTextColor(...textSecondary);
         doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
         doc.text(card.label.toUpperCase(), cx + coverCardW / 2, coverCardY + 25, { align: "center" });
@@ -173,7 +190,7 @@ const ExportReport = () => {
 
       // Project details on cover
       const detailY = coverCardY + coverCardH + 16;
-      doc.setFillColor(...cardBg);
+      doc.setFillColor(...cardBgColor);
       doc.roundedRect(30, detailY, pageWidth - 60, 52, 2, 2, "F");
       doc.setFillColor(...brandGreen);
       doc.rect(30, detailY, 1.5, 52, "F");
@@ -189,32 +206,32 @@ const ExportReport = () => {
 
       coverDetails.forEach((item, i) => {
         const dy = detailY + 9 + i * 7;
-        doc.setTextColor(...textMuted);
+        doc.setTextColor(...textSecondary);
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         doc.text(`${item[0]}:`, 38, dy);
-        doc.setTextColor(...textWhite);
+        doc.setTextColor(...textPrimary);
         doc.setFont("helvetica", "bold");
         doc.text(item[1], 78, dy);
       });
 
       // Confidential notice
-      doc.setTextColor(...textMuted);
+      doc.setTextColor(...textSecondary);
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
       doc.text("CONFIDENTIAL — For authorized use only", pageWidth / 2, pageHeight - 22, { align: "center" });
 
-      drawPageFooter(doc, 1, 3);
+      drawPageFooter(doc, 1, 3, pageWidth, pageHeight);
 
       // ═══════════════════════════════════════════════════════════
-      // PAGE 2 — TASK BREAKDOWN (existing content)
+      // PAGE 2 — TASK BREAKDOWN
       // ═══════════════════════════════════════════════════════════
       doc.addPage();
-      doc.setFillColor(...darkBg);
+      doc.setFillColor(...bgColor);
       doc.rect(0, 0, pageWidth, pageHeight, "F");
 
       // Header band
-      doc.setFillColor(...cardBg);
+      doc.setFillColor(...cardBgColor);
       doc.rect(0, 0, pageWidth, 24, "F");
       doc.setFillColor(...brandGreen);
       doc.rect(0, 24, pageWidth, 0.8, "F");
@@ -222,7 +239,7 @@ const ExportReport = () => {
       if (logoData) {
         doc.addImage(logoData, "PNG", 14, 4, 40, 13);
       }
-      doc.setTextColor(...textMuted);
+      doc.setTextColor(...textSecondary);
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
       doc.text("TASK BREAKDOWN", pageWidth - 14, 10, { align: "right" });
@@ -233,7 +250,7 @@ const ExportReport = () => {
 
       // Project Information Section
       let y = 32;
-      doc.setFillColor(...cardBg);
+      doc.setFillColor(...cardBgColor);
       doc.roundedRect(14, y, pageWidth - 28, 42, 2, 2, "F");
       doc.setFillColor(...brandGreen);
       doc.rect(14, y, 1.5, 42, "F");
@@ -253,16 +270,16 @@ const ExportReport = () => {
       doc.setFontSize(8);
       infoItems.forEach((row, i) => {
         const iy = y + 14 + i * 7;
-        doc.setTextColor(...textMuted);
+        doc.setTextColor(...textSecondary);
         doc.setFont("helvetica", "normal");
         doc.text(`${row[0]}:`, 20, iy);
-        doc.setTextColor(...textWhite);
+        doc.setTextColor(...textPrimary);
         doc.setFont("helvetica", "bold");
         doc.text(row[1], 55, iy);
-        doc.setTextColor(...textMuted);
+        doc.setTextColor(...textSecondary);
         doc.setFont("helvetica", "normal");
         doc.text(`${row[2]}:`, pageWidth / 2 + 5, iy);
-        doc.setTextColor(...textWhite);
+        doc.setTextColor(...textPrimary);
         doc.setFont("helvetica", "bold");
         doc.text(row[3], pageWidth / 2 + 40, iy);
       });
@@ -288,22 +305,22 @@ const ExportReport = () => {
         ]),
         theme: "plain",
         styles: {
-          fillColor: darkBg,
-          textColor: textWhite,
+          fillColor: bgColor,
+          textColor: textPrimary,
           fontSize: 7.5,
           cellPadding: 2.5,
-          lineColor: [40, 40, 55],
+          lineColor: gridLineColor,
           lineWidth: 0.2,
           font: "helvetica",
         },
         headStyles: {
-          fillColor: cardBg,
+          fillColor: cardBgColor,
           textColor: brandGreen,
           fontStyle: "bold",
           fontSize: 7.5,
         },
         alternateRowStyles: {
-          fillColor: [23, 23, 32],
+          fillColor: altRowColor,
         },
         columnStyles: {
           0: { cellWidth: 10, halign: "center" },
@@ -322,7 +339,7 @@ const ExportReport = () => {
         },
       });
 
-      drawPageFooter(doc, 2, 3);
+      drawPageFooter(doc, 2, 3, pageWidth, pageHeight);
 
       // ═══════════════════════════════════════════════════════════
       // PAGE 3 — GANTT CHART TIMELINE (landscape)
@@ -331,11 +348,11 @@ const ExportReport = () => {
       const lw = doc.internal.pageSize.getWidth();
       const lh = doc.internal.pageSize.getHeight();
 
-      doc.setFillColor(...darkBg);
+      doc.setFillColor(...bgColor);
       doc.rect(0, 0, lw, lh, "F");
 
       // Header
-      doc.setFillColor(...cardBg);
+      doc.setFillColor(...cardBgColor);
       doc.rect(0, 0, lw, 20, "F");
       doc.setFillColor(...brandGreen);
       doc.rect(0, 20, lw, 0.8, "F");
@@ -347,7 +364,7 @@ const ExportReport = () => {
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
       doc.text("PROJECT TIMELINE — GANTT CHART", lw / 2, 13, { align: "center" });
-      doc.setTextColor(...textMuted);
+      doc.setTextColor(...textSecondary);
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
       doc.text(projectInfo.projectRef, lw - 10, 13, { align: "right" });
@@ -358,14 +375,14 @@ const ExportReport = () => {
       const ganttLeft = labelWidth + 12;
       const ganttRight = lw - 10;
       const ganttWidth = ganttRight - ganttLeft;
-      const calendarDays = getCalendarDays();
       const totalDays = calendarDays.length;
       const dayWidth = ganttWidth / totalDays;
       const rowHeight = 7.5;
       const headerHeight = 14;
+      const ganttBodyHeight = tasks.length * rowHeight;
 
       // Calendar header background
-      doc.setFillColor(...cardBg);
+      doc.setFillColor(...cardBgColor);
       doc.rect(ganttLeft, ganttTop, ganttWidth, headerHeight, "F");
 
       // Month labels + day numbers
@@ -374,6 +391,7 @@ const ExportReport = () => {
       calendarDays.forEach((day, i) => {
         const x = ganttLeft + i * dayWidth;
         const month = day.date.getMonth();
+        const isToday = i === todayIndex;
 
         // Month label
         if (month !== lastMonth) {
@@ -384,23 +402,61 @@ const ExportReport = () => {
           lastMonth = month;
         }
 
-        // Day number
-        doc.setTextColor(day.isWeekend ? 80 : 140, day.isWeekend ? 80 : 140, day.isWeekend ? 85 : 150);
-        doc.setFontSize(5);
-        doc.setFont("helvetica", "normal");
-        doc.text(day.label, x + dayWidth / 2, ganttTop + 11, { align: "center" });
-
-        // Weekend shading
-        if (day.isWeekend) {
-          doc.setFillColor(25, 25, 35);
-          doc.rect(x, ganttTop + headerHeight, dayWidth, tasks.length * rowHeight, "F");
+        // Today highlight column
+        if (isToday) {
+          // Highlight header cell
+          doc.setFillColor(brandGreen[0], brandGreen[1], brandGreen[2]);
+          doc.setGState(doc.GState({ opacity: 0.2 }));
+          doc.rect(x, ganttTop, dayWidth, headerHeight, "F");
+          // Highlight body column
+          doc.rect(x, ganttTop + headerHeight, dayWidth, ganttBodyHeight, "F");
+          doc.setGState(doc.GState({ opacity: 1 }));
         }
 
+        // Weekend shading (only if not today)
+        if (day.isWeekend && !isToday) {
+          doc.setFillColor(...weekendBg);
+          doc.rect(x, ganttTop + headerHeight, dayWidth, ganttBodyHeight, "F");
+        }
+
+        // Day number
+        if (isToday) {
+          doc.setTextColor(...brandGreen);
+          doc.setFontSize(5.5);
+          doc.setFont("helvetica", "bold");
+        } else {
+          const dimness = day.isWeekend ? (isDark ? 80 : 170) : (isDark ? 140 : 100);
+          doc.setTextColor(dimness, dimness, dimness + 5);
+          doc.setFontSize(5);
+          doc.setFont("helvetica", "normal");
+        }
+        doc.text(day.label, x + dayWidth / 2, ganttTop + 11, { align: "center" });
+
         // Vertical grid line
-        doc.setDrawColor(35, 35, 48);
+        doc.setDrawColor(...gridLineColor);
         doc.setLineWidth(0.15);
-        doc.line(x, ganttTop + headerHeight, x, ganttTop + headerHeight + tasks.length * rowHeight);
+        doc.line(x, ganttTop + headerHeight, x, ganttTop + headerHeight + ganttBodyHeight);
       });
+
+      // Today reference line (dashed effect via small segments)
+      if (todayIndex >= 0) {
+        const todayX = ganttLeft + todayIndex * dayWidth + dayWidth / 2;
+        doc.setDrawColor(...brandGreen);
+        doc.setLineWidth(0.6);
+        const segLen = 2;
+        const gapLen = 1.5;
+        for (let sy = ganttTop; sy < ganttTop + headerHeight + ganttBodyHeight; sy += segLen + gapLen) {
+          const endY = Math.min(sy + segLen, ganttTop + headerHeight + ganttBodyHeight);
+          doc.line(todayX, sy, todayX, endY);
+        }
+        // "TODAY" label
+        doc.setFillColor(...brandGreen);
+        doc.roundedRect(todayX - 6, ganttTop - 4, 12, 4, 1, 1, "F");
+        doc.setTextColor(...(isDark ? [18, 18, 24] as [number, number, number] : [255, 255, 255] as [number, number, number]));
+        doc.setFontSize(3.5);
+        doc.setFont("helvetica", "bold");
+        doc.text("TODAY", todayX, ganttTop - 1, { align: "center" });
+      }
 
       // Separator line under header
       doc.setFillColor(...brandGreen);
@@ -412,18 +468,18 @@ const ExportReport = () => {
 
         // Alternating row bg
         if (i % 2 === 0) {
-          doc.setFillColor(22, 22, 30);
+          doc.setFillColor(...altGanttRow);
           doc.rect(10, ry, ganttRight - 10, rowHeight, "F");
         }
 
         // Row number
-        doc.setTextColor(...textMuted);
+        doc.setTextColor(...textSecondary);
         doc.setFontSize(5);
         doc.setFont("helvetica", "normal");
         doc.text(String(task.id).padStart(2, "0"), 12, ry + rowHeight / 2 + 1.2);
 
-        // Task name — allow wrapping for long names
-        doc.setTextColor(...textWhite);
+        // Task name
+        doc.setTextColor(...textPrimary);
         doc.setFontSize(5);
         doc.setFont("helvetica", "normal");
         const maxNameWidth = labelWidth - 12;
@@ -436,7 +492,7 @@ const ExportReport = () => {
         const barW = task.duration * dayWidth - 1;
         const barY = ry + 1.5;
         const barH = rowHeight - 3;
-        const color = statusColors[task.status] || textMuted;
+        const color = statusColors[task.status] || textSecondary;
 
         // Bar shadow
         doc.setFillColor(color[0], color[1], color[2]);
@@ -449,14 +505,14 @@ const ExportReport = () => {
         doc.roundedRect(barX, barY, barW, barH, 1, 1, "F");
 
         // Horizontal grid line
-        doc.setDrawColor(35, 35, 48);
+        doc.setDrawColor(...gridLineColor);
         doc.setLineWidth(0.1);
         doc.line(10, ry + rowHeight, ganttRight, ry + rowHeight);
       });
 
       // Legend
-      const legendY = ganttTop + headerHeight + tasks.length * rowHeight + 8;
-      doc.setTextColor(...textMuted);
+      const legendY = ganttTop + headerHeight + ganttBodyHeight + 8;
+      doc.setTextColor(...textSecondary);
       doc.setFontSize(6.5);
       doc.setFont("helvetica", "bold");
       doc.text("LEGEND:", 10, legendY);
@@ -465,19 +521,27 @@ const ExportReport = () => {
       Object.entries(statusColors).forEach(([status, color]) => {
         doc.setFillColor(...color);
         doc.roundedRect(legendX, legendY - 3, 8, 3.5, 0.8, 0.8, "F");
-        doc.setTextColor(...textWhite);
+        doc.setTextColor(...textPrimary);
         doc.setFontSize(6);
         doc.setFont("helvetica", "normal");
         doc.text(status, legendX + 10, legendY);
         legendX += 35;
       });
 
+      // Today indicator in legend
+      doc.setFillColor(...brandGreen);
+      doc.roundedRect(legendX, legendY - 3, 8, 3.5, 0.8, 0.8, "F");
+      doc.setTextColor(...textPrimary);
+      doc.setFontSize(6);
+      doc.text("Today", legendX + 10, legendY);
+      legendX += 30;
+
       // Weekend note
-      doc.setTextColor(...textMuted);
+      doc.setTextColor(...textSecondary);
       doc.setFontSize(5.5);
       doc.text("Shaded columns = Weekends (Fri/Sat — Saudi calendar)", legendX + 10, legendY);
 
-      drawPageFooter(doc, 3, 3);
+      drawPageFooter(doc, 3, 3, lw, lh);
 
       doc.save(`SightLine_Report_${projectInfo.projectRef}_${today.replace(/\s/g, "-")}.pdf`);
     } catch (err) {

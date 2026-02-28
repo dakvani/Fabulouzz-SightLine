@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin, Gauge, ShieldCheck, ShieldAlert, Clock } from "lucide-react";
+import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin, Gauge, ShieldCheck, ShieldAlert, Clock, TrendingUp } from "lucide-react";
 
 interface WeatherData {
   temperature: number;
@@ -16,6 +16,13 @@ interface WeatherData {
   dewPoint: number;
   cloudCover: number;
   windGusts: number;
+}
+
+interface ForecastDay {
+  date: string;
+  tempMax: number;
+  tempMin: number;
+  weatherCode: number;
 }
 
 const weatherDescriptions: Record<number, { label: string; icon: typeof Sun }> = {
@@ -117,12 +124,62 @@ const KAECClock = () => {
   );
 };
 
+const ForecastMiniChart = ({ forecast }: { forecast: ForecastDay[] }) => {
+  if (forecast.length === 0) return null;
+  
+  const allTemps = forecast.flatMap(d => [d.tempMax, d.tempMin]);
+  const maxT = Math.max(...allTemps);
+  const minT = Math.min(...allTemps);
+  const range = maxT - minT || 1;
+  const h = 28;
+  const w = 100;
+  const stepX = w / (forecast.length - 1);
+
+  const toY = (t: number) => h - 4 - ((t - minT) / range) * (h - 8);
+
+  const maxPoints = forecast.map((d, i) => `${i * stepX},${toY(d.tempMax)}`).join(" ");
+  const minPoints = forecast.map((d, i) => `${i * stepX},${toY(d.tempMin)}`).join(" ");
+
+  const dayLabels = forecast.map(d => {
+    const date = new Date(d.date);
+    return date.toLocaleDateString("en-US", { weekday: "short" }).slice(0, 2);
+  });
+
+  return (
+    <div className="px-2 pb-1.5">
+      <div className="flex items-center gap-1 mb-1">
+        <TrendingUp className="w-2.5 h-2.5 text-primary/50" />
+        <span className="text-[7px] font-semibold text-muted-foreground uppercase tracking-wider">5-Day Forecast</span>
+      </div>
+      <div className="relative">
+        <svg viewBox={`-2 -2 ${w + 4} ${h + 12}`} className="w-full" style={{ height: 40 }}>
+          {/* Max temp line */}
+          <polyline points={maxPoints} fill="none" stroke="hsl(var(--warning))" strokeWidth="1.2" strokeLinejoin="round" />
+          {/* Min temp line */}
+          <polyline points={minPoints} fill="none" stroke="hsl(var(--info))" strokeWidth="1.2" strokeLinejoin="round" opacity="0.7" />
+          {/* Dots and labels */}
+          {forecast.map((d, i) => (
+            <g key={i}>
+              <circle cx={i * stepX} cy={toY(d.tempMax)} r="1.5" fill="hsl(var(--warning))" />
+              <circle cx={i * stepX} cy={toY(d.tempMin)} r="1.5" fill="hsl(var(--info))" opacity="0.7" />
+              <text x={i * stepX} y={toY(d.tempMax) - 3} textAnchor="middle" fontSize="4" fill="hsl(var(--warning))" fontWeight="bold">{d.tempMax}°</text>
+              <text x={i * stepX} y={toY(d.tempMin) + 7} textAnchor="middle" fontSize="4" fill="hsl(var(--info))" opacity="0.7">{d.tempMin}°</text>
+              <text x={i * stepX} y={h + 8} textAnchor="middle" fontSize="4" fill="hsl(var(--muted-foreground))">{dayLabels[i]}</text>
+            </g>
+          ))}
+        </svg>
+      </div>
+    </div>
+  );
+};
+
 const WeatherWidget = () => {
   const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [forecast, setForecast] = useState<ForecastDay[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("https://api.open-meteo.com/v1/forecast?latitude=22.41&longitude=39.10&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day,apparent_temperature,wind_direction_10m,surface_pressure,cloud_cover,wind_gusts_10m,dew_point_2m&daily=uv_index_max&timezone=Asia/Riyadh&forecast_days=1")
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=22.41&longitude=39.10&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day,apparent_temperature,wind_direction_10m,surface_pressure,cloud_cover,wind_gusts_10m,dew_point_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&timezone=Asia/Riyadh&forecast_days=6")
       .then(r => r.json())
       .then(d => {
         if (d.current) setWeather({
@@ -140,9 +197,32 @@ const WeatherWidget = () => {
           cloudCover: d.current.cloud_cover ?? 0,
           windGusts: Math.round(d.current.wind_gusts_10m ?? 0),
         });
+        // Parse 5-day forecast (skip today = index 0, take indices 1-5)
+        if (d.daily) {
+          const days: ForecastDay[] = [];
+          for (let i = 1; i <= 5 && i < d.daily.time.length; i++) {
+            days.push({
+              date: d.daily.time[i],
+              tempMax: Math.round(d.daily.temperature_2m_max[i]),
+              tempMin: Math.round(d.daily.temperature_2m_min[i]),
+              weatherCode: d.daily.weather_code[i],
+            });
+          }
+          setForecast(days);
+        }
         setLoading(false);
       })
-      .catch(() => { setWeather({ temperature: 28, windSpeed: 12, humidity: 55, weatherCode: 0, isDay: true, apparentTemp: 30, windDirection: 315, pressure: 1013, visibility: 10, uvIndex: 8, dewPoint: 18, cloudCover: 10, windGusts: 22 }); setLoading(false); });
+      .catch(() => { 
+        setWeather({ temperature: 28, windSpeed: 12, humidity: 55, weatherCode: 0, isDay: true, apparentTemp: 30, windDirection: 315, pressure: 1013, visibility: 10, uvIndex: 8, dewPoint: 18, cloudCover: 10, windGusts: 22 }); 
+        setForecast([
+          { date: "2026-03-01", tempMax: 30, tempMin: 20, weatherCode: 0 },
+          { date: "2026-03-02", tempMax: 32, tempMin: 22, weatherCode: 1 },
+          { date: "2026-03-03", tempMax: 29, tempMin: 19, weatherCode: 2 },
+          { date: "2026-03-04", tempMax: 31, tempMin: 21, weatherCode: 0 },
+          { date: "2026-03-05", tempMax: 33, tempMin: 23, weatherCode: 1 },
+        ]);
+        setLoading(false); 
+      });
   }, []);
 
   if (loading) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-4 h-full"><div className="animate-pulse h-full bg-secondary rounded-xl" /></motion.div>;
@@ -203,6 +283,9 @@ const WeatherWidget = () => {
           </div>
         </div>
       </div>
+
+      {/* 5-day forecast mini chart */}
+      <ForecastMiniChart forecast={forecast} />
 
       {/* Safety banner */}
       <div className={`mx-2 mb-2 mt-auto px-2 py-1 rounded-md flex items-center gap-1.5 text-[9px] font-semibold ${
