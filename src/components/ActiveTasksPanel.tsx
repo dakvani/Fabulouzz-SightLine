@@ -15,11 +15,8 @@ const ActiveTasksPanel = () => {
       transition={{ delay: 0.35 }}
       className="glass-card overflow-hidden relative"
     >
-      <motion.div
-        className="absolute inset-0 rounded-xl pointer-events-none"
-        style={{ border: "1px solid hsl(var(--processing) / 0.2)" }}
-        animate={{ boxShadow: ["0 0 15px -5px hsl(var(--processing) / 0.05)", "0 0 30px -5px hsl(var(--processing) / 0.15)", "0 0 15px -5px hsl(var(--processing) / 0.05)"] }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      <div
+        className="absolute inset-0 rounded-xl pointer-events-none border border-processing/15"
       />
 
       <div className="p-4 sm:p-5 border-b border-border/50 flex items-center gap-3">
