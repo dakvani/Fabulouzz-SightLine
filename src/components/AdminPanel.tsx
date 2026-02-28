@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Shield, X, Users, Loader2, CheckCircle2, LayoutList, Building2 } from "lucide-react";
+import { UserPlus, Shield, X, Users, Loader2, CheckCircle2, LayoutList, Building2, Send, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import TaskManagement from "./TaskManagement";
 import ProjectInfoEditor from "./ProjectInfoEditor";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 
 interface AdminPanelProps {
   isOpen: boolean;
@@ -26,10 +27,51 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [activeTab, setActiveTab] = useState<"users" | "tasks">("tasks");
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [subscriberCount, setSubscriberCount] = useState(0);
+  const { tasks, projectInfo } = useProjectData();
 
   useEffect(() => {
-    if (isOpen) fetchUsers();
+    if (isOpen) {
+      fetchUsers();
+      fetchSubscriberCount();
+    }
   }, [isOpen]);
+
+  const fetchSubscriberCount = async () => {
+    const { count } = await supabase
+      .from("email_subscribers")
+      .select("*", { count: "exact", head: true })
+      .eq("is_active", true);
+    setSubscriberCount(count || 0);
+  };
+
+  const sendNotificationToSubscribers = async () => {
+    setSendingNotification(true);
+    try {
+      const changesHtml = tasks
+        .map(t => `<p style="margin:4px 0;font-size:14px;color:#374151;"><strong>#${t.id} ${t.name}</strong> — <span style="color:${t.status === 'Completed' ? '#10b981' : t.status === 'Processing' ? '#f59e0b' : '#6366f1'}">${t.status}</span> (Day ${t.startDay}, ${t.duration}d)</p>`)
+        .join("");
+
+      const { data, error } = await supabase.functions.invoke("send-subscriber-notification", {
+        body: {
+          subject: `${projectInfo.title} — Timeline Update`,
+          changes: changesHtml,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Notifications sent",
+        description: data?.message || `Sent to ${data?.sent} subscriber(s)`,
+      });
+    } catch (err: any) {
+      toast({ title: "Error sending notifications", description: err.message, variant: "destructive" });
+    }
+    setSendingNotification(false);
+  };
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
@@ -119,6 +161,33 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
             <div className="space-y-5">
               <ProjectInfoEditor />
               <TaskManagement />
+              
+              {/* Send Notification to Subscribers */}
+              <div className="p-4 rounded-xl border border-border/50 bg-secondary/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-primary" />
+                    Email Notifications
+                  </h3>
+                  <span className="text-[10px] font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    {subscriberCount} subscriber{subscriberCount !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Send the current timeline status to all subscribed emails. This will notify them about the latest task updates.
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={sendNotificationToSubscribers}
+                  disabled={sendingNotification || subscriberCount === 0}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                  style={{ background: "var(--gradient-primary)" }}
+                >
+                  {sendingNotification ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {sendingNotification ? "Sending..." : "Send Update Notification"}
+                </motion.button>
+              </div>
             </div>
           )}
 
