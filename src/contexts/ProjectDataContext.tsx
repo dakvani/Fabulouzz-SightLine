@@ -26,9 +26,37 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const applyProject = useCallback((p: any) => {
+    setProjectId(p.id);
+    setProjectInfo({
+      title: p.title,
+      client: p.client_name,
+      projectRef: p.project_ref,
+      projectManager: p.project_manager,
+      reportingTo: p.reporting_to,
+      projectEngineer: p.project_engineer,
+      location: p.location,
+      company: p.company,
+      startDate: p.start_date,
+      endDate: p.end_date,
+    });
+  }, []);
+
+  const applyTasks = useCallback((dbTasks: any[]) => {
+    setTasks(
+      dbTasks.map(t => ({
+        id: t.task_number,
+        name: t.name,
+        status: t.status as TaskStatus,
+        startDay: t.start_day,
+        duration: t.duration,
+        dependencies: t.dependencies || [],
+      }))
+    );
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
-      // Fetch project
       const { data: projects } = await supabase
         .from("projects")
         .select("*")
@@ -37,21 +65,8 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
 
       if (projects && projects.length > 0) {
         const p = projects[0];
-        setProjectId(p.id);
-        setProjectInfo({
-          title: p.title,
-          client: p.client_name,
-          projectRef: p.project_ref,
-          projectManager: p.project_manager,
-          reportingTo: p.reporting_to,
-          projectEngineer: p.project_engineer,
-          location: p.location,
-          company: p.company,
-          startDate: p.start_date,
-          endDate: p.end_date,
-        });
+        applyProject(p);
 
-        // Fetch tasks for this project
         const { data: dbTasks } = await supabase
           .from("tasks")
           .select("*")
@@ -59,16 +74,7 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
           .order("task_number", { ascending: true });
 
         if (dbTasks && dbTasks.length > 0) {
-          setTasks(
-            dbTasks.map(t => ({
-              id: t.task_number,
-              name: t.name,
-              status: t.status as TaskStatus,
-              startDay: t.start_day,
-              duration: t.duration,
-              dependencies: t.dependencies || [],
-            }))
-          );
+          applyTasks(dbTasks);
         }
       }
     } catch (err) {
@@ -76,11 +82,48 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyProject, applyTasks]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Realtime subscriptions
+  useEffect(() => {
+    const channel = supabase
+      .channel("project-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        () => {
+          // Re-fetch all tasks on any change
+          if (projectId) {
+            supabase
+              .from("tasks")
+              .select("*")
+              .eq("project_id", projectId)
+              .order("task_number", { ascending: true })
+              .then(({ data }) => {
+                if (data && data.length > 0) applyTasks(data);
+              });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "projects" },
+        (payload) => {
+          if (payload.new && typeof payload.new === "object" && "id" in payload.new) {
+            applyProject(payload.new);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [projectId, applyProject, applyTasks]);
 
   return (
     <ProjectDataContext.Provider value={{ tasks, projectInfo, loading, refresh: fetchData, projectId }}>

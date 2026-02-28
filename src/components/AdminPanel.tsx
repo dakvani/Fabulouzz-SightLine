@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Shield, X, Users, Loader2, CheckCircle2, LayoutList } from "lucide-react";
+import { UserPlus, Shield, X, Users, Loader2, CheckCircle2, LayoutList, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import TaskManagement from "./TaskManagement";
+import ProjectInfoEditor from "./ProjectInfoEditor";
 
 interface AdminPanelProps {
   isOpen: boolean;
@@ -114,7 +115,12 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
             </button>
           </div>
 
-          {activeTab === "tasks" && <TaskManagement />}
+          {activeTab === "tasks" && (
+            <div className="space-y-5">
+              <ProjectInfoEditor />
+              <TaskManagement />
+            </div>
+          )}
 
           {activeTab === "users" && (
             <div className="space-y-6">
