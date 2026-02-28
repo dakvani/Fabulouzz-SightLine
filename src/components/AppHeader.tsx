@@ -32,53 +32,6 @@ const useScrollDirection = () => {
   return { hidden, scrolled };
 };
 
-const HeaderParticles = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animId: number;
-    const dots: { x: number; y: number; vx: number; vy: number; r: number; o: number }[] = [];
-
-    const resize = () => { canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; ctx.scale(2, 2); };
-    resize();
-
-    for (let i = 0; i < 25; i++) {
-      dots.push({
-        x: Math.random() * canvas.offsetWidth,
-        y: Math.random() * canvas.offsetHeight,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.2,
-        r: 1 + Math.random() * 1.5,
-        o: 0.1 + Math.random() * 0.2,
-      });
-    }
-
-    const draw = () => {
-      const w = canvas.offsetWidth, h = canvas.offsetHeight;
-      ctx.clearRect(0, 0, w, h);
-      dots.forEach(d => {
-        d.x += d.vx; d.y += d.vy;
-        if (d.x < 0) d.x = w; if (d.x > w) d.x = 0;
-        if (d.y < 0) d.y = h; if (d.y > h) d.y = 0;
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(90, 65%, 50%, ${d.o})`;
-        ctx.fill();
-      });
-      animId = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => cancelAnimationFrame(animId);
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
-};
-
 const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
   const [showAuth, setShowAuth] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -123,23 +76,13 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
         className={`sticky top-2 z-50 mx-4 sm:mx-6 transition-all duration-300 ${scrolled ? "top-1 mx-2 sm:mx-3" : ""}`}
       >
         <div
-          className={`absolute inset-0 backdrop-blur-2xl border border-primary/10 overflow-hidden transition-all duration-300 ${scrolled ? "bg-card/60 shadow-lg" : "bg-card/20"}`}
+          className={`absolute inset-0 backdrop-blur-2xl border border-border/40 transition-all duration-300 ${scrolled ? "bg-card/80" : "bg-card/40"}`}
           style={{
             borderRadius: scrolled ? "14px" : "20px",
             boxShadow: scrolled
-              ? "0 12px 40px -8px hsl(var(--primary) / 0.2), inset 0 1px 0 0 hsl(var(--primary) / 0.1)"
-              : "0 8px 32px -8px hsl(var(--primary) / 0.12), inset 0 1px 0 0 hsl(var(--primary) / 0.06)",
+              ? "0 4px 20px -4px hsl(var(--background) / 0.6)"
+              : "0 2px 12px -2px hsl(var(--background) / 0.4)",
           }}
-        >
-          <HeaderParticles />
-        </div>
-
-        <motion.div
-          className="absolute bottom-0 left-1/2 h-[1px]"
-          style={{ background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent)", borderRadius: "20px" }}
-          initial={{ width: 0, x: 0 }}
-          animate={{ width: "50%", x: "-50%" }}
-          transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
         />
 
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between relative">
@@ -189,9 +132,8 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
                 </motion.button>
               </div>
             ) : (
-              <motion.button onClick={() => setShowAuth(true)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-                style={{ boxShadow: "0 0 16px -4px hsl(var(--primary) / 0.2)" }}>
+              <motion.button onClick={() => setShowAuth(true)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border border-primary/30 text-primary hover:bg-primary/10 transition-colors">
                 <LogIn className="w-3.5 h-3.5" /><span className="hidden sm:inline">Login</span>
               </motion.button>
             )}
