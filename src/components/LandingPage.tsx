@@ -241,51 +241,75 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
           transition={{ duration: 0.8, delay: 0.3 }}
           className="relative z-10 flex flex-col items-center text-center px-12"
         >
-          {/* Company Logo */}
+          {/* Company Logo — clickable to fabulouzz.com */}
           {mounted && (
-            <motion.img
-              src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
-              alt="Fabulouzz Technologies"
-              className="h-24 xl:h-28 w-auto mb-10"
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
-            />
+            <motion.a
+              href="https://www.fabulouzz.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-10 cursor-pointer"
+              initial={{ opacity: 0, scale: 0.6, rotateY: 90 }}
+              animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+              transition={{ delay: 0.5, type: "spring", stiffness: 150, damping: 15 }}
+              whileHover={{ scale: 1.08, filter: "drop-shadow(0 0 16px hsl(142, 60%, 45%, 0.4))" }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <img
+                src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
+                alt="Fabulouzz Technologies"
+                className="h-24 xl:h-28 w-auto"
+              />
+            </motion.a>
           )}
 
-          {/* App Name */}
-          <motion.h2
-            className="text-primary font-bold tracking-[0.3em] text-2xl xl:text-3xl mb-3"
+          {/* App Name — each letter pops up */}
+          <div
+            className="flex items-center justify-center tracking-[0.3em] text-2xl xl:text-3xl mb-3 font-bold"
             style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
           >
-            SIGHTLINE
-          </motion.h2>
+            {"SIGHTLINE".split("").map((letter, i) => (
+              <motion.span
+                key={i}
+                className="inline-block text-primary cursor-default"
+                initial={{ opacity: 0, y: 20, scale: 0.5 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: 0.6 + i * 0.07, type: "spring", stiffness: 300, damping: 12 }}
+                whileHover={{ scale: 1.3, y: -6, color: "hsl(142, 60%, 55%)", transition: { duration: 0.15 } }}
+              >
+                {letter}
+              </motion.span>
+            ))}
+          </div>
 
-          <motion.p
-            className="text-muted-foreground font-semibold tracking-[0.25em] uppercase text-xs mb-8"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-          >
-            Command Center
-          </motion.p>
+          {/* Command Center — staggered fade */}
+          <div className="flex items-center justify-center tracking-[0.25em] uppercase text-xs mb-8">
+            {"Command Center".split("").map((letter, i) => (
+              <motion.span
+                key={i}
+                className="inline-block text-muted-foreground font-semibold"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.3 + i * 0.03 }}
+                whileHover={{ scale: 1.2, color: "hsl(142, 60%, 45%)", transition: { duration: 0.1 } }}
+              >
+                {letter === " " ? "\u00A0" : letter}
+              </motion.span>
+            ))}
+          </div>
 
           <motion.div
             className="w-20 h-[2px] mb-8"
             style={{ background: "var(--gradient-primary)" }}
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
-            transition={{ delay: 0.8, duration: 0.6 }}
+            transition={{ delay: 1.8, duration: 0.6 }}
           />
 
           <motion.p
             className="text-muted-foreground text-sm leading-relaxed max-w-sm mb-10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.9 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 2.0 }}
           >
             Real-time project monitoring, intelligent task management, and seamless collaboration — all in one place.
           </motion.p>
