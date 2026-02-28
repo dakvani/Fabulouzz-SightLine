@@ -214,7 +214,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
 
           {/* Footer */}
           <p className="mt-10 text-[10px] text-muted-foreground">
-            Powered by <span className="text-primary font-semibold">Fabulouzz Technologies</span>
+            Powered by <a href="https://www.fabulouzz.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Fabulouzz Technologies</a>
           </p>
         </motion.div>
       </div>
