@@ -39,7 +39,7 @@ export const tasks: ProjectTask[] = [
   { id: 1, name: "Design & Site Plan", status: "Completed", startDay: 0, duration: 3 },
   { id: 2, name: "Purchase & Arrangement of Materials", status: "Processing", startDay: 2, duration: 5, dependencies: [1] },
   { id: 3, name: "Delivery of Equipment & Study of Project Plan on the Site", status: "Completed", startDay: 4, duration: 3, dependencies: [2] },
-  { id: 4, name: "Start Cabling and Installation of Outdoor Cameras on Gates and Entrances", status: "Processing", startDay: 6, duration: 4, dependencies: [3] },
+  { id: 4, name: "Start Cabling and Installation of Outdoor Cameras on Gates and Entrances", status: "Completed", startDay: 6, duration: 4, dependencies: [3] },
   { id: 5, name: "Preparation of Security Room for Installation of New System", status: "Processing", startDay: 6, duration: 3, dependencies: [3] },
   { id: 6, name: "Continue Installation of Outside Bullet Cameras on Gates and Connecting Cameras", status: "Processing", startDay: 9, duration: 3, dependencies: [4] },
   { id: 7, name: "Connecting Cameras on the Entrances", status: "Initiating", startDay: 11, duration: 2, dependencies: [6] },
