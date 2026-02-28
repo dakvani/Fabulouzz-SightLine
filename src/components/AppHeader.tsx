@@ -12,14 +12,24 @@ interface AppHeaderProps {
   onViewChange: (view: "dashboard" | "timeline" | "tasks" | "kanban") => void;
 }
 
-const useScrolled = () => {
+const useScrollDirection = () => {
+  const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const lastScrollY = useRef(0);
+
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 20);
+      if (y > lastScrollY.current && y > 60) setHidden(true);
+      else if (y < lastScrollY.current) setHidden(false);
+      lastScrollY.current = y;
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-  return scrolled;
+
+  return { hidden, scrolled };
 };
 
 const HeaderParticles = () => {
@@ -95,7 +105,7 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
 
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setIsAdmin(false); };
 
-  const scrolled = useScrolled();
+  const { hidden, scrolled } = useScrollDirection();
 
   const views = [
     { id: "dashboard" as const, label: "Dashboard", icon: BarChart3 },
@@ -108,8 +118,8 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
     <>
       <motion.header
         initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        animate={{ opacity: 1, y: hidden ? -80 : 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
         className={`sticky top-2 z-50 mx-4 sm:mx-6 transition-all duration-300 ${scrolled ? "top-1 mx-2 sm:mx-3" : ""}`}
       >
         <div
