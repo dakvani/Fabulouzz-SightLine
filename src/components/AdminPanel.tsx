@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Shield, X, Users, Loader2, LayoutList, Send, Mail, Shuffle, Copy, Check } from "lucide-react";
+import { UserPlus, Shield, X, Users, Loader2, LayoutList, Send, Mail, Shuffle, Copy, Check, RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -33,6 +33,7 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [resendingFor, setResendingFor] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"users" | "tasks">("tasks");
   const [sendingNotification, setSendingNotification] = useState(false);
   const [subscriberCount, setSubscriberCount] = useState(0);
@@ -126,6 +127,21 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
     setLoading(false);
+  };
+
+  const handleResendInvite = async (user: any) => {
+    setResendingFor(user.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("resend-invitation", {
+        body: { userId: user.id, email: user.email, fullName: user.full_name, role: user.role },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Invitation resent", description: `New credentials sent to ${user.email}` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setResendingFor(null);
   };
 
   const copyPassword = () => {
@@ -299,9 +315,20 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                             <p className="text-xs text-muted-foreground">{u.email}</p>
                           </div>
                         </div>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border border-border/30 ${roleLabels[u.role]?.color || "text-muted-foreground"}`}>
-                          {roleLabels[u.role]?.label || u.role}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleResendInvite(u)}
+                            disabled={resendingFor === u.id}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+                            title="Resend invitation with new password"
+                          >
+                            {resendingFor === u.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                            Resend
+                          </button>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border border-border/30 ${roleLabels[u.role]?.color || "text-muted-foreground"}`}>
+                            {roleLabels[u.role]?.label || u.role}
+                          </span>
+                        </div>
                       </div>
                     ))}
                     {users.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No users yet</p>}

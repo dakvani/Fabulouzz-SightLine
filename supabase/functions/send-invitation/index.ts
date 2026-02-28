@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
         </p>
       </div>
 
-      <a href="${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '').replace('https://dxohbmgalsxswmpptyqy', '') || '#'}" 
+      <a href="https://sightline.fabulouzz.com" 
          style="display: block; text-align: center; background: linear-gradient(135deg, #2fbf2f, #22a722); color: #fff; padding: 14px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;">
         Login to SightLine →
       </a>
