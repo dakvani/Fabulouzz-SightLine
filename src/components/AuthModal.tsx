@@ -133,7 +133,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               </motion.button>
               <p className="text-center text-xs text-muted-foreground">
                 Need access?{" "}
-                <a href="https://fabulouzz.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                <a href="https://www.fabulouzz.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
                   Contact Fabulouzz
                 </a>
               </p>
