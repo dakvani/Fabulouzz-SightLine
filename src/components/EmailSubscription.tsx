@@ -1,17 +1,36 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, CheckCircle2, Send } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const EmailSubscription = () => {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
+    if (!email) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("email_subscribers")
+        .insert({ email });
+
+      if (error) {
+        if (error.code === "23505") {
+          toast({ title: "Already subscribed", description: "This email is already on our notification list." });
+        } else {
+          throw error;
+        }
+      }
       setSubscribed(true);
       setEmail("");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
+    setLoading(false);
   };
 
   return (
@@ -54,13 +73,14 @@ const EmailSubscription = () => {
           />
           <motion.button
             type="submit"
+            disabled={loading}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-primary-foreground transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-primary-foreground transition-all disabled:opacity-50"
             style={{ background: "var(--gradient-primary)" }}
           >
             <Send className="w-3.5 h-3.5" />
-            Subscribe
+            {loading ? "..." : "Subscribe"}
           </motion.button>
         </form>
       )}
