@@ -38,6 +38,7 @@ const EmailSubscription = () => {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.6 }}
+      id="email-subscription-section"
       className="glass-card p-6 glow-border"
     >
       <div className="flex items-center gap-2 mb-3">

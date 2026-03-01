@@ -14,6 +14,7 @@ import ActiveTasksPanel from "@/components/ActiveTasksPanel";
 import NotificationTicker from "@/components/NotificationTicker";
 import EmailSubscription from "@/components/EmailSubscription";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
+import SubscribePromptModal from "@/components/SubscribePromptModal";
 
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { motion } from "framer-motion";
@@ -74,6 +75,7 @@ const Index = () => {
         isOpen={mustChangePassword}
         onSuccess={() => setMustChangePassword(false)}
       />
+      <SubscribePromptModal userId={user.id} />
       <div className="relative z-10">
         <AppHeader activeView={activeView} onViewChange={setActiveView} />
 
