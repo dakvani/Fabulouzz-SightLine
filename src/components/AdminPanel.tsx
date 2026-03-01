@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Shield, X, Users, Loader2, LayoutList, Send, Mail, Shuffle, Copy, Check, RefreshCw } from "lucide-react";
+import { UserPlus, Shield, X, Users, Loader2, LayoutList, Send, Mail, Shuffle, Copy, Check, RefreshCw, Trash2, MailX, MailCheck } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -34,15 +34,18 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [resendingFor, setResendingFor] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "tasks">("tasks");
+  const [activeTab, setActiveTab] = useState<"users" | "tasks" | "subscribers">("tasks");
   const [sendingNotification, setSendingNotification] = useState(false);
   const [subscriberCount, setSubscriberCount] = useState(0);
+  const [subscribers, setSubscribers] = useState<any[]>([]);
+  const [loadingSubscribers, setLoadingSubscribers] = useState(false);
   const { tasks, projectInfo } = useProjectData();
 
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
       fetchSubscriberCount();
+      fetchSubscribers();
     }
   }, [isOpen]);
 
@@ -52,6 +55,42 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
       .select("*", { count: "exact", head: true })
       .eq("is_active", true);
     setSubscriberCount(count || 0);
+  };
+
+  const fetchSubscribers = async () => {
+    setLoadingSubscribers(true);
+    const { data } = await supabase
+      .from("email_subscribers")
+      .select("*")
+      .order("subscribed_at", { ascending: false });
+    setSubscribers(data || []);
+    setLoadingSubscribers(false);
+  };
+
+  const toggleSubscriberStatus = async (id: string, currentStatus: boolean) => {
+    const { error } = await supabase
+      .from("email_subscribers")
+      .update({ is_active: !currentStatus })
+      .eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: currentStatus ? "Subscriber deactivated" : "Subscriber reactivated" });
+      fetchSubscribers();
+      fetchSubscriberCount();
+    }
+  };
+
+  const deleteSubscriber = async (id: string, email: string) => {
+    if (!confirm(`Remove ${email} from subscribers?`)) return;
+    const { error } = await supabase.from("email_subscribers").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Subscriber removed", description: email });
+      fetchSubscribers();
+      fetchSubscriberCount();
+    }
   };
 
   const { theme } = useTheme();
@@ -199,6 +238,14 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
             >
               <Users className="w-3.5 h-3.5" /> User Management
             </button>
+            <button
+              onClick={() => { setActiveTab("subscribers"); fetchSubscribers(); }}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-colors ${
+                activeTab === "subscribers" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5" /> Subscribers
+            </button>
           </div>
 
           {activeTab === "tasks" && (
@@ -335,6 +382,65 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === "subscribers" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-primary" />
+                  Subscription List
+                </h3>
+                <span className="text-[10px] font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                  {subscribers.filter(s => s.is_active).length} active / {subscribers.length} total
+                </span>
+              </div>
+
+              {loadingSubscribers ? (
+                <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+              ) : subscribers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No subscribers yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {subscribers.map(sub => (
+                    <div key={sub.id} className="flex items-center justify-between p-3 rounded-lg border border-border/30 bg-secondary/10">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${sub.is_active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                          {sub.email[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{sub.email}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            Subscribed {new Date(sub.subscribed_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleSubscriberStatus(sub.id, sub.is_active)}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-colors ${
+                            sub.is_active
+                              ? "bg-primary/10 text-primary hover:bg-primary/20"
+                              : "bg-muted text-muted-foreground hover:bg-muted/80"
+                          }`}
+                          title={sub.is_active ? "Deactivate" : "Reactivate"}
+                        >
+                          {sub.is_active ? <MailCheck className="w-3 h-3" /> : <MailX className="w-3 h-3" />}
+                          {sub.is_active ? "Active" : "Inactive"}
+                        </button>
+                        <button
+                          onClick={() => deleteSubscriber(sub.id, sub.email)}
+                          className="p-1 rounded-md text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          title="Remove subscriber"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </motion.div>
