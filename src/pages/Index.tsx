@@ -16,6 +16,7 @@ import EmailSubscription from "@/components/EmailSubscription";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 import SubscribePromptModal from "@/components/SubscribePromptModal";
 import ScrollToTop from "@/components/ScrollToTop";
+import LiveNotifications from "@/components/LiveNotifications";
 
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { motion } from "framer-motion";
@@ -112,6 +113,9 @@ const Index = () => {
 
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
                 <ActiveTasksPanel />
+              </motion.div>
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}>
+                <LiveNotifications />
               </motion.div>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                 <GanttChart />
