@@ -85,7 +85,19 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
   }, [applyProject, applyTasks]);
 
   useEffect(() => {
-    fetchData();
+    // Wait for auth to be ready before fetching
+    const init = async () => {
+      await supabase.auth.getSession();
+      fetchData();
+    };
+    init();
+
+    // Re-fetch when auth state changes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      fetchData();
+    });
+
+    return () => subscription.unsubscribe();
   }, [fetchData]);
 
   // Realtime subscriptions
