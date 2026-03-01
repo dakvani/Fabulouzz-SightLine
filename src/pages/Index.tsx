@@ -15,6 +15,7 @@ import NotificationTicker from "@/components/NotificationTicker";
 import EmailSubscription from "@/components/EmailSubscription";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 import SubscribePromptModal from "@/components/SubscribePromptModal";
+import ScrollToTop from "@/components/ScrollToTop";
 
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { motion } from "framer-motion";
@@ -134,6 +135,7 @@ const Index = () => {
           <p>Powered by <span className="text-primary font-semibold">Fabulouzz Technologies</span> • SightLine Project Command Center</p>
         </motion.footer>
       </div>
+      <ScrollToTop />
     </div>
   );
 };
