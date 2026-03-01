@@ -272,8 +272,15 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                 key={i}
                 className="inline-block text-primary cursor-default"
                 initial={{ opacity: 0, y: 20, scale: 0.5 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ delay: 0.6 + i * 0.07, type: "spring", stiffness: 300, damping: 12 }}
+                animate={{ 
+                  opacity: 1, y: [0, -6, 0], scale: [1, 1.1, 1],
+                }}
+                transition={{ 
+                  delay: 0.6 + i * 0.07, 
+                  y: { delay: 1.5 + i * 0.12, duration: 1.8, repeat: Infinity, repeatDelay: 3, ease: "easeInOut" },
+                  scale: { delay: 1.5 + i * 0.12, duration: 1.8, repeat: Infinity, repeatDelay: 3, ease: "easeInOut" },
+                  opacity: { duration: 0.4 }
+                }}
                 whileHover={{ scale: 1.3, y: -6, color: "hsl(142, 60%, 55%)", transition: { duration: 0.15 } }}
               >
                 {letter}
@@ -282,14 +289,20 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
           </div>
 
           {/* Command Center — staggered fade */}
-          <div className="flex items-center justify-center tracking-[0.25em] uppercase text-xs mb-8">
+          <div className="flex items-center justify-center tracking-[0.4em] uppercase text-lg xl:text-xl mb-8">
             {"Command Center".split("").map((letter, i) => (
               <motion.span
                 key={i}
                 className="inline-block text-muted-foreground font-semibold"
                 initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.3 + i * 0.03 }}
+                animate={{ 
+                  opacity: 1, y: [0, -4, 0],
+                }}
+                transition={{ 
+                  delay: 1.3 + i * 0.03,
+                  y: { delay: 2.8 + i * 0.08, duration: 1.6, repeat: Infinity, repeatDelay: 3.5, ease: "easeInOut" },
+                  opacity: { duration: 0.3 }
+                }}
                 whileHover={{ scale: 1.2, color: "hsl(142, 60%, 45%)", transition: { duration: 0.1 } }}
               >
                 {letter === " " ? "\u00A0" : letter}
