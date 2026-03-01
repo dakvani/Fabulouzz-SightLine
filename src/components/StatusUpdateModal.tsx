@@ -16,18 +16,24 @@ interface StatusUpdateModalProps {
 const StatusUpdateModal = ({ isOpen, onClose, taskId, taskName, currentStatus }: StatusUpdateModalProps) => {
   const [newStatus, setNewStatus] = useState<TaskStatus>(currentStatus);
   const [message, setMessage] = useState("");
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setMediaFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setMediaFiles(prev => [...prev, ...files]);
+    files.forEach(file => {
       const reader = new FileReader();
-      reader.onload = () => setMediaPreview(reader.result as string);
+      reader.onload = () => setMediaPreviews(prev => [...prev, reader.result as string]);
       reader.readAsDataURL(file);
-    }
+    });
+  };
+
+  const removeFile = (index: number) => {
+    setMediaFiles(prev => prev.filter((_, i) => i !== index));
+    setMediaPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,20 +43,22 @@ const StatusUpdateModal = ({ isOpen, onClose, taskId, taskName, currentStatus }:
     try {
       let mediaUrl: string | null = null;
 
-      // Upload media if present
-      if (mediaFile) {
-        const ext = mediaFile.name.split(".").pop();
-        const path = `task-${taskId}/${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("task-media")
-          .upload(path, mediaFile);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data: urlData } = supabase.storage
-          .from("task-media")
-          .getPublicUrl(path);
-        mediaUrl = urlData.publicUrl;
+      // Upload all media files
+      if (mediaFiles.length > 0) {
+        const urls: string[] = [];
+        for (const file of mediaFiles) {
+          const ext = file.name.split(".").pop();
+          const path = `task-${taskId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("task-media")
+            .upload(path, file);
+          if (uploadError) throw uploadError;
+          const { data: urlData } = supabase.storage
+            .from("task-media")
+            .getPublicUrl(path);
+          urls.push(urlData.publicUrl);
+        }
+        mediaUrl = JSON.stringify(urls);
       }
 
       // Create notification
@@ -125,24 +133,27 @@ const StatusUpdateModal = ({ isOpen, onClose, taskId, taskName, currentStatus }:
               />
             </div>
 
-            {/* Media Upload */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">Attach Media</label>
+              <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">Attach Media ({mediaFiles.length}/5)</label>
               <label className="flex items-center gap-2 px-4 py-3 rounded-lg border border-dashed border-border/50 bg-secondary/20 cursor-pointer hover:border-primary/40 transition-colors">
                 <Upload className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">{mediaFile ? mediaFile.name : "Click to upload photo/video"}</span>
-                <input type="file" accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
+                <span className="text-xs text-muted-foreground">Click to upload photos/videos</span>
+                <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleFileChange} />
               </label>
-              {mediaPreview && (
-                <div className="mt-2 rounded-lg overflow-hidden border border-border/30 relative">
-                  <img src={mediaPreview} alt="Preview" className="w-full max-h-32 object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => { setMediaFile(null); setMediaPreview(null); }}
-                    className="absolute top-1 right-1 p-1 rounded-full bg-background/80 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+              {mediaPreviews.length > 0 && (
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {mediaPreviews.map((preview, i) => (
+                    <div key={i} className="rounded-lg overflow-hidden border border-border/30 relative aspect-square">
+                      <img src={preview} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-background/80 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
