@@ -55,7 +55,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Email sent", description: "Check your inbox for a reset link." });
+      toast({ title: "Check your inbox", description: "If you are a registered user, you will receive a password reset link shortly." });
       setMode("login");
     }
   };
