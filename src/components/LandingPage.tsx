@@ -6,6 +6,7 @@ import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import LandingHeroVisual from "@/components/landing/LandingHeroVisual";
 
 interface LandingPageProps {
   onAuthSuccess: () => void;
@@ -219,128 +220,67 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
         </motion.div>
       </div>
 
-      {/* RIGHT SIDE — Branding */}
-      <div className="hidden lg:flex w-1/2 relative overflow-hidden items-center justify-center">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--primary)/0.08)] via-[hsl(var(--card))] to-[hsl(var(--primary)/0.05)]" />
-        <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-primary/[0.06] blur-[120px]" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/[0.04] blur-[100px]" />
-
-        {/* Subtle grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
-            backgroundSize: "60px 60px",
-          }}
-        />
-
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="relative z-10 flex flex-col items-center text-center px-12"
-        >
-          {/* Company Logo — clickable to fabulouzz.com */}
+      {/* RIGHT SIDE — Interactive Project Visual */}
+      <div className="hidden lg:flex w-1/2 relative overflow-hidden items-center justify-center bg-gradient-to-br from-[hsl(var(--primary)/0.04)] via-background to-[hsl(var(--primary)/0.02)]">
+        {/* Logo + branding overlay at top */}
+        <div className="absolute top-8 left-8 right-8 z-20 flex items-center justify-between">
           {mounted && (
             <motion.a
               href="https://www.fabulouzz.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="mb-10 cursor-pointer"
-              initial={{ opacity: 0, scale: 0.6, rotateY: 90 }}
-              animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-              transition={{ delay: 0.5, type: "spring", stiffness: 150, damping: 15 }}
-              whileHover={{ scale: 1.08, filter: "drop-shadow(0 0 16px hsl(142, 60%, 45%, 0.4))" }}
-              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              whileHover={{ scale: 1.05 }}
             >
               <img
                 src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
                 alt="Fabulouzz Technologies"
-                className="h-24 xl:h-28 w-auto"
+                className="h-8 w-auto"
               />
             </motion.a>
           )}
+        </div>
 
-          {/* App Name — each letter pops up */}
+        {/* App name badge at top center */}
+        <motion.div
+          className="absolute top-8 left-0 right-0 z-20 flex flex-col items-center gap-1"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
           <div
-            className="flex items-center justify-center tracking-[0.3em] text-2xl xl:text-3xl mb-3 font-bold"
+            className="tracking-[0.3em] text-lg font-bold text-primary"
             style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
           >
-            {"SIGHTLINE".split("").map((letter, i) => (
-              <motion.span
-                key={i}
-                className="inline-block text-primary cursor-default"
-                initial={{ opacity: 0, y: 20, scale: 0.5 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ delay: 0.6 + i * 0.07, type: "spring", stiffness: 300, damping: 12 }}
-                whileHover={{ scale: 1.3, y: -6, color: "hsl(142, 60%, 55%)", transition: { duration: 0.15 } }}
-              >
-                {letter}
-              </motion.span>
-            ))}
+            SIGHTLINE
           </div>
+          <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.2em] uppercase">
+            Command Center
+          </span>
+        </motion.div>
 
-          {/* Command Center — staggered fade */}
-          <div className="flex items-center justify-center tracking-[0.25em] uppercase text-xs mb-8">
-            {"Command Center".split("").map((letter, i) => (
-              <motion.span
-                key={i}
-                className="inline-block text-muted-foreground font-semibold"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.3 + i * 0.03 }}
-                whileHover={{ scale: 1.2, color: "hsl(142, 60%, 45%)", transition: { duration: 0.1 } }}
-              >
-                {letter === " " ? "\u00A0" : letter}
-              </motion.span>
-            ))}
-          </div>
+        {/* Main visual content */}
+        <LandingHeroVisual />
 
-          <motion.div
-            className="w-20 h-[2px] mb-8"
-            style={{ background: "var(--gradient-primary)" }}
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ delay: 1.8, duration: 0.6 }}
-          />
-
-          <motion.p
-            className="text-muted-foreground text-sm leading-relaxed max-w-sm mb-10"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2.0 }}
-          >
-            Real-time project monitoring, intelligent task management, and seamless collaboration — all in one place.
-          </motion.p>
-
-          {/* Go Home button */}
-          <motion.a
+        {/* Bottom CTA */}
+        <motion.div
+          className="absolute bottom-8 left-0 right-0 z-20 flex justify-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2.0 }}
+        >
+          <a
             href="https://www.fabulouzz.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 px-8 py-3.5 rounded-full text-base font-semibold border-2 border-primary/40 text-primary hover:border-primary hover:shadow-[0_0_20px_-4px_hsl(var(--primary)/0.4)] transition-all duration-300"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{
-              opacity: 1,
-              y: 0,
-              boxShadow: [
-                "0 0 0px 0px hsl(142, 60%, 45%, 0)",
-                "0 0 16px 2px hsl(142, 60%, 45%, 0.15)",
-                "0 0 0px 0px hsl(142, 60%, 45%, 0)",
-              ],
-            }}
-            transition={{
-              delay: 1.0,
-              boxShadow: { duration: 2.5, repeat: Infinity, ease: "easeInOut" },
-            }}
-            whileHover={{ scale: 1.06 }}
-            whileTap={{ scale: 0.96 }}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-medium border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/40 transition-all duration-300"
           >
-            <Home className="w-5 h-5" />
+            <Home className="w-3.5 h-3.5" />
             Go to Fabulouzz Home
-            <ChevronRight className="w-5 h-5" />
-          </motion.a>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </a>
         </motion.div>
       </div>
 
