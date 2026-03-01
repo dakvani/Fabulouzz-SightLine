@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Shield, X, Users, Loader2, LayoutList, Send, Mail, Shuffle, Copy, Check, RefreshCw, Trash2, MailX, MailCheck } from "lucide-react";
+import { UserPlus, Shield, X, Users, Loader2, LayoutList, Send, Mail, Shuffle, Copy, Check, RefreshCw, Trash2, MailX, MailCheck, Pencil } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -34,6 +34,8 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [resendingFor, setResendingFor] = useState<string | null>(null);
+  const [editingRoleFor, setEditingRoleFor] = useState<string | null>(null);
+  const [deletingUser, setDeletingUser] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"users" | "tasks" | "subscribers">("tasks");
   const [sendingNotification, setSendingNotification] = useState(false);
   const [subscriberCount, setSubscriberCount] = useState(0);
@@ -181,6 +183,39 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
     setResendingFor(null);
+  };
+
+  const handleChangeRole = async (userId: string, newRole: string) => {
+    setEditingRoleFor(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "update_role", userId, newRole },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Role updated", description: `User role changed to ${roleLabels[newRole]?.label || newRole}` });
+      fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setEditingRoleFor(null);
+  };
+
+  const handleDeleteUser = async (user: any) => {
+    if (!confirm(`Delete user ${user.email}? This cannot be undone.`)) return;
+    setDeletingUser(user.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "delete_user", userId: user.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "User deleted", description: `${user.email} has been removed` });
+      fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setDeletingUser(null);
   };
 
   const copyPassword = () => {
@@ -372,9 +407,26 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                             {resendingFor === u.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                             Resend
                           </button>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border border-border/30 ${roleLabels[u.role]?.color || "text-muted-foreground"}`}>
-                            {roleLabels[u.role]?.label || u.role}
-                          </span>
+                          {/* Role selector */}
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleChangeRole(u.id, e.target.value)}
+                            disabled={editingRoleFor === u.id}
+                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border border-border/30 bg-secondary/30 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/50 ${roleLabels[u.role]?.color || "text-muted-foreground"}`}
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="pm">PM / Engineer</option>
+                            <option value="client">Client</option>
+                          </select>
+                          {/* Delete user */}
+                          <button
+                            onClick={() => handleDeleteUser(u)}
+                            disabled={deletingUser === u.id}
+                            className="p-1 rounded-md text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                            title="Delete user"
+                          >
+                            {deletingUser === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
                         </div>
                       </div>
                     ))}
