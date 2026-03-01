@@ -7,6 +7,8 @@ import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import LandingHeroVisual from "@/components/landing/LandingHeroVisual";
+import BlueprintBackground, { BlueprintGrid } from "@/components/landing/BlueprintBackground";
+import MobileFooter from "@/components/landing/MobileFooter";
 
 interface LandingPageProps {
   onAuthSuccess: () => void;
@@ -64,7 +66,11 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
   const CurrentRoleIcon = roleLabels[selectedRole].icon;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row relative">
+      {/* Global blueprint background */}
+      <BlueprintGrid />
+      <BlueprintBackground />
+
       {/* LEFT SIDE — Auth Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-24 py-12 lg:py-0 relative z-10">
         <motion.div
@@ -284,18 +290,8 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
         </motion.div>
       </div>
 
-      {/* Mobile branding footer (visible only on small screens) */}
-      <div className="lg:hidden flex flex-col items-center py-8 px-6 border-t border-border/30">
-        <a
-          href="https://www.fabulouzz.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-medium border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
-        >
-          <Home className="w-3.5 h-3.5" />
-          Go to Fabulouzz Home
-        </a>
-      </div>
+      {/* Mobile branding footer */}
+      <MobileFooter />
     </div>
   );
 };
