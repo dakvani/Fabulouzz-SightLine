@@ -91,9 +91,9 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
         <div className="max-w-[1600px] mx-auto px-3 sm:px-5 h-14 flex items-center justify-between relative">
           {/* Logo section */}
           <motion.div className="flex items-center gap-2.5 cursor-pointer" onClick={() => onViewChange("dashboard")} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-            <motion.img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz Technologies" className="h-8 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+            <motion.img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz Technologies" className="h-5 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
             <div className="hidden sm:flex flex-col border-l border-border/30 pl-2.5">
-              <span className="text-[11px] font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: 'hsl(var(--primary))' }}>SIGHTLINE</span>
+              <span className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: 'hsl(var(--primary))' }}>SIGHTLINE</span>
               <span className="text-[8px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">Command Center</span>
             </div>
           </motion.div>
