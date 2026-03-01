@@ -257,14 +257,14 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
               <img
                 src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
                 alt="Fabulouzz Technologies"
-                className="h-24 xl:h-28 w-auto"
+                className="h-14 xl:h-16 w-auto"
               />
             </motion.a>
           )}
 
           {/* App Name — each letter pops up */}
           <div
-            className="flex items-center justify-center tracking-[0.3em] text-2xl xl:text-3xl mb-3 font-bold"
+            className="flex items-center justify-center tracking-[0.3em] text-4xl xl:text-5xl mb-3 font-bold"
             style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
           >
             {"SIGHTLINE".split("").map((letter, i) => (
