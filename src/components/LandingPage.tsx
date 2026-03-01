@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { LogIn, Mail, Lock, Eye, EyeOff, ChevronDown, ChevronRight, Shield, Briefcase, Users, ArrowLeft, Home } from "lucide-react";
+import ProjectManagementBackground from "./ProjectManagementBackground";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
@@ -63,7 +64,10 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
   const CurrentRoleIcon = roleLabels[selectedRole].icon;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row relative">
+      {/* Full-page animated PM background */}
+      <ProjectManagementBackground />
+
       {/* LEFT SIDE — Auth Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-24 py-12 lg:py-0 relative z-10">
         <motion.div
