@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Image, Clock } from "lucide-react";
+import { Bell, Image, Clock, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Notification {
@@ -14,6 +14,21 @@ interface Notification {
 const LiveNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [newFlash, setNewFlash] = useState(false);
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
+
+  const openLightbox = useCallback((urls: string[], index: number) => {
+    setLightbox({ urls, index });
+  }, []);
+
+  const closeLightbox = useCallback(() => setLightbox(null), []);
+
+  const navigateLightbox = useCallback((dir: 1 | -1) => {
+    setLightbox(prev => {
+      if (!prev) return null;
+      const next = (prev.index + dir + prev.urls.length) % prev.urls.length;
+      return { ...prev, index: next };
+    });
+  }, []);
 
   useEffect(() => {
     // Fetch recent notifications
@@ -64,6 +79,7 @@ const LiveNotifications = () => {
   };
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -117,8 +133,8 @@ const LiveNotifications = () => {
                     {getMediaUrls(n.media_url).length > 0 && (
                       <div className={`mt-2 grid gap-1.5 ${getMediaUrls(n.media_url).length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                         {getMediaUrls(n.media_url).map((url, i) => (
-                          <div key={i} className="rounded-lg overflow-hidden border border-border/30">
-                            <img src={url} alt={`Update media ${i + 1}`} className="w-full max-h-32 object-cover" />
+                          <div key={i} className="rounded-lg overflow-hidden border border-border/30 cursor-pointer" onClick={() => openLightbox(getMediaUrls(n.media_url), i)}>
+                            <img src={url} alt={`Update media ${i + 1}`} className="w-full max-h-32 object-cover hover:opacity-80 transition-opacity" />
                           </div>
                         ))}
                       </div>
@@ -136,6 +152,65 @@ const LiveNotifications = () => {
         </AnimatePresence>
       </div>
     </motion.div>
+
+    {/* Lightbox */}
+    <AnimatePresence>
+      {lightbox && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-background/90 backdrop-blur-md"
+          onClick={closeLightbox}
+        >
+          <button onClick={closeLightbox} className="absolute top-4 right-4 p-2 rounded-full bg-secondary/50 text-foreground hover:bg-secondary transition-colors z-10">
+            <X className="w-5 h-5" />
+          </button>
+
+          {lightbox.urls.length > 1 && (
+            <>
+              <button
+                onClick={e => { e.stopPropagation(); navigateLightbox(-1); }}
+                className="absolute left-4 p-2 rounded-full bg-secondary/50 text-foreground hover:bg-secondary transition-colors z-10"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); navigateLightbox(1); }}
+                className="absolute right-4 p-2 rounded-full bg-secondary/50 text-foreground hover:bg-secondary transition-colors z-10"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </>
+          )}
+
+          <motion.img
+            key={lightbox.index}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            src={lightbox.urls[lightbox.index]}
+            alt="Full size media"
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+
+          {lightbox.urls.length > 1 && (
+            <div className="absolute bottom-6 flex gap-1.5">
+              {lightbox.urls.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={e => { e.stopPropagation(); setLightbox(prev => prev ? { ...prev, index: i } : null); }}
+                  className={`w-2 h-2 rounded-full transition-colors ${i === lightbox.index ? 'bg-primary' : 'bg-muted-foreground/40'}`}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   );
 };
 
