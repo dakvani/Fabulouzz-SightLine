@@ -54,6 +54,15 @@ const LiveNotifications = () => {
     return `${Math.floor(hrs / 24)}d ago`;
   };
 
+  const getMediaUrls = (url: string | null): string[] => {
+    if (!url) return [];
+    try {
+      const parsed = JSON.parse(url);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return [url];
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -105,15 +114,19 @@ const LiveNotifications = () => {
                   <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground leading-relaxed">{n.message}</p>
-                    {n.media_url && (
-                      <div className="mt-2 rounded-lg overflow-hidden border border-border/30">
-                        <img src={n.media_url} alt="Update media" className="w-full max-h-32 object-cover" />
+                    {getMediaUrls(n.media_url).length > 0 && (
+                      <div className={`mt-2 grid gap-1.5 ${getMediaUrls(n.media_url).length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                        {getMediaUrls(n.media_url).map((url, i) => (
+                          <div key={i} className="rounded-lg overflow-hidden border border-border/30">
+                            <img src={url} alt={`Update media ${i + 1}`} className="w-full max-h-32 object-cover" />
+                          </div>
+                        ))}
                       </div>
                     )}
                     <div className="flex items-center gap-1 mt-1">
                       <Clock className="w-3 h-3 text-muted-foreground" />
                       <span className="text-[10px] text-muted-foreground">{timeAgo(n.created_at)}</span>
-                      {n.media_url && <Image className="w-3 h-3 text-muted-foreground ml-2" />}
+                      {getMediaUrls(n.media_url).length > 0 && <Image className="w-3 h-3 text-muted-foreground ml-2" />}
                     </div>
                   </div>
                 </div>
