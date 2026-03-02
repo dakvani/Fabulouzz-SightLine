@@ -28,31 +28,65 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const [selectedRole, setSelectedRole] = useState<RoleOption>("client");
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Welcome back!" });
-      onSuccess();
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      setLoading(false);
+      if (error) {
+        toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Welcome back!" });
+        onSuccess();
+      }
+    } catch (err: any) {
+      setLoading(false);
+      toast({
+        title: "Connection error",
+        description: "Unable to reach the server. Please check your internet connection.",
+        variant: "destructive",
+        action: (
+          <button
+            onClick={() => handleLogin()}
+            className="text-xs font-semibold px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            Retry
+          </button>
+        ),
+      });
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleForgotPassword = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setLoading(false);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Email sent", description: "Check your inbox for a reset link." });
-      setMode("login");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      setLoading(false);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Email sent", description: "Check your inbox for a reset link." });
+        setMode("login");
+      }
+    } catch (err: any) {
+      setLoading(false);
+      toast({
+        title: "Connection error",
+        description: "Unable to reach the server. Please check your internet connection.",
+        variant: "destructive",
+        action: (
+          <button
+            onClick={() => handleForgotPassword()}
+            className="text-xs font-semibold px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            Retry
+          </button>
+        ),
+      });
     }
   };
 

@@ -32,31 +32,65 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
 
   useEffect(() => setMounted(true), []);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Welcome back!" });
-      onAuthSuccess();
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      setLoading(false);
+      if (error) {
+        toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Welcome back!" });
+        onAuthSuccess();
+      }
+    } catch (err: any) {
+      setLoading(false);
+      toast({
+        title: "Connection error",
+        description: "Unable to reach the server. Please check your internet connection.",
+        variant: "destructive",
+        action: (
+          <button
+            onClick={() => handleLogin()}
+            className="text-xs font-semibold px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            Retry
+          </button>
+        ),
+      });
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleForgotPassword = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `https://fabulouzzsightline.vercel.app/reset-password`,
-    });
-    setLoading(false);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Check your inbox", description: "If you are a registered user, you will receive a password reset link shortly." });
-      setMode("login");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `https://fabulouzzsightline.vercel.app/reset-password`,
+      });
+      setLoading(false);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Check your inbox", description: "If you are a registered user, you will receive a password reset link shortly." });
+        setMode("login");
+      }
+    } catch (err: any) {
+      setLoading(false);
+      toast({
+        title: "Connection error",
+        description: "Unable to reach the server. Please check your internet connection.",
+        variant: "destructive",
+        action: (
+          <button
+            onClick={() => handleForgotPassword()}
+            className="text-xs font-semibold px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            Retry
+          </button>
+        ),
+      });
     }
   };
 
