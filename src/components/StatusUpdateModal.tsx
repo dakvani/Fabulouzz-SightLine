@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, X, Send, Loader2, ImageIcon } from "lucide-react";
+import { Upload, X, Send, Loader2, ImageIcon, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { TaskStatus } from "@/data/projectData";
@@ -142,18 +142,31 @@ const StatusUpdateModal = ({ isOpen, onClose, taskId, taskName, currentStatus }:
               </label>
               {mediaPreviews.length > 0 && (
                 <div className="mt-2 grid grid-cols-3 gap-2">
-                  {mediaPreviews.map((preview, i) => (
-                    <div key={i} className="rounded-lg overflow-hidden border border-border/30 relative aspect-square">
-                      <img src={preview} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeFile(i)}
-                        className="absolute top-1 right-1 p-1 rounded-full bg-background/80 text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
+                  {mediaPreviews.map((preview, i) => {
+                    const file = mediaFiles[i];
+                    const isVid = file?.type?.startsWith("video/");
+                    return (
+                      <div key={i} className="rounded-lg overflow-hidden border border-border/30 relative aspect-square">
+                        {isVid ? (
+                          <video src={preview} muted className="w-full h-full object-cover" preload="metadata" />
+                        ) : (
+                          <img src={preview} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
+                        )}
+                        {isVid && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-background/20 pointer-events-none">
+                            <Play className="w-5 h-5 text-foreground drop-shadow" />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeFile(i)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-background/80 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

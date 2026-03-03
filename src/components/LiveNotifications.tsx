@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Image, Clock, X, ChevronLeft, ChevronRight, Loader2, Zap } from "lucide-react";
+import { Bell, Image, Clock, X, ChevronLeft, ChevronRight, Loader2, Zap, Video, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 
@@ -80,6 +80,12 @@ const LiveNotifications = () => {
     return [url];
   };
 
+  const isVideo = (url: string): boolean => {
+    const videoExts = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.ogg'];
+    const lower = url.toLowerCase().split('?')[0];
+    return videoExts.some(ext => lower.endsWith(ext));
+  };
+
   // Keyboard navigation for lightbox
   useEffect(() => {
     if (!lightbox) return;
@@ -124,32 +130,49 @@ const LiveNotifications = () => {
         )}
       </div>
 
-      {/* Currently Active Tasks Summary */}
+      {/* Currently Active Tasks — Prominent Section */}
       {activeTasks.length > 0 && (
-        <div className="px-4 py-3 border-b border-border/30 bg-processing/5">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="px-4 py-4 border-b-2 border-processing/30 bg-processing/10">
+          <div className="flex items-center gap-2 mb-3">
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
-              <Loader2 className="w-3.5 h-3.5 text-processing" />
+              <Loader2 className="w-4 h-4 text-processing" />
             </motion.div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-processing">
-              {activeTasks.length} Active Now
+            <span className="text-xs font-bold uppercase tracking-wider text-processing">
+              Currently Active
+            </span>
+            <span className="ml-auto text-[10px] font-mono bg-processing/20 text-processing px-2.5 py-1 rounded-full font-bold">
+              {activeTasks.length} LIVE
             </span>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="space-y-2">
             {activeTasks.map(task => {
               const isProcessing = task.status === "Processing";
               return (
-                <span
+                <motion.div
                   key={task.id}
-                  className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border ${
                     isProcessing
-                      ? "bg-processing/10 text-processing border-processing/20"
-                      : "bg-initiating/10 text-initiating border-initiating/20"
+                      ? "bg-processing/10 border-processing/25"
+                      : "bg-initiating/10 border-initiating/25"
                   }`}
                 >
-                  {isProcessing ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Zap className="w-2.5 h-2.5" />}
-                  {task.name.length > 35 ? task.name.slice(0, 35) + "…" : task.name}
-                </span>
+                  {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin text-processing flex-shrink-0" /> : <Zap className="w-3.5 h-3.5 text-initiating flex-shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-semibold truncate ${isProcessing ? "text-processing" : "text-initiating"}`}>
+                      {task.name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {isProcessing ? "In Progress" : "Starting Up"}
+                    </p>
+                  </div>
+                  <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                    isProcessing ? "bg-processing/20 text-processing" : "bg-initiating/20 text-initiating"
+                  }`}>
+                    {task.status}
+                  </span>
+                </motion.div>
               );
             })}
           </div>
@@ -179,8 +202,17 @@ const LiveNotifications = () => {
                     {getMediaUrls(n.media_url).length > 0 && (
                       <div className={`mt-2 grid gap-1.5 ${getMediaUrls(n.media_url).length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3'}`}>
                         {getMediaUrls(n.media_url).map((url, i) => (
-                          <div key={i} className="rounded-lg overflow-hidden border border-border/30 cursor-pointer" onClick={() => openLightbox(getMediaUrls(n.media_url), i)}>
-                            <img src={url} alt={`Update media ${i + 1}`} className="w-full h-36 object-cover hover:opacity-80 transition-opacity" />
+                          <div key={i} className="rounded-lg overflow-hidden border border-border/30 cursor-pointer relative" onClick={() => openLightbox(getMediaUrls(n.media_url), i)}>
+                            {isVideo(url) ? (
+                              <>
+                                <video src={url} muted className="w-full h-36 object-cover" preload="metadata" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/30">
+                                  <Play className="w-8 h-8 text-foreground drop-shadow-lg" />
+                                </div>
+                              </>
+                            ) : (
+                              <img src={url} alt={`Update media ${i + 1}`} className="w-full h-36 object-cover hover:opacity-80 transition-opacity" />
+                            )}
                           </div>
                         ))}
                       </div>
@@ -188,12 +220,27 @@ const LiveNotifications = () => {
                     <div className="flex items-center gap-1 mt-1">
                       <Clock className="w-3 h-3 text-muted-foreground" />
                       <span className="text-[10px] text-muted-foreground">{timeAgo(n.created_at)}</span>
-                      {getMediaUrls(n.media_url).length > 0 && (
-                        <>
-                          <Image className="w-3 h-3 text-muted-foreground ml-2" />
-                          <span className="text-[10px] text-muted-foreground">{getMediaUrls(n.media_url).length} photo{getMediaUrls(n.media_url).length > 1 ? "s" : ""}</span>
-                        </>
-                      )}
+                      {getMediaUrls(n.media_url).length > 0 && (() => {
+                        const urls = getMediaUrls(n.media_url);
+                        const videoCount = urls.filter(u => isVideo(u)).length;
+                        const photoCount = urls.length - videoCount;
+                        return (
+                          <>
+                            {photoCount > 0 && (
+                              <>
+                                <Image className="w-3 h-3 text-muted-foreground ml-2" />
+                                <span className="text-[10px] text-muted-foreground">{photoCount} photo{photoCount > 1 ? "s" : ""}</span>
+                              </>
+                            )}
+                            {videoCount > 0 && (
+                              <>
+                                <Video className="w-3 h-3 text-muted-foreground ml-2" />
+                                <span className="text-[10px] text-muted-foreground">{videoCount} video{videoCount > 1 ? "s" : ""}</span>
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -243,17 +290,32 @@ const LiveNotifications = () => {
             </>
           )}
 
-          <motion.img
-            key={lightbox.index}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            src={lightbox.urls[lightbox.index]}
-            alt="Full size media"
-            className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          />
+          {isVideo(lightbox.urls[lightbox.index]) ? (
+            <motion.video
+              key={lightbox.index}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              src={lightbox.urls[lightbox.index]}
+              controls
+              autoPlay
+              className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            />
+          ) : (
+            <motion.img
+              key={lightbox.index}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              src={lightbox.urls[lightbox.index]}
+              alt="Full size media"
+              className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            />
+          )}
 
           {lightbox.urls.length > 1 && (
             <div className="absolute bottom-6 flex gap-2">
