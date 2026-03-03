@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { useTheme } from "next-themes";
 import { generateReportPdf } from "@/lib/generateReportPdf";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const ExportReport = () => {
   const [loading, setLoading] = useState(false);
@@ -15,10 +17,26 @@ const ExportReport = () => {
     try {
       const isDark = theme === "dark";
       const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-      const { doc } = await generateReportPdf({ tasks, projectInfo, isDark });
+
+      // Fetch latest notifications with media
+      const { data: notifications } = await supabase
+        .from("notifications")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      const { doc } = await generateReportPdf({
+        tasks,
+        projectInfo,
+        isDark,
+        notifications: notifications || [],
+      });
+
       doc.save(`SightLine_Report_${projectInfo.projectRef}_${today.replace(/\s/g, "-")}.pdf`);
+      toast({ title: "Report Exported", description: "PDF report with all data generated successfully." });
     } catch (err) {
       console.error("PDF export failed:", err);
+      toast({ title: "Export Failed", description: "Could not generate the report. Please try again.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
