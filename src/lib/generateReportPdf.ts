@@ -2,7 +2,7 @@ import { type ProjectTask, type ProjectInfo, getCalendarDays } from "@/data/proj
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 
-const loadImageAsBase64 = (src: string, maxDim = 0): Promise<string> => {
+const loadImageAsBase64 = (src: string, maxDim = 0, asJpeg = false): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -10,7 +10,6 @@ const loadImageAsBase64 = (src: string, maxDim = 0): Promise<string> => {
       const canvas = document.createElement("canvas");
       let w = img.width;
       let h = img.height;
-      // Resize for PDF to keep file size small
       if (maxDim > 0 && (w > maxDim || h > maxDim)) {
         const ratio = Math.min(maxDim / w, maxDim / h);
         w = Math.round(w * ratio);
@@ -20,7 +19,11 @@ const loadImageAsBase64 = (src: string, maxDim = 0): Promise<string> => {
       canvas.height = h;
       const ctx = canvas.getContext("2d");
       ctx?.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL("image/jpeg", 0.6)); // JPEG at 60% quality for smaller size
+      if (asJpeg) {
+        resolve(canvas.toDataURL("image/jpeg", 0.6));
+      } else {
+        resolve(canvas.toDataURL("image/png"));
+      }
     };
     img.onerror = reject;
     img.src = src;
@@ -107,7 +110,7 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     for (const url of urls) {
       if (isVideoUrl(url)) continue; // skip videos entirely
       try {
-        mediaCache[url] = await loadImageAsBase64(url, 300); // max 300px for thumbnails
+        mediaCache[url] = await loadImageAsBase64(url, 300, true); // JPEG compressed thumbnails
       } catch { /* skip failed loads */ }
     }
   }
