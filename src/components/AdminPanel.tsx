@@ -41,6 +41,8 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [subscribers, setSubscribers] = useState<any[]>([]);
   const [loadingSubscribers, setLoadingSubscribers] = useState(false);
+  const [newSubEmail, setNewSubEmail] = useState("");
+  const [addingSubscriber, setAddingSubscriber] = useState(false);
   const { tasks, projectInfo } = useProjectData();
 
   useEffect(() => {
@@ -448,6 +450,48 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                   {subscribers.filter(s => s.is_active).length} active / {subscribers.length} total
                 </span>
               </div>
+
+              {/* Add Subscriber Form */}
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!newSubEmail.trim()) return;
+                  setAddingSubscriber(true);
+                  const { error } = await supabase
+                    .from("email_subscribers")
+                    .insert({ email: newSubEmail.trim().toLowerCase() });
+                  setAddingSubscriber(false);
+                  if (error) {
+                    toast({ title: "Error", description: error.message.includes("duplicate") ? "This email is already subscribed" : error.message, variant: "destructive" });
+                  } else {
+                    toast({ title: "Subscriber added", description: newSubEmail.trim() });
+                    setNewSubEmail("");
+                    fetchSubscribers();
+                    fetchSubscriberCount();
+                  }
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  type="email"
+                  value={newSubEmail}
+                  onChange={e => setNewSubEmail(e.target.value)}
+                  placeholder="Add email to subscriber list"
+                  required
+                  className="flex-1 bg-secondary/50 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <motion.button
+                  type="submit"
+                  disabled={addingSubscriber}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                  style={{ background: "var(--gradient-primary)" }}
+                >
+                  {addingSubscriber ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+                  Add
+                </motion.button>
+              </form>
 
               {loadingSubscribers ? (
                 <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
