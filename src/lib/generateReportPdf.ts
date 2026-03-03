@@ -19,13 +19,22 @@ const loadImageAsBase64 = (src: string): Promise<string> => {
   });
 };
 
+interface NotificationData {
+  id: string;
+  message: string;
+  type: string;
+  media_url: string | null;
+  created_at: string;
+}
+
 export interface ReportOptions {
   tasks: ProjectTask[];
   projectInfo: ProjectInfo;
   isDark: boolean;
+  notifications?: NotificationData[];
 }
 
-export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOptions): Promise<{ doc: any; base64: string }> {
+export async function generateReportPdf({ tasks, projectInfo, isDark, notifications = [] }: ReportOptions): Promise<{ doc: any; base64: string }> {
   const { default: jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
 
@@ -75,6 +84,26 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
     // fallback to text
   }
 
+  // Pre-load notification media images
+  const mediaCache: Record<string, string> = {};
+  const videoExts = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.ogg'];
+  const isVideoUrl = (url: string) => {
+    const lower = url.toLowerCase().split('?')[0];
+    return videoExts.some(ext => lower.endsWith(ext));
+  };
+
+  for (const n of notifications) {
+    if (!n.media_url) continue;
+    let urls: string[] = [];
+    try { const p = JSON.parse(n.media_url); if (Array.isArray(p)) urls = p; } catch { urls = [n.media_url]; }
+    for (const url of urls) {
+      if (isVideoUrl(url)) continue; // skip videos for image embedding
+      try {
+        mediaCache[url] = await loadImageAsBase64(url);
+      } catch { /* skip failed loads */ }
+    }
+  }
+
   const calendarDays = getCalendarDays();
   const now = new Date();
   const todayIndex = calendarDays.findIndex(d =>
@@ -83,7 +112,11 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
     d.date.getDate() === now.getDate()
   );
 
-  const drawPageFooter = (doc: any, pageNum: number, totalPages: number, pw: number, ph: number) => {
+  let totalPages = 4; // cover + tasks + updates + gantt
+  const hasNotifications = notifications.length > 0;
+  if (!hasNotifications) totalPages = 3;
+
+  const drawPageFooter = (doc: any, pageNum: number, pw: number, ph: number) => {
     doc.setFillColor(...cardBgColor);
     doc.rect(0, ph - 14, pw, 14, "F");
     doc.setFillColor(...brandGreen);
@@ -95,7 +128,25 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
     doc.text(`Page ${pageNum} of ${totalPages}`, pw - 14, ph - 5, { align: "right" });
   };
 
-  // PAGE 1 — COVER PAGE
+  const drawPageHeader = (doc: any, sectionTitle: string, pw: number) => {
+    doc.setFillColor(...cardBgColor);
+    doc.rect(0, 0, pw, 24, "F");
+    doc.setFillColor(...brandGreen);
+    doc.rect(0, 24, pw, 0.8, "F");
+    if (logoData) {
+      doc.addImage(logoData, "PNG", 14, 4, 40, 13);
+    }
+    doc.setTextColor(...textSecondary);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text(sectionTitle, pw - 14, 10, { align: "right" });
+    doc.setTextColor(...brandGreen);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text(projectInfo.projectRef, pw - 14, 17, { align: "right" });
+  };
+
+  // ======== PAGE 1 — COVER PAGE ========
   doc.setFillColor(...bgColor);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
 
@@ -141,6 +192,7 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
   doc.setFont("helvetica", "normal");
   doc.text(`${projectInfo.client}  •  ${projectInfo.location}`, pageWidth / 2, subtitleY, { align: "center" });
 
+  // Summary cards
   const coverCardY = subtitleY + 18;
   const coverCardW = (pageWidth - 28 - 18) / 4;
   const coverCardH = 32;
@@ -168,6 +220,7 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
     doc.text(card.label.toUpperCase(), cx + coverCardW / 2, coverCardY + 25, { align: "center" });
   });
 
+  // Project details card
   const detailY = coverCardY + coverCardH + 16;
   doc.setFillColor(...cardBgColor);
   doc.roundedRect(30, detailY, pageWidth - 60, 52, 2, 2, "F");
@@ -194,34 +247,85 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
     doc.text(item[1], 78, dy);
   });
 
+  // Status breakdown bar
+  const barY = detailY + 58;
+  doc.setTextColor(...brandGreen);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("STATUS DISTRIBUTION", 30, barY);
+
+  const barTop = barY + 3;
+  const barWidth = pageWidth - 60;
+  const barHeight = 5;
+  const segments = [
+    { count: counts.completed, color: statusColors.Completed, label: "Completed" },
+    { count: counts.processing, color: statusColors.Processing, label: "Processing" },
+    { count: counts.initiating, color: statusColors.Initiating, label: "Initiating" },
+    { count: counts.planning, color: statusColors.Planning, label: "Planning" },
+  ];
+
+  let segX = 30;
+  segments.forEach(seg => {
+    const w = (seg.count / counts.total) * barWidth;
+    if (w > 0) {
+      doc.setFillColor(...seg.color);
+      doc.roundedRect(segX, barTop, w, barHeight, 1, 1, "F");
+      if (w > 10) {
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(5.5);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${seg.count}`, segX + w / 2, barTop + 3.5, { align: "center" });
+      }
+      segX += w;
+    }
+  });
+
+  // Legend below bar
+  let legX = 30;
+  const legY = barTop + barHeight + 5;
+  segments.forEach(seg => {
+    doc.setFillColor(...seg.color);
+    doc.roundedRect(legX, legY - 2.5, 5, 3, 0.5, 0.5, "F");
+    doc.setTextColor(...textSecondary);
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${seg.label} (${seg.count})`, legX + 7, legY);
+    legX += 38;
+  });
+
+  // Total tasks + active tasks + notifications count
+  const statsY = legY + 10;
+  doc.setFillColor(...cardBgColor);
+  doc.roundedRect(30, statsY, pageWidth - 60, 12, 2, 2, "F");
+  const statsItems = [
+    `Total Tasks: ${counts.total}`,
+    `Active: ${counts.processing + counts.initiating}`,
+    `Updates: ${notifications.length}`,
+    `Media: ${notifications.reduce((sum, n) => {
+      if (!n.media_url) return sum;
+      try { const p = JSON.parse(n.media_url); return sum + (Array.isArray(p) ? p.length : 1); } catch { return sum + 1; }
+    }, 0)} files`,
+  ];
+  const statW = (pageWidth - 60) / statsItems.length;
+  statsItems.forEach((s, i) => {
+    doc.setTextColor(...textPrimary);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text(s, 30 + i * statW + statW / 2, statsY + 7.5, { align: "center" });
+  });
+
   doc.setTextColor(...textSecondary);
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.text("CONFIDENTIAL — For authorized use only", pageWidth / 2, pageHeight - 22, { align: "center" });
 
-  drawPageFooter(doc, 1, 3, pageWidth, pageHeight);
+  drawPageFooter(doc, 1, pageWidth, pageHeight);
 
-  // PAGE 2 — TASK BREAKDOWN
+  // ======== PAGE 2 — TASK BREAKDOWN ========
   doc.addPage();
   doc.setFillColor(...bgColor);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
-
-  doc.setFillColor(...cardBgColor);
-  doc.rect(0, 0, pageWidth, 24, "F");
-  doc.setFillColor(...brandGreen);
-  doc.rect(0, 24, pageWidth, 0.8, "F");
-
-  if (logoData) {
-    doc.addImage(logoData, "PNG", 14, 4, 40, 13);
-  }
-  doc.setTextColor(...textSecondary);
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  doc.text("TASK BREAKDOWN", pageWidth - 14, 10, { align: "right" });
-  doc.setTextColor(...brandGreen);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text(projectInfo.projectRef, pageWidth - 14, 17, { align: "right" });
+  drawPageHeader(doc, "TASK BREAKDOWN", pageWidth);
 
   let y = 32;
   doc.setFillColor(...cardBgColor);
@@ -269,19 +373,21 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
-    head: [["#", "Task Name", "Status", "Duration"]],
+    head: [["#", "Task Name", "Status", "Start Day", "Duration", "Dependencies"]],
     body: tasks.map(t => [
       String(t.id).padStart(2, "0"),
       t.name,
       t.status,
+      `Day ${t.startDay}`,
       `${t.duration} days`,
+      t.dependencies && t.dependencies.length > 0 ? t.dependencies.map(d => `#${String(d).padStart(2, "0")}`).join(", ") : "—",
     ]),
     theme: "plain",
     styles: {
       fillColor: bgColor,
       textColor: textPrimary,
-      fontSize: 7.5,
-      cellPadding: 2.5,
+      fontSize: 7,
+      cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
       lineColor: gridLineColor,
       lineWidth: 0.2,
       font: "helvetica",
@@ -290,16 +396,18 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
       fillColor: cardBgColor,
       textColor: brandGreen,
       fontStyle: "bold",
-      fontSize: 7.5,
+      fontSize: 7,
     },
     alternateRowStyles: {
       fillColor: altRowColor,
     },
     columnStyles: {
       0: { cellWidth: 10, halign: "center" },
-      1: { cellWidth: "auto" },
-      2: { cellWidth: 25, halign: "center" },
-      3: { cellWidth: 22, halign: "center" },
+      1: { cellWidth: 70 },
+      2: { cellWidth: 22, halign: "center" },
+      3: { cellWidth: 18, halign: "center" },
+      4: { cellWidth: 20, halign: "center" },
+      5: { cellWidth: 28, halign: "center" },
     },
     didParseCell: (data: any) => {
       if (data.section === "body" && data.column.index === 2) {
@@ -312,9 +420,140 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
     },
   });
 
-  drawPageFooter(doc, 2, 3, pageWidth, pageHeight);
+  drawPageFooter(doc, 2, pageWidth, pageHeight);
 
-  // PAGE 3 — GANTT CHART TIMELINE (landscape)
+  // ======== PAGE 3 — LIVE UPDATES & MEDIA (if notifications exist) ========
+  let currentPage = 3;
+  if (hasNotifications) {
+    doc.addPage();
+    doc.setFillColor(...bgColor);
+    doc.rect(0, 0, pageWidth, pageHeight, "F");
+    drawPageHeader(doc, "LIVE UPDATES & MEDIA", pageWidth);
+
+    let uy = 32;
+
+    // Section title
+    doc.setTextColor(...brandGreen);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("RECENT STATUS UPDATES", 14, uy);
+    doc.setTextColor(...textSecondary);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${notifications.length} updates as of ${today}`, pageWidth - 14, uy, { align: "right" });
+    uy += 6;
+
+    for (const n of notifications) {
+      // Check if we need a new page
+      if (uy > pageHeight - 50) {
+        drawPageFooter(doc, currentPage, pageWidth, pageHeight);
+        doc.addPage();
+        totalPages++;
+        currentPage++;
+        doc.setFillColor(...bgColor);
+        doc.rect(0, 0, pageWidth, pageHeight, "F");
+        drawPageHeader(doc, "LIVE UPDATES & MEDIA (CONT.)", pageWidth);
+        uy = 32;
+      }
+
+      // Parse media URLs
+      let mediaUrls: string[] = [];
+      if (n.media_url) {
+        try { const p = JSON.parse(n.media_url); if (Array.isArray(p)) mediaUrls = p; } catch { mediaUrls = [n.media_url]; }
+      }
+      const imageUrls = mediaUrls.filter(u => !isVideoUrl(u));
+      const videoUrls = mediaUrls.filter(u => isVideoUrl(u));
+
+      // Estimate card height
+      const msgLines = doc.splitTextToSize(n.message, pageWidth - 40);
+      const textHeight = msgLines.length * 4;
+      const hasImages = imageUrls.some(u => mediaCache[u]);
+      const imageRowHeight = hasImages ? 32 : 0;
+      const videoNoteHeight = videoUrls.length > 0 ? 6 : 0;
+      const cardHeight = Math.max(16, textHeight + imageRowHeight + videoNoteHeight + 12);
+
+      // Card background
+      doc.setFillColor(...cardBgColor);
+      doc.roundedRect(14, uy, pageWidth - 28, cardHeight, 2, 2, "F");
+
+      // Accent bar
+      const accentColor = n.type === "status_update" ? statusColors.Processing : brandGreen;
+      doc.setFillColor(...accentColor);
+      doc.rect(14, uy, 1.5, cardHeight, "F");
+
+      // Timestamp
+      const dateStr = new Date(n.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      doc.setTextColor(...textSecondary);
+      doc.setFontSize(6);
+      doc.setFont("helvetica", "normal");
+      doc.text(dateStr, pageWidth - 18, uy + 5, { align: "right" });
+
+      // Type badge
+      doc.setFillColor(...accentColor);
+      doc.roundedRect(20, uy + 2, 18, 4, 1, 1, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(5);
+      doc.setFont("helvetica", "bold");
+      doc.text(n.type.toUpperCase().replace("_", " "), 29, uy + 4.8, { align: "center" });
+
+      // Message
+      doc.setTextColor(...textPrimary);
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "normal");
+      doc.text(msgLines, 20, uy + 11);
+
+      // Images grid
+      let imgY = uy + 10 + textHeight;
+      if (hasImages) {
+        imgY += 2;
+        let imgX = 20;
+        const imgSize = 28;
+        const imgGap = 3;
+        let imagesInRow = 0;
+
+        for (const url of imageUrls) {
+          if (!mediaCache[url]) continue;
+          if (imgX + imgSize > pageWidth - 20) {
+            imgX = 20;
+            imgY += imgSize + imgGap;
+          }
+          try {
+            doc.addImage(mediaCache[url], "PNG", imgX, imgY, imgSize, imgSize);
+            doc.setDrawColor(...gridLineColor);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(imgX, imgY, imgSize, imgSize, 1, 1, "S");
+          } catch { /* skip */ }
+          imgX += imgSize + imgGap;
+          imagesInRow++;
+        }
+        imgY += imgSize + 2;
+      }
+
+      // Video references
+      if (videoUrls.length > 0) {
+        doc.setTextColor(...statusColors.Processing);
+        doc.setFontSize(6);
+        doc.setFont("helvetica", "italic");
+        doc.text(`📹 ${videoUrls.length} video${videoUrls.length > 1 ? "s" : ""} attached (available in app)`, 20, imgY + 3);
+      }
+
+      // Media count
+      if (mediaUrls.length > 0) {
+        doc.setTextColor(...textSecondary);
+        doc.setFontSize(5.5);
+        doc.setFont("helvetica", "normal");
+        const mediaText = `${imageUrls.length} photo${imageUrls.length !== 1 ? "s" : ""}${videoUrls.length > 0 ? `, ${videoUrls.length} video${videoUrls.length !== 1 ? "s" : ""}` : ""}`;
+        doc.text(mediaText, pageWidth - 18, uy + cardHeight - 3, { align: "right" });
+      }
+
+      uy += cardHeight + 4;
+    }
+
+    drawPageFooter(doc, currentPage, pageWidth, pageHeight);
+    currentPage++;
+  }
+
+  // ======== LAST PAGE — GANTT CHART TIMELINE (landscape) ========
   doc.addPage("a4", "landscape");
   const lw = doc.internal.pageSize.getWidth();
   const lh = doc.internal.pageSize.getHeight();
@@ -442,17 +681,17 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
 
     const barX = ganttLeft + task.startDay * dayWidth + 0.5;
     const barW = task.duration * dayWidth - 1;
-    const barY = ry + 1.5;
+    const barYPos = ry + 1.5;
     const barH = rowHeight - 3;
     const color = statusColors[task.status] || textSecondary;
 
     doc.setFillColor(color[0], color[1], color[2]);
     doc.setGState(doc.GState({ opacity: 0.25 }));
-    doc.roundedRect(barX + 0.3, barY + 0.3, barW, barH, 1, 1, "F");
+    doc.roundedRect(barX + 0.3, barYPos + 0.3, barW, barH, 1, 1, "F");
     doc.setGState(doc.GState({ opacity: 1 }));
 
     doc.setFillColor(...color);
-    doc.roundedRect(barX, barY, barW, barH, 1, 1, "F");
+    doc.roundedRect(barX, barYPos, barW, barH, 1, 1, "F");
 
     doc.setDrawColor(...gridLineColor);
     doc.setLineWidth(0.1);
@@ -487,7 +726,7 @@ export async function generateReportPdf({ tasks, projectInfo, isDark }: ReportOp
   doc.setFontSize(5.5);
   doc.text("Shaded columns = Weekends (Fri/Sat — Saudi calendar)", legendX + 10, legendY);
 
-  drawPageFooter(doc, 3, 3, lw, lh);
+  drawPageFooter(doc, currentPage, lw, lh);
 
   const base64 = doc.output("datauristring").split(",")[1];
 
