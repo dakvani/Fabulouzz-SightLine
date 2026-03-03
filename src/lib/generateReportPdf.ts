@@ -2,17 +2,25 @@ import { type ProjectTask, type ProjectInfo, getCalendarDays } from "@/data/proj
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 
-const loadImageAsBase64 = (src: string): Promise<string> => {
+const loadImageAsBase64 = (src: string, maxDim = 0): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
+      let w = img.width;
+      let h = img.height;
+      // Resize for PDF to keep file size small
+      if (maxDim > 0 && (w > maxDim || h > maxDim)) {
+        const ratio = Math.min(maxDim / w, maxDim / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      canvas.width = w;
+      canvas.height = h;
       const ctx = canvas.getContext("2d");
-      ctx?.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
+      ctx?.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.6)); // JPEG at 60% quality for smaller size
     };
     img.onerror = reject;
     img.src = src;
@@ -97,9 +105,9 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     let urls: string[] = [];
     try { const p = JSON.parse(n.media_url); if (Array.isArray(p)) urls = p; } catch { urls = [n.media_url]; }
     for (const url of urls) {
-      if (isVideoUrl(url)) continue; // skip videos for image embedding
+      if (isVideoUrl(url)) continue; // skip videos entirely
       try {
-        mediaCache[url] = await loadImageAsBase64(url);
+        mediaCache[url] = await loadImageAsBase64(url, 300); // max 300px for thumbnails
       } catch { /* skip failed loads */ }
     }
   }
@@ -456,21 +464,20 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
         uy = 32;
       }
 
-      // Parse media URLs
+      // Parse media URLs — skip videos entirely
       let mediaUrls: string[] = [];
       if (n.media_url) {
         try { const p = JSON.parse(n.media_url); if (Array.isArray(p)) mediaUrls = p; } catch { mediaUrls = [n.media_url]; }
       }
       const imageUrls = mediaUrls.filter(u => !isVideoUrl(u));
-      const videoUrls = mediaUrls.filter(u => isVideoUrl(u));
 
       // Estimate card height
       const msgLines = doc.splitTextToSize(n.message, pageWidth - 40);
       const textHeight = msgLines.length * 4;
-      const hasImages = imageUrls.some(u => mediaCache[u]);
-      const imageRowHeight = hasImages ? 32 : 0;
-      const videoNoteHeight = videoUrls.length > 0 ? 6 : 0;
-      const cardHeight = Math.max(16, textHeight + imageRowHeight + videoNoteHeight + 12);
+      const loadedImages = imageUrls.filter(u => mediaCache[u]);
+      const imageRows = Math.ceil(loadedImages.length / 5);
+      const imageRowHeight = loadedImages.length > 0 ? imageRows * 24 : 0;
+      const cardHeight = Math.max(14, textHeight + imageRowHeight + 10);
 
       // Card background
       doc.setFillColor(...cardBgColor);
@@ -502,48 +509,34 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
       doc.setFont("helvetica", "normal");
       doc.text(msgLines, 20, uy + 11);
 
-      // Images grid
+      // Images grid — compact thumbnails
       let imgY = uy + 10 + textHeight;
-      if (hasImages) {
-        imgY += 2;
+      if (loadedImages.length > 0) {
         let imgX = 20;
-        const imgSize = 28;
-        const imgGap = 3;
-        let imagesInRow = 0;
+        const imgSize = 22;
+        const imgGap = 2;
 
-        for (const url of imageUrls) {
-          if (!mediaCache[url]) continue;
+        for (const url of loadedImages) {
           if (imgX + imgSize > pageWidth - 20) {
             imgX = 20;
             imgY += imgSize + imgGap;
           }
           try {
-            doc.addImage(mediaCache[url], "PNG", imgX, imgY, imgSize, imgSize);
+            doc.addImage(mediaCache[url], "JPEG", imgX, imgY, imgSize, imgSize);
             doc.setDrawColor(...gridLineColor);
-            doc.setLineWidth(0.3);
+            doc.setLineWidth(0.2);
             doc.roundedRect(imgX, imgY, imgSize, imgSize, 1, 1, "S");
           } catch { /* skip */ }
           imgX += imgSize + imgGap;
-          imagesInRow++;
         }
-        imgY += imgSize + 2;
       }
 
-      // Video references
-      if (videoUrls.length > 0) {
-        doc.setTextColor(...statusColors.Processing);
-        doc.setFontSize(6);
-        doc.setFont("helvetica", "italic");
-        doc.text(`📹 ${videoUrls.length} video${videoUrls.length > 1 ? "s" : ""} attached (available in app)`, 20, imgY + 3);
-      }
-
-      // Media count
-      if (mediaUrls.length > 0) {
+      // Photo count label
+      if (loadedImages.length > 0) {
         doc.setTextColor(...textSecondary);
         doc.setFontSize(5.5);
         doc.setFont("helvetica", "normal");
-        const mediaText = `${imageUrls.length} photo${imageUrls.length !== 1 ? "s" : ""}${videoUrls.length > 0 ? `, ${videoUrls.length} video${videoUrls.length !== 1 ? "s" : ""}` : ""}`;
-        doc.text(mediaText, pageWidth - 18, uy + cardHeight - 3, { align: "right" });
+        doc.text(`${loadedImages.length} photo${loadedImages.length !== 1 ? "s" : ""}`, pageWidth - 18, uy + cardHeight - 3, { align: "right" });
       }
 
       uy += cardHeight + 4;
