@@ -132,7 +132,7 @@ const LiveNotifications = () => {
 
       {/* Currently Active Tasks — Prominent Section */}
       {activeTasks.length > 0 && (
-        <div className="px-4 py-4 border-b-2 border-processing/30 bg-processing/10">
+        <div className="px-4 py-4 border-b-2 border-processing/30 bg-processing/10 max-h-[200px] overflow-y-auto">
           <div className="flex items-center gap-2 mb-3">
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
               <Loader2 className="w-4 h-4 text-processing" />
