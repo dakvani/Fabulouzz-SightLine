@@ -35,7 +35,7 @@ const useScrollDirection = () => {
   return { hidden, scrolled };
 };
 
-const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
+const AppHeader = ({ activeView, onViewChange, onBackToProjects }: AppHeaderProps) => {
   const [showAuth, setShowAuth] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [user, setUser] = useState<any>(null);
