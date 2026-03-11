@@ -12,6 +12,7 @@ import ExportReport from "./ExportReport";
 interface AppHeaderProps {
   activeView: "dashboard" | "timeline" | "tasks" | "kanban";
   onViewChange: (view: "dashboard" | "timeline" | "tasks" | "kanban") => void;
+  onBackToProjects?: () => void;
 }
 
 const useScrollDirection = () => {
