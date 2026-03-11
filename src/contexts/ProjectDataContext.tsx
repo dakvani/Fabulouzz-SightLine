@@ -8,6 +8,8 @@ interface ProjectDataContextType {
   loading: boolean;
   refresh: () => Promise<void>;
   projectId: string | null;
+  setSelectedProjectId: (id: string | null) => void;
+  selectedProjectId: string | null;
 }
 
 const ProjectDataContext = createContext<ProjectDataContextType>({
@@ -16,6 +18,8 @@ const ProjectDataContext = createContext<ProjectDataContextType>({
   loading: false,
   refresh: async () => {},
   projectId: null,
+  setSelectedProjectId: () => {},
+  selectedProjectId: null,
 });
 
 export const useProjectData = () => useContext(ProjectDataContext);
@@ -24,6 +28,7 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
   const [tasks, setTasks] = useState<ProjectTask[]>(staticTasks);
   const [projectInfo, setProjectInfo] = useState<ProjectInfo>(staticProjectInfo);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const applyProject = useCallback((p: any) => {
@@ -56,25 +61,32 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchData = useCallback(async () => {
+    if (!selectedProjectId) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { data: projects } = await supabase
+      setLoading(true);
+      const { data: project } = await supabase
         .from("projects")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(1);
+        .eq("id", selectedProjectId)
+        .single();
 
-      if (projects && projects.length > 0) {
-        const p = projects[0];
-        applyProject(p);
+      if (project) {
+        applyProject(project);
 
         const { data: dbTasks } = await supabase
           .from("tasks")
           .select("*")
-          .eq("project_id", p.id)
+          .eq("project_id", project.id)
           .order("task_number", { ascending: true });
 
         if (dbTasks && dbTasks.length > 0) {
           applyTasks(dbTasks);
+        } else {
+          setTasks([]);
         }
       }
     } catch (err) {
@@ -82,33 +94,30 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [applyProject, applyTasks]);
+  }, [selectedProjectId, applyProject, applyTasks]);
 
   useEffect(() => {
-    // Wait for auth to be ready before fetching
-    const init = async () => {
-      await supabase.auth.getSession();
+    if (selectedProjectId) {
       fetchData();
-    };
-    init();
-
-    // Re-fetch when auth state changes (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      fetchData();
-    });
-
-    return () => subscription.unsubscribe();
-  }, [fetchData]);
+    } else {
+      // Reset when no project selected
+      setProjectId(null);
+      setTasks([]);
+      setProjectInfo(staticProjectInfo);
+      setLoading(false);
+    }
+  }, [selectedProjectId, fetchData]);
 
   // Realtime subscriptions
   useEffect(() => {
+    if (!projectId) return;
+
     const channel = supabase
       .channel("project-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tasks" },
         () => {
-          // Re-fetch all tasks on any change
           if (projectId) {
             supabase
               .from("tasks")
@@ -126,7 +135,9 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
         { event: "*", schema: "public", table: "projects" },
         (payload) => {
           if (payload.new && typeof payload.new === "object" && "id" in payload.new) {
-            applyProject(payload.new);
+            if ((payload.new as any).id === projectId) {
+              applyProject(payload.new);
+            }
           }
         }
       )
@@ -138,7 +149,7 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
   }, [projectId, applyProject, applyTasks]);
 
   return (
-    <ProjectDataContext.Provider value={{ tasks, projectInfo, loading, refresh: fetchData, projectId }}>
+    <ProjectDataContext.Provider value={{ tasks, projectInfo, loading, refresh: fetchData, projectId, setSelectedProjectId, selectedProjectId }}>
       {children}
     </ProjectDataContext.Provider>
   );
