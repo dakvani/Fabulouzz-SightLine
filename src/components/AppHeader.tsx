@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon } from "lucide-react";
+import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
@@ -12,6 +12,7 @@ import ExportReport from "./ExportReport";
 interface AppHeaderProps {
   activeView: "dashboard" | "timeline" | "tasks" | "kanban";
   onViewChange: (view: "dashboard" | "timeline" | "tasks" | "kanban") => void;
+  onBackToProjects?: () => void;
 }
 
 const useScrollDirection = () => {
@@ -34,7 +35,7 @@ const useScrollDirection = () => {
   return { hidden, scrolled };
 };
 
-const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
+const AppHeader = ({ activeView, onViewChange, onBackToProjects }: AppHeaderProps) => {
   const [showAuth, setShowAuth] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -90,6 +91,18 @@ const AppHeader = ({ activeView, onViewChange }: AppHeaderProps) => {
 
         <div className="max-w-[1600px] mx-auto px-3 sm:px-5 h-14 flex items-center justify-between relative">
           {/* Logo section */}
+          {onBackToProjects && (
+              <motion.button
+                onClick={onBackToProjects}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-medium border border-border/20 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors mr-1"
+                title="Back to Projects"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Projects</span>
+              </motion.button>
+            )}
           <motion.div className="flex items-center gap-2.5 cursor-pointer" onClick={() => onViewChange("dashboard")} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
             <motion.img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz Technologies" className="h-5 w-auto" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
             <div className="hidden sm:flex flex-col border-l border-border/30 pl-2.5">

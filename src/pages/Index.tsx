@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import LandingPage from "@/components/LandingPage";
+import ProjectSelector from "@/components/ProjectSelector";
 import AppHeader from "@/components/AppHeader";
 import ProgressRing from "@/components/ProgressRing";
 import StatusTicker from "@/components/StatusTicker";
@@ -28,7 +29,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
   const [mustChangePassword, setMustChangePassword] = useState(false);
-  const { tasks } = useProjectData();
+  const { tasks, selectedProjectId, setSelectedProjectId } = useProjectData();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
@@ -37,6 +38,10 @@ const Index = () => {
       setLoading(false);
       if (u?.user_metadata?.must_change_password) {
         setMustChangePassword(true);
+      }
+      // Clear project selection on logout
+      if (!u) {
+        setSelectedProjectId(null);
       }
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -66,6 +71,22 @@ const Index = () => {
     return <LandingPage onAuthSuccess={() => {}} />;
   }
 
+  // Show project selector if no project is selected
+  if (!selectedProjectId) {
+    return (
+      <>
+        <ChangePasswordModal
+          isOpen={mustChangePassword}
+          onSuccess={() => setMustChangePassword(false)}
+        />
+        <ProjectSelector
+          onSelectProject={(id) => setSelectedProjectId(id)}
+          userId={user.id}
+        />
+      </>
+    );
+  }
+
   const weights: Record<string, number> = { Completed: 1, Processing: 0.5, Initiating: 0.2, Planning: 0 };
   const progress = tasks.length > 0
     ? Math.round((tasks.reduce((sum, t) => sum + (weights[t.status] || 0), 0) / tasks.length) * 100)
@@ -79,7 +100,11 @@ const Index = () => {
       />
       <SubscribePromptModal userId={user.id} />
       <div className="relative z-10">
-        <AppHeader activeView={activeView} onViewChange={setActiveView} />
+        <AppHeader
+          activeView={activeView}
+          onViewChange={setActiveView}
+          onBackToProjects={() => setSelectedProjectId(null)}
+        />
 
         <main className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-6 relative">
           {activeView === "dashboard" && (
