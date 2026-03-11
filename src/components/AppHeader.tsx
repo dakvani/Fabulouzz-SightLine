@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon } from "lucide-react";
+import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
