@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Image, Clock, X, ChevronLeft, ChevronRight, Loader2, Zap, Video, Play } from "lucide-react";
+import { Bell, Image, Clock, X, ChevronLeft, ChevronRight, Loader2, Zap, Video, Play, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 
@@ -10,6 +10,7 @@ interface Notification {
   type: string;
   media_url: string | null;
   created_at: string;
+  task_id: string | null;
 }
 
 const LiveNotifications = () => {
@@ -92,7 +93,6 @@ const LiveNotifications = () => {
     return videoExts.some(ext => lower.endsWith(ext));
   };
 
-  // Keyboard navigation for lightbox
   useEffect(() => {
     if (!lightbox) return;
     const handler = (e: KeyboardEvent) => {
@@ -112,19 +112,23 @@ const LiveNotifications = () => {
       transition={{ delay: 0.7 }}
       className="glass-card overflow-hidden relative"
     >
-      {newFlash && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 0] }}
-          transition={{ duration: 2 }}
-          className="absolute inset-0 border-2 border-primary/40 rounded-xl pointer-events-none z-10"
-        />
-      )}
+      {/* Subtle fade-in glow for new updates */}
+      <AnimatePresence>
+        {newFlash && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.5 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.8, ease: "easeOut" }}
+            className="absolute inset-0 rounded-xl pointer-events-none z-10 bg-gradient-to-b from-primary/10 via-transparent to-transparent"
+          />
+        )}
+      </AnimatePresence>
 
       <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
         <motion.div
-          animate={newFlash ? { rotate: [0, -15, 15, -15, 0], scale: [1, 1.2, 1] } : {}}
-          transition={{ duration: 0.5 }}
+          animate={newFlash ? { scale: [1, 1.15, 1] } : {}}
+          transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <Bell className="w-4 h-4 text-primary" />
         </motion.div>
@@ -136,6 +140,7 @@ const LiveNotifications = () => {
         )}
       </div>
 
+      {/* Currently Active Tasks */}
       {activeTasks.length > 0 && (
         <div className="px-5 py-5 sm:px-6 sm:py-6 bg-processing/5 max-h-[280px] sm:max-h-[340px] overflow-y-auto">
           <div className="flex items-center gap-2 mb-4">
@@ -184,68 +189,79 @@ const LiveNotifications = () => {
         </div>
       )}
 
-      <div className="max-h-[720px] sm:max-h-[820px] xl:max-h-[920px] overflow-y-auto">
+      {/* Updates Feed — Card-style like Active Tasks */}
+      <div className="max-h-[720px] sm:max-h-[820px] xl:max-h-[920px] overflow-y-auto px-5 py-4 sm:px-6 sm:py-5 space-y-3">
         <AnimatePresence initial={false}>
-          {notifications.map((n) => (
+          {notifications.map((n) => {
+            const mediaUrls = getMediaUrls(n.media_url);
+            const hasMedia = mediaUrls.length > 0;
+            const videoCount = mediaUrls.filter(u => isVideo(u)).length;
+            const photoCount = mediaUrls.length - videoCount;
+
+            return (
               <motion.div
                 key={n.id}
-                initial={{ opacity: 0, x: -20, height: 0 }}
-                animate={{ opacity: 1, x: 0, height: "auto" }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3 }}
-                className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/10 hover:bg-secondary/20 transition-colors"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="rounded-[0.625rem] border border-border/30 bg-secondary/10 hover:bg-secondary/20 transition-colors overflow-hidden"
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                {/* Update header */}
+                <div className="px-4 py-3 sm:px-5 sm:py-4 flex items-start gap-3">
+                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-4 h-4 text-primary" />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground leading-relaxed">{n.message}</p>
-                    {getMediaUrls(n.media_url).length > 0 && (
-                      <div className={`mt-3 grid gap-2 ${getMediaUrls(n.media_url).length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3'}`}>
-                        {getMediaUrls(n.media_url).map((url, i) => (
-                          <div key={i} className="rounded-[0.625rem] overflow-hidden border border-border/30 cursor-pointer relative" onClick={() => openLightbox(getMediaUrls(n.media_url), i)}>
-                            {isVideo(url) ? (
-                              <>
-                                <video src={url} muted className="w-full h-36 object-cover" preload="metadata" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-background/30">
-                                  <Play className="w-8 h-8 text-foreground drop-shadow-lg" />
-                                </div>
-                              </>
-                            ) : (
-                              <img src={url} alt={`Update media ${i + 1}`} className="w-full h-36 object-cover hover:opacity-80 transition-opacity" />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1 mt-2">
-                      <Clock className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">{timeAgo(n.created_at)}</span>
-                      {getMediaUrls(n.media_url).length > 0 && (() => {
-                        const urls = getMediaUrls(n.media_url);
-                        const videoCount = urls.filter(u => isVideo(u)).length;
-                        const photoCount = urls.length - videoCount;
-                        return (
-                          <>
-                            {photoCount > 0 && (
-                              <>
-                                <Image className="w-3 h-3 text-muted-foreground ml-2" />
-                                <span className="text-[10px] text-muted-foreground">{photoCount} photo{photoCount > 1 ? "s" : ""}</span>
-                              </>
-                            )}
-                            {videoCount > 0 && (
-                              <>
-                                <Video className="w-3 h-3 text-muted-foreground ml-2" />
-                                <span className="text-[10px] text-muted-foreground">{videoCount} video{videoCount > 1 ? "s" : ""}</span>
-                              </>
-                            )}
-                          </>
-                        );
-                      })()}
+                    <p className="text-sm font-medium text-foreground leading-relaxed">{n.message}</p>
+                    <div className="flex items-center flex-wrap gap-2 mt-2">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {timeAgo(n.created_at)}
+                      </span>
+                      {n.type && (
+                        <span className="text-[9px] font-mono uppercase bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded">
+                          {n.type.replace(/_/g, " ")}
+                        </span>
+                      )}
+                      {hasMedia && (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          {photoCount > 0 && <><Image className="w-3 h-3" />{photoCount} photo{photoCount > 1 ? "s" : ""}</>}
+                          {videoCount > 0 && <><Video className="w-3 h-3 ml-1" />{videoCount} video{videoCount > 1 ? "s" : ""}</>}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
+
+                {/* Media grid — visually nested under this update */}
+                {hasMedia && (
+                  <div className="px-4 pb-3 sm:px-5 sm:pb-4">
+                    <div className={`grid gap-2 ${mediaUrls.length === 1 ? 'grid-cols-1 max-w-md' : 'grid-cols-2 sm:grid-cols-3'}`}>
+                      {mediaUrls.map((url, i) => (
+                        <div
+                          key={i}
+                          className="rounded-[0.625rem] overflow-hidden border border-border/20 cursor-pointer relative group"
+                          onClick={() => openLightbox(mediaUrls, i)}
+                        >
+                          {isVideo(url) ? (
+                            <>
+                              <video src={url} muted className="w-full h-44 object-cover" preload="metadata" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-background/30 group-hover:bg-background/10 transition-colors">
+                                <Play className="w-8 h-8 text-foreground drop-shadow-lg" />
+                              </div>
+                            </>
+                          ) : (
+                            <img src={url} alt={`Media for: ${n.message.slice(0, 40)}`} className="w-full h-44 object-cover group-hover:opacity-90 transition-opacity" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
-            ))}
+            );
+          })}
         </AnimatePresence>
       </div>
     </motion.div>
@@ -264,14 +280,12 @@ const LiveNotifications = () => {
             <X className="w-5 h-5" />
           </button>
 
-          {/* Counter */}
           {lightbox.urls.length > 1 && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 text-xs font-mono text-muted-foreground bg-secondary/60 px-3 py-1 rounded-full z-10">
               {lightbox.index + 1} / {lightbox.urls.length}
             </div>
           )}
 
-          {/* Previous button */}
           {lightbox.urls.length > 1 && (
             <>
               <button

@@ -1,0 +1,1 @@
+UPDATE notifications SET project_id = 'a0000000-0000-0000-0000-000000000001' WHERE project_id IS NULL;
