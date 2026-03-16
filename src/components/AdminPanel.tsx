@@ -43,7 +43,7 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [loadingSubscribers, setLoadingSubscribers] = useState(false);
   const [newSubEmail, setNewSubEmail] = useState("");
   const [addingSubscriber, setAddingSubscriber] = useState(false);
-  const { tasks, projectInfo } = useProjectData();
+  const { tasks, projectInfo, projectId } = useProjectData();
 
   // Project Members tab state
   const [allProjects, setAllProjects] = useState<any[]>([]);
