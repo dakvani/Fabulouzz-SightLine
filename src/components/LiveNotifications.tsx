@@ -174,59 +174,36 @@ const LiveNotifications = () => {
           <Bell className="w-4 h-4 text-primary" />
         </motion.div>
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Live Updates</h3>
+
+        {/* Latest notification on the right side with accent color */}
         {notifications.length > 0 && (
-          <span className="ml-auto text-[10px] font-mono bg-primary/10 text-primary px-2.5 py-1 rounded-full">
-            {notifications.length}
-          </span>
+          <div className="ml-auto flex items-center gap-2 max-w-[50%]">
+            <span className="text-[10px] font-medium text-accent-foreground bg-accent/20 px-2.5 py-1 rounded-full truncate">
+              {notifications[0].message.length > 50 ? notifications[0].message.slice(0, 50) + "…" : notifications[0].message}
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Currently Active Tasks */}
+      {/* Typewriter ticker for active tasks — inline, no separate section */}
       {activeTasks.length > 0 && (
-        <div className="px-5 py-5 sm:px-6 sm:py-6 bg-processing/5 max-h-[280px] sm:max-h-[340px] overflow-y-auto">
-          <div className="flex items-center gap-2 mb-4">
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
-              <Loader2 className="w-4 h-4 text-processing" />
-            </motion.div>
-            <span className="text-xs font-bold uppercase tracking-wider text-processing">
-              Currently Active
-            </span>
-            <span className="ml-auto text-[10px] font-mono bg-processing/20 text-processing px-2.5 py-1 rounded-full font-bold">
-              {activeTasks.length} LIVE
+        <div className="px-5 py-3 sm:px-6 flex items-center gap-3 bg-processing/5">
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
+            <Loader2 className="w-3.5 h-3.5 text-processing flex-shrink-0" />
+          </motion.div>
+          <div className="flex-1 min-w-0 h-5 flex items-center">
+            <span className="text-xs font-semibold text-processing truncate">
+              {tickerText}
+              <motion.span
+                animate={{ opacity: [1, 0] }}
+                transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+                className="inline-block w-[2px] h-3.5 bg-processing ml-0.5 align-middle"
+              />
             </span>
           </div>
-          <div className="space-y-3">
-            {activeTasks.map(task => {
-              const isProcessing = task.status === "Processing";
-              return (
-                <motion.div
-                  key={task.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-[0.625rem] border ${
-                    isProcessing
-                      ? "bg-processing/10 border-processing/25"
-                      : "bg-initiating/10 border-initiating/25"
-                  }`}
-                >
-                  {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin text-processing flex-shrink-0" /> : <Zap className="w-3.5 h-3.5 text-initiating flex-shrink-0" />}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold truncate ${isProcessing ? "text-processing" : "text-initiating"}`}>
-                      {task.name}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {isProcessing ? "In Progress" : "Starting Up"}
-                    </p>
-                  </div>
-                  <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                    isProcessing ? "bg-processing/20 text-processing" : "bg-initiating/20 text-initiating"
-                  }`}>
-                    {task.status}
-                  </span>
-                </motion.div>
-              );
-            })}
-          </div>
+          <span className="text-[10px] font-mono bg-processing/20 text-processing px-2.5 py-1 rounded-full font-bold flex-shrink-0">
+            {activeTasks.length} LIVE
+          </span>
         </div>
       )}
 
