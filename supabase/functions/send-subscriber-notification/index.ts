@@ -53,10 +53,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const projectId = (await req.json().catch(() => ({})))?.projectId || null;
+    const body = JSON.parse(await req.text().catch(() => "{}"));
+    // Re-parse since we consumed the body above — use the initial parsed values
     const { data: subscribers, error: subError } = await adminClient
       .from("email_subscribers")
       .select("email")
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("project_id", projectId);
 
     if (subError) throw subError;
     if (!subscribers || subscribers.length === 0) {
