@@ -1,8 +1,9 @@
-import { getCalendarDays, getStatusColor, type TaskStatus } from "@/data/projectData";
+import { getStatusColor, type TaskStatus } from "@/data/projectData";
 import { motion } from "framer-motion";
 import { useRef, useState, useMemo, useEffect } from "react";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getCalendarDays, getTaskDateRange, getTimelineEndDate, parseProjectDate } from "@/lib/projectTimeline";
 
 const statusBgMap: Record<string, string> = {
   completed: "bg-completed",
@@ -27,7 +28,6 @@ const statusColorVar: Record<string, string> = {
 
 const GanttChart = () => {
   const { tasks, projectInfo } = useProjectData();
-  const days = getCalendarDays();
   const [hoveredTask, setHoveredTask] = useState<number | null>(null);
   const isMobile = useIsMobile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -39,17 +39,19 @@ const GanttChart = () => {
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const projectStart = projectInfo.startDate ? new Date(projectInfo.startDate) : new Date(2026, 1, 21);
+  const projectStart = useMemo(
+    () => parseProjectDate(projectInfo.startDate, new Date(2026, 1, 21)),
+    [projectInfo.startDate]
+  );
+  const timelineEndDate = useMemo(
+    () => getTimelineEndDate(projectInfo, tasks),
+    [projectInfo, tasks]
+  );
+  const days = useMemo(
+    () => getCalendarDays(projectStart, timelineEndDate),
+    [projectStart, timelineEndDate]
+  );
   const todayOffset = Math.floor((today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
-
-  const getTaskDateRange = (startDay: number, duration: number) => {
-    const start = new Date(projectStart);
-    start.setDate(start.getDate() + startDay);
-    const end = new Date(start);
-    end.setDate(end.getDate() + duration - 1);
-    const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-    return { startDate: fmt(start), endDate: fmt(end) };
-  };
 
   // Auto-scroll to today on mount
   useEffect(() => {
