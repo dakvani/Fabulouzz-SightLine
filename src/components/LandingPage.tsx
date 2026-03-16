@@ -122,7 +122,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
               >
                 SIGHTLINE
               </span>
-              <span className="text-[7px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
+              <span className="text-[8px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
                 Command Center
               </span>
             </div>
