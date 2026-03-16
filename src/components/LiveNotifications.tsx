@@ -184,21 +184,16 @@ const LiveNotifications = () => {
         </div>
       )}
 
-      <div className="min-h-[380px] sm:min-h-[440px] max-h-[720px] sm:max-h-[820px] xl:max-h-[920px] overflow-y-auto">
+      <div className="max-h-[720px] sm:max-h-[820px] xl:max-h-[920px] overflow-y-auto">
         <AnimatePresence initial={false}>
-          {notifications.length === 0 ? (
-            <div className="min-h-[380px] sm:min-h-[440px] px-6 py-10 flex items-center justify-center text-center text-sm text-muted-foreground">
-              No updates yet. Status changes will appear here in real-time.
-            </div>
-          ) : (
-            notifications.map((n) => (
+          {notifications.map((n) => (
               <motion.div
                 key={n.id}
                 initial={{ opacity: 0, x: -20, height: 0 }}
                 animate={{ opacity: 1, x: 0, height: "auto" }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3 }}
-                className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/20 hover:bg-secondary/20 transition-colors"
+                className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/10 hover:bg-secondary/20 transition-colors"
               >
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
@@ -250,8 +245,7 @@ const LiveNotifications = () => {
                   </div>
                 </div>
               </motion.div>
-            ))
-          )}
+            ))}
         </AnimatePresence>
       </div>
     </motion.div>
