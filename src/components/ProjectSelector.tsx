@@ -417,7 +417,7 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
 
       {/* Footer */}
       <div className="text-center text-[10px] text-muted-foreground py-8 border-t border-border/20">
-        Powered by <a href="https://fabulouzz.com" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Fabulouzz Technologies</a> • SightLine Command Center
+        Powered by <a href="https://www.fabulouzz.com" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Fabulouzz Technologies</a> • SightLine Command Center
       </div>
 
       <CreateProjectModal
