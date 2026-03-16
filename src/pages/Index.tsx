@@ -106,9 +106,9 @@ const Index = () => {
           onBackToProjects={() => setSelectedProjectId(null)}
         />
 
-        <main className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-6 relative">
+        <main className="max-w-[1600px] mx-auto px-2.5 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6 relative">
           {activeView === "dashboard" && (
-            <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-5">
+            <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3 sm:space-y-4 md:space-y-5">
               <div className="space-y-2 sm:space-y-3">
                 <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
                   <StatusTicker />
@@ -118,15 +118,15 @@ const Index = () => {
                 </motion.div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-4 sm:gap-5">
-                <motion.div className="sm:col-span-1 md:col-span-3 glass-card p-4 sm:p-6 flex items-center justify-center"
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 md:gap-5">
+                <motion.div className="md:col-span-3 glass-card p-3 sm:p-4 md:p-6 flex items-center justify-center"
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}>
                   <ProgressRing progress={progress} size={130} label="Overall Progress" />
                 </motion.div>
-                <motion.div className="sm:col-span-2 md:col-span-5" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                <motion.div className="md:col-span-5" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
                   <MilestoneCountdown />
                 </motion.div>
-                <div className="sm:col-span-2 md:col-span-4 grid grid-rows-2 gap-4">
+                <div className="md:col-span-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 md:grid-rows-2 gap-3 sm:gap-4">
                   <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
                     <WeatherWidget />
                   </motion.div>
