@@ -72,11 +72,13 @@ const TaskManagement = () => {
 
   const startEdit = (task: typeof tasks[0]) => {
     setEditingId(task.id);
+    const taskStart = new Date(projectStart);
+    taskStart.setDate(taskStart.getDate() + task.startDay);
     setEditData({
       task_number: task.id,
       name: task.name,
       status: task.status,
-      start_day: task.startDay,
+      startDate: taskStart,
       duration: task.duration,
       dependencies: task.dependencies || [],
     });
