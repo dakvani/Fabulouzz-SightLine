@@ -49,7 +49,7 @@ const TaskList = () => {
                 <span className="text-xs font-mono text-muted-foreground w-6 flex-shrink-0">{String(task.id).padStart(2, "0")}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className={`text-sm truncate ${isProcessing ? "text-foreground font-medium" : "text-foreground"}`}>{task.name}</p>
+                    <p className={`text-xs sm:text-sm truncate ${isProcessing ? "text-foreground font-medium" : "text-foreground"}`}>{task.name}</p>
                     {isProcessing && (
                       <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
                         <Activity className="w-3.5 h-3.5 text-processing flex-shrink-0" />
