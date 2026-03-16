@@ -32,7 +32,7 @@ const TaskList = () => {
   return (
     <>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="glass-card overflow-hidden">
-        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
+        <div className="px-3 py-3 sm:px-5 sm:py-4 md:px-6 md:py-5 border-b border-border/50 flex items-center gap-2 sm:gap-3">
           <Activity className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">All Tasks</h3>
           <span className="ml-auto text-[10px] font-mono bg-muted/50 text-muted-foreground px-2 py-0.5 rounded-full">{tasks.length} total</span>
