@@ -16,7 +16,7 @@ const LiveNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [newFlash, setNewFlash] = useState(false);
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
-  const { tasks } = useProjectData();
+  const { tasks, selectedProjectId } = useProjectData();
 
   const activeTasks = tasks.filter(t => t.status === "Processing" || t.status === "Initiating");
 
