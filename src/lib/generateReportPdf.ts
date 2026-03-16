@@ -196,11 +196,16 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
   doc.setFillColor(...brandGreen);
   doc.rect(pageWidth / 2 - 30, dividerY, 60, 0.6, "F");
 
-  // PROJECT STATUS REPORT — centered with letter spacing
+  // PROJECT STATUS REPORT — manually centered (charSpace breaks align:"center")
   doc.setTextColor(...brandGreen);
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("PROJECT STATUS REPORT", pageWidth / 2, dividerY + 10, { align: "center", charSpace: 2.5 });
+  const reportLabel = "PROJECT STATUS REPORT";
+  const charSp = 2.5;
+  const labelBaseWidth = doc.getTextWidth(reportLabel);
+  const labelTotalWidth = labelBaseWidth + charSp * (reportLabel.length - 1);
+  const labelX = (pageWidth - labelTotalWidth) / 2;
+  doc.text(reportLabel, labelX, dividerY + 10, { charSpace: charSp });
 
   // Project title — centered
   const titleY = dividerY + 24;
