@@ -210,19 +210,19 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-8 py-6 sm:py-8 md:py-12">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-8"
+          className="mb-6 sm:mb-8"
         >
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight">
                 Projects
               </h1>
-              <p className="text-sm text-muted-foreground mt-1.5">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-1.5">
                 {projects.length} project{projects.length !== 1 ? "s" : ""} • Select one to open its dashboard
               </p>
             </div>
@@ -231,7 +231,7 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
                 onClick={() => setShowCreate(true)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20"
+                className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 self-start sm:self-auto"
                 style={{ background: "var(--gradient-primary)" }}
               >
                 <Plus className="w-4 h-4" />
