@@ -33,6 +33,7 @@ const LiveNotifications = () => {
   const [tickerIndex, setTickerIndex] = useState(0);
   const [tickerText, setTickerText] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const { tasks, selectedProjectId } = useProjectData();
 
   const activeTasks = tasks.filter(t => t.status === "Processing" || t.status === "Initiating");
