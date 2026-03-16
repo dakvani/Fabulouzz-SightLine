@@ -4,6 +4,7 @@ import { Upload, X, Send, Loader2, ImageIcon, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { TaskStatus } from "@/data/projectData";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 
 interface StatusUpdateModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ const StatusUpdateModal = ({ isOpen, onClose, taskId, taskName, currentStatus }:
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const { projectId } = useProjectData();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -61,11 +63,21 @@ const StatusUpdateModal = ({ isOpen, onClose, taskId, taskName, currentStatus }:
         mediaUrl = JSON.stringify(urls);
       }
 
-      // Create notification
+      // Update the task status in the database
+      if (projectId && newStatus !== currentStatus) {
+        await supabase
+          .from("tasks")
+          .update({ status: newStatus })
+          .eq("project_id", projectId)
+          .eq("task_number", taskId);
+      }
+
+      // Create notification scoped to this project
       const { error: notifError } = await supabase.from("notifications").insert({
         message: message || `Task #${taskId} "${taskName}" status updated to ${newStatus}`,
         type: "status_update",
         media_url: mediaUrl,
+        project_id: projectId,
       });
 
       if (notifError) throw notifError;
