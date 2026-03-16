@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FolderOpen, Plus, MapPin, Calendar, User, LogOut, Sun, Moon, Users, Search, X, BarChart3 } from "lucide-react";
+import { FolderOpen, Plus, MapPin, Calendar, User, LogOut, Sun, Moon, Users, Search, X, BarChart3, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
