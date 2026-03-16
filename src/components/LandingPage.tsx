@@ -128,10 +128,10 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
             </div>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-1.5 sm:mb-2">
             {mode === "login" ? "Welcome Back" : "Reset Password"}
           </h1>
-          <p className="text-sm text-muted-foreground mb-8">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-6 sm:mb-8">
             {mode === "login"
               ? "Sign in to your SightLine account"
               : "Enter your email to receive a reset link"}
