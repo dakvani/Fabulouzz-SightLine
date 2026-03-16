@@ -175,31 +175,32 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
   doc.line(pageWidth - margin, pageHeight - 36, pageWidth - margin - 30, pageHeight - 36);
   doc.line(pageWidth - margin, pageHeight - 36, pageWidth - margin, pageHeight - 66);
 
-  // Logo & branding
+  // Logo & branding — all center-aligned
   if (logoData) {
-    doc.addImage(logoData, "PNG", pageWidth / 2 - 40, 48, 80, 25);
-    doc.setTextColor(...brandGreen);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text("SIGHTLINE Command Center", pageWidth / 2, 82, { align: "center" });
+    doc.addImage(logoData, "PNG", pageWidth / 2 - 40, 44, 80, 25);
   } else {
     doc.setTextColor(...brandGreen);
     doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
-    doc.text("FABULOUZZ TECHNOLOGIES", pageWidth / 2, 68, { align: "center" });
-    doc.setFontSize(11);
-    doc.text("SIGHTLINE Command Center", pageWidth / 2, 78, { align: "center" });
+    doc.text("FABULOUZZ TECHNOLOGIES", pageWidth / 2, 62, { align: "center" });
   }
 
-  // Divider
-  doc.setFillColor(...brandGreen);
-  doc.rect(pageWidth / 2 - 25, 88, 50, 0.6, "F");
-
-  // Report label
+  // SIGHTLINE Command Center — centered
   doc.setTextColor(...brandGreen);
-  doc.setFontSize(9);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("PROJECT STATUS REPORT", pageWidth / 2, 98, { align: "center", charSpace: 2.5 });
+  doc.text("SIGHTLINE Command Center", pageWidth / 2, logoData ? 80 : 76, { align: "center" });
+
+  // Divider — centered
+  const dividerY = logoData ? 86 : 82;
+  doc.setFillColor(...brandGreen);
+  doc.rect(pageWidth / 2 - 30, dividerY, 60, 0.6, "F");
+
+  // PROJECT STATUS REPORT — centered with letter spacing
+  doc.setTextColor(...brandGreen);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("PROJECT STATUS REPORT", pageWidth / 2, dividerY + 10, { align: "center", charSpace: 2.5 });
 
   // Project title
   doc.setTextColor(...textPrimary);
