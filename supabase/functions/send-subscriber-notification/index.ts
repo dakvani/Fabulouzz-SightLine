@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { subject, tasks, projectInfo, pdfBase64 } = await req.json();
+    const { subject, tasks, projectInfo, pdfBase64, projectId } = await req.json();
     if (!subject || !tasks) {
       return new Response(
         JSON.stringify({ error: "Missing subject or tasks" }),
@@ -53,10 +53,16 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: subscribers, error: subError } = await adminClient
+    let query = adminClient
       .from("email_subscribers")
       .select("email")
       .eq("is_active", true);
+    
+    if (projectId) {
+      query = query.eq("project_id", projectId);
+    }
+
+    const { data: subscribers, error: subError } = await query;
 
     if (subError) throw subError;
     if (!subscribers || subscribers.length === 0) {

@@ -26,21 +26,30 @@ const statusColorVar: Record<string, string> = {
 };
 
 const GanttChart = () => {
-  const { tasks } = useProjectData();
+  const { tasks, projectInfo } = useProjectData();
   const days = getCalendarDays();
   const [hoveredTask, setHoveredTask] = useState<number | null>(null);
   const isMobile = useIsMobile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const cellWidth = isMobile ? 32 : 44;
-  const scopeColWidth = isMobile ? 180 : 360;
-  const rowHeight = isMobile ? 36 : 44;
+  const scopeColWidth = isMobile ? 180 : 440;
+  const rowHeight = isMobile ? 36 : 48;
   const headerHeight = isMobile ? 44 : 56;
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const projectStart = new Date(2026, 1, 21);
+  const projectStart = projectInfo.startDate ? new Date(projectInfo.startDate) : new Date(2026, 1, 21);
   const todayOffset = Math.floor((today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
+
+  const getTaskDateRange = (startDay: number, duration: number) => {
+    const start = new Date(projectStart);
+    start.setDate(start.getDate() + startDay);
+    const end = new Date(start);
+    end.setDate(end.getDate() + duration - 1);
+    const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return { startDate: fmt(start), endDate: fmt(end) };
+  };
 
   // Auto-scroll to today on mount
   useEffect(() => {
@@ -107,23 +116,33 @@ const GanttChart = () => {
             >
               <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scope of Work</span>
             </div>
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                className={`flex items-center px-3 sm:px-4 border-b border-border/30 transition-colors ${hoveredTask === task.id ? "bg-secondary/50" : ""} ${task.status === "Processing" ? "bg-processing/5" : ""}`}
-                style={{ height: rowHeight }}
-                onMouseEnter={() => setHoveredTask(task.id)}
-                onMouseLeave={() => setHoveredTask(null)}
-              >
-                <span className="text-[10px] sm:text-xs font-mono text-muted-foreground mr-2 sm:mr-3 w-5 sm:w-6 flex-shrink-0">{task.id}</span>
-                <span
-                  className={`text-[10px] sm:text-xs leading-tight ${task.status === "Processing" ? "text-processing font-medium" : "text-foreground"}`}
-                  style={{ wordBreak: "break-word", whiteSpace: "normal" }}
+            {tasks.map((task) => {
+              const { startDate, endDate } = getTaskDateRange(task.startDay, task.duration);
+              return (
+                <div
+                  key={task.id}
+                  className={`flex items-center px-3 sm:px-4 border-b border-border/30 transition-colors ${hoveredTask === task.id ? "bg-secondary/50" : ""} ${task.status === "Processing" ? "bg-processing/5" : ""}`}
+                  style={{ height: rowHeight }}
+                  onMouseEnter={() => setHoveredTask(task.id)}
+                  onMouseLeave={() => setHoveredTask(null)}
                 >
-                  {isMobile ? task.name.slice(0, 30) + (task.name.length > 30 ? "…" : "") : task.name}
-                </span>
-              </div>
-            ))}
+                  <span className="text-[10px] sm:text-xs font-mono text-muted-foreground mr-2 sm:mr-3 w-5 sm:w-6 flex-shrink-0">{task.id}</span>
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className={`text-[10px] sm:text-xs leading-tight block ${task.status === "Processing" ? "text-processing font-medium" : "text-foreground"}`}
+                      style={{ wordBreak: "break-word", whiteSpace: "normal" }}
+                    >
+                      {isMobile ? task.name.slice(0, 30) + (task.name.length > 30 ? "…" : "") : task.name}
+                    </span>
+                    {!isMobile && (
+                      <span className="text-[9px] text-muted-foreground font-mono block mt-0.5">
+                        {startDate} → {endDate}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Timeline area */}

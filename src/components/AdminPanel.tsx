@@ -43,7 +43,7 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [loadingSubscribers, setLoadingSubscribers] = useState(false);
   const [newSubEmail, setNewSubEmail] = useState("");
   const [addingSubscriber, setAddingSubscriber] = useState(false);
-  const { tasks, projectInfo } = useProjectData();
+  const { tasks, projectInfo, projectId } = useProjectData();
 
   // Project Members tab state
   const [allProjects, setAllProjects] = useState<any[]>([]);
@@ -143,18 +143,22 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   };
 
   const fetchSubscriberCount = async () => {
+    if (!projectId) return;
     const { count } = await supabase
       .from("email_subscribers")
       .select("*", { count: "exact", head: true })
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("project_id", projectId);
     setSubscriberCount(count || 0);
   };
 
   const fetchSubscribers = async () => {
+    if (!projectId) return;
     setLoadingSubscribers(true);
     const { data } = await supabase
       .from("email_subscribers")
       .select("*")
+      .eq("project_id", projectId)
       .order("subscribed_at", { ascending: false });
     setSubscribers(data || []);
     setLoadingSubscribers(false);
@@ -200,6 +204,7 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
           tasks: tasks.map(t => ({ id: t.id, name: t.name, status: t.status, duration: t.duration, startDay: t.startDay })),
           projectInfo,
           pdfBase64,
+          projectId,
         },
       });
 
@@ -632,9 +637,9 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                   e.preventDefault();
                   if (!newSubEmail.trim()) return;
                   setAddingSubscriber(true);
-                  const { error } = await supabase
+                   const { error } = await supabase
                     .from("email_subscribers")
-                    .insert({ email: newSubEmail.trim().toLowerCase() });
+                    .insert({ email: newSubEmail.trim().toLowerCase(), project_id: projectId } as any);
                   setAddingSubscriber(false);
                   if (error) {
                     toast({ title: "Error", description: error.message.includes("duplicate") ? "This email is already subscribed" : error.message, variant: "destructive" });

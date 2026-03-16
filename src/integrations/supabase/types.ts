@@ -19,21 +19,32 @@ export type Database = {
           email: string
           id: string
           is_active: boolean
+          project_id: string | null
           subscribed_at: string
         }
         Insert: {
           email: string
           id?: string
           is_active?: boolean
+          project_id?: string | null
           subscribed_at?: string
         }
         Update: {
           email?: string
           id?: string
           is_active?: boolean
+          project_id?: string | null
           subscribed_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_subscribers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
