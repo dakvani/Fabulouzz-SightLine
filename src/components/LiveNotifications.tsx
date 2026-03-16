@@ -176,7 +176,7 @@ const LiveNotifications = () => {
       </AnimatePresence>
 
       {/* Header: Bell + LIVE UPDATES + Ticker + Latest update */}
-      <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3 min-h-[56px]">
+      <div className="px-3 py-3 sm:px-5 sm:py-4 md:px-6 md:py-5 border-b border-border/50 flex flex-wrap items-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px]">
         <motion.div
           animate={newFlash ? { scale: [1, 1.15, 1] } : {}}
           transition={{ duration: 0.6, ease: "easeOut" }}

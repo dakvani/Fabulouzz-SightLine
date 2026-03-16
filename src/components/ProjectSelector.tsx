@@ -165,42 +165,42 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-8 h-14 sm:h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {mounted && (
               <img
                 src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
                 alt="Fabulouzz"
-                className="h-8 w-auto"
+                className="h-6 sm:h-8 w-auto flex-shrink-0"
               />
             )}
             <div className="hidden sm:flex flex-col border-l border-border/30 pl-3">
               <span
-                className="text-base font-bold tracking-wide text-primary"
+                className="text-sm sm:text-base font-bold tracking-wide text-primary"
                 style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
               >
                 SIGHTLINE
               </span>
-              <span className="text-[10px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
                 Command Center
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <motion.button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center justify-center w-9 h-9 rounded-xl border border-border/30 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
+              className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-border/30 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
             >
-              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === "dark" ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
             </motion.button>
             <motion.button
               onClick={handleLogout}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border border-border/30 text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-all"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-semibold border border-border/30 text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-all"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Sign Out</span>
@@ -210,19 +210,19 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-8 py-6 sm:py-8 md:py-12">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-8"
+          className="mb-6 sm:mb-8"
         >
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight">
                 Projects
               </h1>
-              <p className="text-sm text-muted-foreground mt-1.5">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-1.5">
                 {projects.length} project{projects.length !== 1 ? "s" : ""} • Select one to open its dashboard
               </p>
             </div>
@@ -231,7 +231,7 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
                 onClick={() => setShowCreate(true)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20"
+                className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 self-start sm:self-auto"
                 style={{ background: "var(--gradient-primary)" }}
               >
                 <Plus className="w-4 h-4" />
@@ -416,7 +416,7 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
       </div>
 
       {/* Footer */}
-      <div className="text-center text-[10px] text-muted-foreground py-8 border-t border-border/20">
+      <div className="text-center text-xs text-muted-foreground py-6 sm:py-8 px-3 border-t border-border/20">
         Powered by <a href="https://www.fabulouzz.com" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Fabulouzz Technologies</a> • SightLine Command Center
       </div>
 

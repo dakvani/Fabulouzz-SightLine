@@ -17,11 +17,11 @@ const ActiveTasksPanel = () => {
     >
       <div className="absolute inset-0 rounded-xl pointer-events-none border border-processing/15" />
 
-      <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
+      <div className="px-3 py-3 sm:px-5 sm:py-4 md:px-6 md:py-5 border-b border-border/50 flex flex-wrap items-center gap-2 sm:gap-3">
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
           <Loader2 className="w-4 h-4 text-processing" />
         </motion.div>
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Currently Active</h3>
+        <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground">Currently Active</h3>
         <span className="text-[10px] text-muted-foreground">{activeTasks.length} tasks in progress</span>
         <motion.div className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-primary bg-primary/10 px-2.5 py-1 rounded-full"
           animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 2, repeat: Infinity }}>
@@ -35,12 +35,12 @@ const ActiveTasksPanel = () => {
           const isProcessing = task.status === "Processing";
           return (
             <motion.div key={task.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.06 }}
-              className="px-4 sm:px-5 py-4 flex items-center gap-3 sm:gap-4 group hover:bg-primary/5 transition-colors relative overflow-hidden">
+              className="px-3 sm:px-4 md:px-5 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 md:gap-4 group hover:bg-primary/5 transition-colors relative overflow-hidden">
               {isProcessing && (
                 <motion.div className="absolute left-0 top-0 bottom-0 w-0.5 bg-processing" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }} />
               )}
               <motion.div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isProcessing ? "bg-processing/15 text-processing" : "bg-initiating/15 text-initiating"}`}
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 ${isProcessing ? "bg-processing/15 text-processing" : "bg-initiating/15 text-initiating"}`}
                 animate={isProcessing ? { boxShadow: ["0 0 0px hsl(var(--processing) / 0)", "0 0 16px hsl(var(--processing) / 0.25)", "0 0 0px hsl(var(--processing) / 0)"] } : {}}
                 transition={{ duration: 2, repeat: Infinity }}>
                 {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}

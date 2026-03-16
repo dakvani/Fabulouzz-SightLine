@@ -32,7 +32,7 @@ const TaskList = () => {
   return (
     <>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="glass-card overflow-hidden">
-        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
+        <div className="px-3 py-3 sm:px-5 sm:py-4 md:px-6 md:py-5 border-b border-border/50 flex items-center gap-2 sm:gap-3">
           <Activity className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">All Tasks</h3>
           <span className="ml-auto text-[10px] font-mono bg-muted/50 text-muted-foreground px-2 py-0.5 rounded-full">{tasks.length} total</span>
@@ -42,14 +42,14 @@ const TaskList = () => {
             const isProcessing = task.status === "Processing";
             return (
               <motion.div key={task.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 + i * 0.03 }}
-                className={`px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 transition-colors cursor-pointer group relative ${isProcessing ? "bg-processing/5 hover:bg-processing/10" : "hover:bg-secondary/30"}`}>
+                className={`px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 flex items-center gap-2 sm:gap-3 transition-colors cursor-pointer group relative ${isProcessing ? "bg-processing/5 hover:bg-processing/10" : "hover:bg-secondary/30"}`}>
                 {isProcessing && (
                   <motion.div className="absolute left-0 top-0 bottom-0 w-1 bg-processing rounded-r" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} />
                 )}
                 <span className="text-xs font-mono text-muted-foreground w-6 flex-shrink-0">{String(task.id).padStart(2, "0")}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className={`text-sm truncate ${isProcessing ? "text-foreground font-medium" : "text-foreground"}`}>{task.name}</p>
+                    <p className={`text-xs sm:text-sm truncate ${isProcessing ? "text-foreground font-medium" : "text-foreground"}`}>{task.name}</p>
                     {isProcessing && (
                       <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
                         <Activity className="w-3.5 h-3.5 text-processing flex-shrink-0" />
@@ -63,7 +63,7 @@ const TaskList = () => {
                     </div>
                   )}
                 </div>
-                <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full border ${statusBadgeClasses[getStatusColor(task.status)]} ${isProcessing ? "animate-pulse" : ""}`}>
+                <span className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full border whitespace-nowrap ${statusBadgeClasses[getStatusColor(task.status)]} ${isProcessing ? "animate-pulse" : ""}`}>
                   {task.status}
                 </span>
                 {canUpdate && (
