@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin, Gauge, ShieldCheck, ShieldAlert, Clock, TrendingUp } from "lucide-react";
+import { Cloud, Sun, CloudRain, Wind, Droplets, MapPin, Gauge, ShieldCheck, ShieldAlert, Clock, TrendingUp, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 
 interface WeatherData {
   temperature: number;
@@ -24,6 +25,12 @@ interface ForecastDay {
   tempMax: number;
   tempMin: number;
   weatherCode: number;
+}
+
+interface GeoResult {
+  lat: number;
+  lon: number;
+  name: string;
 }
 
 const weatherDescriptions: Record<number, { label: string; icon: typeof Sun }> = {
@@ -107,17 +114,21 @@ const WeatherScene = ({ code, isDay }: { code: number; isDay: boolean }) => {
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full rounded-t-xl" />;
 };
 
-const KAECClock = () => {
+const LocationClock = ({ timezone }: { timezone: string }) => {
   const [time, setTime] = useState("");
 
   useEffect(() => {
     const update = () => {
-      setTime(new Date().toLocaleTimeString("en-US", { timeZone: "Asia/Riyadh", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+      try {
+        setTime(new Date().toLocaleTimeString("en-US", { timeZone: timezone, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+      } catch {
+        setTime(new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+      }
     };
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [timezone]);
 
   return (
     <div className="flex items-center gap-1">
@@ -173,31 +184,62 @@ const ForecastMiniChart = ({ forecast }: { forecast: ForecastDay[] }) => {
   );
 };
 
+// Geocode a location string using Open-Meteo's geocoding API
+const geocodeLocation = async (location: string): Promise<GeoResult | null> => {
+  try {
+    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`);
+    const data = await res.json();
+    if (data.results && data.results.length > 0) {
+      return { lat: data.results[0].latitude, lon: data.results[0].longitude, name: data.results[0].name };
+    }
+  } catch {}
+  return null;
+};
+
 const WeatherWidget = () => {
+  const { projectInfo } = useProjectData();
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [forecast, setForecast] = useState<ForecastDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [locationName, setLocationName] = useState("Site");
+  const [timezone, setTimezone] = useState("UTC");
   const prevSafetyRef = useRef<boolean | null>(null);
+  const prevLocationRef = useRef<string>("");
 
   useEffect(() => {
-    fetch("https://api.open-meteo.com/v1/forecast?latitude=22.41&longitude=39.10&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day,apparent_temperature,wind_direction_10m,surface_pressure,cloud_cover,wind_gusts_10m,dew_point_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&timezone=Asia/Riyadh&forecast_days=6")
-      .then(r => r.json())
-      .then(d => {
-        if (d.current) setWeather({
-          temperature: Math.round(d.current.temperature_2m),
-          windSpeed: Math.round(d.current.wind_speed_10m),
-          humidity: d.current.relative_humidity_2m,
-          weatherCode: d.current.weather_code,
-          isDay: d.current.is_day === 1,
-          apparentTemp: Math.round(d.current.apparent_temperature ?? d.current.temperature_2m),
-          windDirection: d.current.wind_direction_10m ?? 0,
-          pressure: Math.round(d.current.surface_pressure ?? 1013),
-          visibility: 10,
-          uvIndex: d.daily?.uv_index_max?.[0] ?? 0,
-          dewPoint: Math.round(d.current.dew_point_2m ?? 0),
-          cloudCover: d.current.cloud_cover ?? 0,
-          windGusts: Math.round(d.current.wind_gusts_10m ?? 0),
-        });
+    const location = projectInfo.location?.trim();
+    
+    // Don't refetch if location hasn't changed
+    if (location === prevLocationRef.current && weather) return;
+    prevLocationRef.current = location || "";
+
+    setLoading(true);
+    setWeather(null);
+
+    const fetchWeather = async (lat: number, lon: number, name: string, tz: string) => {
+      setLocationName(name);
+      setTimezone(tz);
+      try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day,apparent_temperature,wind_direction_10m,surface_pressure,cloud_cover,wind_gusts_10m,dew_point_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&timezone=auto&forecast_days=6`);
+        const d = await res.json();
+        if (d.current) {
+          setWeather({
+            temperature: Math.round(d.current.temperature_2m),
+            windSpeed: Math.round(d.current.wind_speed_10m),
+            humidity: d.current.relative_humidity_2m,
+            weatherCode: d.current.weather_code,
+            isDay: d.current.is_day === 1,
+            apparentTemp: Math.round(d.current.apparent_temperature ?? d.current.temperature_2m),
+            windDirection: d.current.wind_direction_10m ?? 0,
+            pressure: Math.round(d.current.surface_pressure ?? 1013),
+            visibility: 10,
+            uvIndex: d.daily?.uv_index_max?.[0] ?? 0,
+            dewPoint: Math.round(d.current.dew_point_2m ?? 0),
+            cloudCover: d.current.cloud_cover ?? 0,
+            windGusts: Math.round(d.current.wind_gusts_10m ?? 0),
+          });
+          if (d.timezone) setTimezone(d.timezone);
+        }
         if (d.daily) {
           const days: ForecastDay[] = [];
           for (let i = 1; i <= 5 && i < d.daily.time.length; i++) {
@@ -210,20 +252,26 @@ const WeatherWidget = () => {
           }
           setForecast(days);
         }
-        setLoading(false);
-      })
-      .catch(() => { 
-        setWeather({ temperature: 28, windSpeed: 12, humidity: 55, weatherCode: 0, isDay: true, apparentTemp: 30, windDirection: 315, pressure: 1013, visibility: 10, uvIndex: 8, dewPoint: 18, cloudCover: 10, windGusts: 22 }); 
-        setForecast([
-          { date: "2026-03-01", tempMax: 30, tempMin: 20, weatherCode: 0 },
-          { date: "2026-03-02", tempMax: 32, tempMin: 22, weatherCode: 1 },
-          { date: "2026-03-03", tempMax: 29, tempMin: 19, weatherCode: 2 },
-          { date: "2026-03-04", tempMax: 31, tempMin: 21, weatherCode: 0 },
-          { date: "2026-03-05", tempMax: 33, tempMin: 23, weatherCode: 1 },
-        ]);
-        setLoading(false); 
-      });
-  }, []);
+      } catch {
+        // fallback
+      }
+      setLoading(false);
+    };
+
+    const resolve = async () => {
+      if (location) {
+        const geo = await geocodeLocation(location);
+        if (geo) {
+          await fetchWeather(geo.lat, geo.lon, geo.name, "UTC");
+          return;
+        }
+      }
+      // Fallback to KAEC if no location or geocoding fails
+      await fetchWeather(22.41, 39.10, "KAEC", "Asia/Riyadh");
+    };
+
+    resolve();
+  }, [projectInfo.location]);
 
   // Toast alert when safety status changes from Safe to Caution/Danger
   useEffect(() => {
@@ -232,14 +280,19 @@ const WeatherWidget = () => {
     if (prevSafetyRef.current !== null && prevSafetyRef.current === true && !safety.safe) {
       toast({
         title: `⚠️ Weather Alert: ${safety.label}`,
-        description: `${safety.reason} — outdoor conditions are no longer safe at KAEC site.`,
+        description: `${safety.reason} — outdoor conditions are no longer safe at ${locationName} site.`,
         variant: "destructive",
       });
     }
     prevSafetyRef.current = safety.safe;
-  }, [weather]);
+  }, [weather, locationName]);
 
-  if (loading) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-4 h-full"><div className="animate-pulse h-full bg-secondary rounded-xl" /></motion.div>;
+  if (loading) return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-4 h-full flex items-center justify-center gap-2">
+      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+      <span className="text-xs text-muted-foreground">Loading weather for {projectInfo.location || "site"}...</span>
+    </motion.div>
+  );
   if (!weather) return null;
 
   const info = getWeatherInfo(weather.weatherCode);
@@ -254,7 +307,7 @@ const WeatherWidget = () => {
           <div>
             <div className="flex items-center gap-1 mb-0.5">
               <MapPin className="w-2.5 h-2.5 text-primary" />
-              <span className="text-[8px] font-semibold text-foreground/70 uppercase tracking-widest">KAEC</span>
+              <span className="text-[8px] font-semibold text-foreground/70 uppercase tracking-widest">{locationName}</span>
             </div>
             <div className="flex items-baseline gap-1.5">
               <p className="text-2xl font-bold font-mono text-foreground leading-none">{weather.temperature}°</p>
@@ -263,7 +316,7 @@ const WeatherWidget = () => {
             <p className="text-[9px] text-muted-foreground mt-0.5">{info.label} • UV {weather.uvIndex.toFixed(1)}</p>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <KAECClock />
+            <LocationClock timezone={timezone} />
             <motion.div
               className="w-2 h-2 rounded-full bg-[hsl(var(--completed))]"
               animate={{ opacity: [1, 0.3, 1] }}

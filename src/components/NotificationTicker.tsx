@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 
 interface Notification {
   id: string;
@@ -13,11 +14,18 @@ interface Notification {
 const NotificationTicker = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const { selectedProjectId } = useProjectData();
 
   useEffect(() => {
+    if (!selectedProjectId) {
+      setNotifications([]);
+      return;
+    }
+
     supabase
       .from("notifications")
       .select("*")
+      .eq("project_id", selectedProjectId)
       .order("created_at", { ascending: false })
       .limit(5)
       .then(({ data }) => {
@@ -25,10 +33,10 @@ const NotificationTicker = () => {
       });
 
     const channel = supabase
-      .channel("ticker-notifications")
+      .channel(`ticker-notifications-${selectedProjectId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications" },
+        { event: "INSERT", schema: "public", table: "notifications", filter: `project_id=eq.${selectedProjectId}` },
         (payload) => {
           const n = payload.new as Notification;
           setNotifications((prev) => [n, ...prev].slice(0, 5));
@@ -38,7 +46,7 @@ const NotificationTicker = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [selectedProjectId]);
 
   useEffect(() => {
     if (notifications.length <= 1) return;
