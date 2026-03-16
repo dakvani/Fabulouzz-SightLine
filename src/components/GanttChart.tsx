@@ -26,21 +26,30 @@ const statusColorVar: Record<string, string> = {
 };
 
 const GanttChart = () => {
-  const { tasks } = useProjectData();
+  const { tasks, projectInfo } = useProjectData();
   const days = getCalendarDays();
   const [hoveredTask, setHoveredTask] = useState<number | null>(null);
   const isMobile = useIsMobile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const cellWidth = isMobile ? 32 : 44;
-  const scopeColWidth = isMobile ? 180 : 360;
-  const rowHeight = isMobile ? 36 : 44;
+  const scopeColWidth = isMobile ? 180 : 440;
+  const rowHeight = isMobile ? 36 : 48;
   const headerHeight = isMobile ? 44 : 56;
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const projectStart = new Date(2026, 1, 21);
+  const projectStart = projectInfo.startDate ? new Date(projectInfo.startDate) : new Date(2026, 1, 21);
   const todayOffset = Math.floor((today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
+
+  const getTaskDateRange = (startDay: number, duration: number) => {
+    const start = new Date(projectStart);
+    start.setDate(start.getDate() + startDay);
+    const end = new Date(start);
+    end.setDate(end.getDate() + duration - 1);
+    const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return { startDate: fmt(start), endDate: fmt(end) };
+  };
 
   // Auto-scroll to today on mount
   useEffect(() => {
