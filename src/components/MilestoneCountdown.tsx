@@ -3,16 +3,38 @@ import { Target, Calendar, CheckCircle2, Clock, ArrowRight } from "lucide-react"
 import { useProjectData } from "@/contexts/ProjectDataContext";
 
 const MilestoneCountdown = () => {
-  const { tasks } = useProjectData();
-  const today = new Date(2026, 1, 27);
-  const projectStart = new Date(2026, 1, 21);
+  const { tasks, projectInfo } = useProjectData();
+  const today = new Date();
+  
+  // Use the project's actual start date
+  const projectStart = projectInfo.startDate ? new Date(projectInfo.startDate) : new Date();
 
-  const milestoneIndices = [3, 7, 9, 12, 15, 18];
-  const milestoneLabels = ["Cable Laying Complete", "Server Installation", "PTZ Camera Activation", "NVR Integration", "Testing & Commissioning", "Final Handover"];
+  // Dynamically create milestones from tasks (pick evenly spaced tasks)
+  const totalTasks = tasks.length;
+  if (totalTasks === 0) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+        className="glass-card h-full flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-border/30 flex items-center gap-2">
+          <Target className="w-4 h-4 text-primary" />
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Milestones</h3>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <p className="text-xs text-muted-foreground">No tasks available</p>
+        </div>
+      </motion.div>
+    );
+  }
 
-  const milestones = milestoneIndices
-    .filter(i => i < tasks.length)
-    .map((idx, i) => ({ task: tasks[idx], label: milestoneLabels[i] }));
+  // Pick up to 6 milestone tasks spread across the task list
+  const milestoneCount = Math.min(6, totalTasks);
+  const milestones = [];
+  for (let i = 0; i < milestoneCount; i++) {
+    const idx = Math.round((i / (milestoneCount - 1 || 1)) * (totalTasks - 1));
+    milestones.push(tasks[idx]);
+  }
+  // Remove duplicates
+  const uniqueMilestones = [...new Map(milestones.map(m => [m.id, m])).values()];
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
@@ -20,25 +42,25 @@ const MilestoneCountdown = () => {
       <div className="p-4 border-b border-border/30 flex items-center gap-2">
         <Target className="w-4 h-4 text-primary" />
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Milestones</h3>
-        <span className="ml-auto text-[9px] font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full">{milestones.length} phases</span>
+        <span className="ml-auto text-[9px] font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full">{uniqueMilestones.length} phases</span>
       </div>
       <div className="flex-1 divide-y divide-border/20">
-        {milestones.map((m, i) => {
+        {uniqueMilestones.map((task, i) => {
           const milestoneDate = new Date(projectStart);
-          milestoneDate.setDate(milestoneDate.getDate() + m.task.startDay);
+          milestoneDate.setDate(milestoneDate.getDate() + task.startDay);
           const daysUntil = Math.ceil((milestoneDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          const isPast = daysUntil < 0;
+          const isPast = task.status === "Completed" || daysUntil < 0;
           const isToday = daysUntil === 0;
           const isNear = daysUntil > 0 && daysUntil <= 3;
 
           return (
-            <motion.div key={m.task.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.06 }}
+            <motion.div key={task.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 + i * 0.06 }}
               className="px-4 py-2.5 flex items-center gap-3 hover:bg-secondary/20 transition-colors group">
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isPast ? "bg-[hsl(var(--completed)/0.15)]" : isNear ? "bg-destructive/15" : "bg-secondary/50"}`}>
                 {isPast ? <CheckCircle2 className="w-3.5 h-3.5 text-[hsl(var(--completed))]" /> : <Calendar className="w-3.5 h-3.5 text-muted-foreground" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground truncate">{m.label}</p>
+                <p className="text-xs font-medium text-foreground truncate">{task.name}</p>
                 <p className="text-[9px] text-muted-foreground font-mono">{milestoneDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</p>
               </div>
               <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${isPast ? "bg-[hsl(var(--completed)/0.1)] text-[hsl(var(--completed))]" : isToday ? "bg-primary/20 text-primary" : isNear ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
