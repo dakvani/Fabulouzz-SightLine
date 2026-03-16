@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Image, Clock, X, ChevronLeft, ChevronRight, Loader2, Zap, Video, Play } from "lucide-react";
+import { Bell, Image, Clock, X, ChevronLeft, ChevronRight, Loader2, Zap, Video, Play, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 
