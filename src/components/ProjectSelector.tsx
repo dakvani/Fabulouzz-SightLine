@@ -110,6 +110,25 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
         }
         setTaskProgress(progressMap);
       }
+
+      // Fetch subscriber counts per project (admin only)
+      if (admin) {
+        const { data: allSubs } = await supabase
+          .from("email_subscribers")
+          .select("project_id")
+          .in("project_id", projectList.map(p => p.id))
+          .eq("is_active", true);
+
+        if (allSubs) {
+          const subMap: Record<string, number> = {};
+          for (const s of allSubs) {
+            if (s.project_id) {
+              subMap[s.project_id] = (subMap[s.project_id] || 0) + 1;
+            }
+          }
+          setSubscriberCounts(subMap);
+        }
+      }
     }
 
     setLoading(false);
