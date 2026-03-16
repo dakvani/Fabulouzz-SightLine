@@ -392,16 +392,28 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </div>
 
       {/* Mobile branding footer (visible only on small screens) */}
-      <div className="lg:hidden flex flex-col items-center py-8 px-6 border-t border-border/30">
+      <div className="lg:hidden flex flex-col items-center gap-3 py-6 sm:py-8 px-4 border-t border-border/30">
+        {mounted && (
+          <a href="https://www.fabulouzz.com/" target="_blank" rel="noopener noreferrer">
+            <img
+              src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
+              alt="Fabulouzz Technologies"
+              className="h-6 w-auto opacity-60 hover:opacity-100 transition-opacity"
+            />
+          </a>
+        )}
         <a
           href="https://www.fabulouzz.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-medium border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-medium border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
         >
           <Home className="w-3.5 h-3.5" />
           Go to Fabulouzz Home
         </a>
+        <p className="text-xs text-muted-foreground">
+          Powered by <a href="https://www.fabulouzz.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Fabulouzz Technologies</a>
+        </p>
       </div>
     </div>
   );
