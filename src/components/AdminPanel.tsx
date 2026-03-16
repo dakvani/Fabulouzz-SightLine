@@ -204,6 +204,7 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
           tasks: tasks.map(t => ({ id: t.id, name: t.name, status: t.status, duration: t.duration, startDay: t.startDay })),
           projectInfo,
           pdfBase64,
+          projectId,
         },
       });
 
