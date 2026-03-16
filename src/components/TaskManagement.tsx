@@ -80,6 +80,7 @@ const DependencyPicker = ({ selected, onChange, availableTasks, excludeTaskNumbe
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
+        onKeyDown={(e) => { if (e.key === "Backspace") { e.preventDefault(); onChange([]); } }}
         className="flex items-center justify-between w-full bg-secondary/50 border border-border/50 rounded-lg px-2.5 py-1.5 text-sm text-foreground hover:bg-secondary/70 transition-colors mt-1"
       >
         <span className="truncate text-left">
