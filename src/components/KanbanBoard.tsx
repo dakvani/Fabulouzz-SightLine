@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { type ProjectTask, type TaskStatus } from "@/data/projectData";
-import { GripVertical, Link2 } from "lucide-react";
+import { GripVertical, Link2, LayoutGrid } from "lucide-react";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -53,9 +53,11 @@ const KanbanBoard = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-      <div className="glass-card p-4 border-b border-border/50">
+      <div className="glass-card px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
+        <LayoutGrid className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Kanban Board</h3>
-        {isAdmin && <p className="text-xs text-muted-foreground mt-1">Drag tasks between columns to update status</p>}
+        {isAdmin && <span className="text-[10px] text-muted-foreground ml-2">Drag tasks to update status</span>}
+        <span className="ml-auto text-[10px] font-mono bg-muted/50 text-muted-foreground px-2 py-0.5 rounded-full">{taskList.length} total</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {columns.map(col => {
@@ -74,7 +76,7 @@ const KanbanBoard = () => {
                   {colTasks.map(task => (
                     <motion.div key={task.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                       draggable={isAdmin} onDragStart={() => isAdmin && handleDragStart(task.id)} onDragEnd={() => setDraggedTask(null)}
-                      className={`glass-card p-3 ${isAdmin ? "cursor-grab active:cursor-grabbing" : "cursor-default"} transition-all hover:border-primary/30 ${draggedTask === task.id ? "opacity-50 scale-95" : ""}`}>
+                      className={`glass-card p-3 sm:p-4 ${isAdmin ? "cursor-grab active:cursor-grabbing" : "cursor-default"} transition-all hover:border-primary/30 ${draggedTask === task.id ? "opacity-50 scale-95" : ""}`}>
                       <div className="flex items-start gap-2">
                         {isAdmin && <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />}
                         <div className="flex-1 min-w-0">

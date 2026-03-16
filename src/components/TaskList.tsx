@@ -32,15 +32,17 @@ const TaskList = () => {
   return (
     <>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="glass-card overflow-hidden">
-        <div className="p-4 border-b border-border/50">
+        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
+          <Activity className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">All Tasks</h3>
+          <span className="ml-auto text-[10px] font-mono bg-muted/50 text-muted-foreground px-2 py-0.5 rounded-full">{tasks.length} total</span>
         </div>
         <div className="divide-y divide-border/30">
           {tasks.map((task, i) => {
             const isProcessing = task.status === "Processing";
             return (
               <motion.div key={task.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 + i * 0.03 }}
-                className={`px-4 py-3 flex items-center gap-3 transition-colors cursor-pointer group relative ${isProcessing ? "bg-processing/5 hover:bg-processing/10" : "hover:bg-secondary/30"}`}>
+                className={`px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 transition-colors cursor-pointer group relative ${isProcessing ? "bg-processing/5 hover:bg-processing/10" : "hover:bg-secondary/30"}`}>
                 {isProcessing && (
                   <motion.div className="absolute left-0 top-0 bottom-0 w-1 bg-processing rounded-r" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} />
                 )}

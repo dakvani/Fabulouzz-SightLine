@@ -15,18 +15,14 @@ const ActiveTasksPanel = () => {
       transition={{ delay: 0.35 }}
       className="glass-card overflow-hidden relative"
     >
-      <div
-        className="absolute inset-0 rounded-xl pointer-events-none border border-processing/15"
-      />
+      <div className="absolute inset-0 rounded-xl pointer-events-none border border-processing/15" />
 
-      <div className="p-4 sm:p-5 border-b border-border/50 flex items-center gap-3">
+      <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
-          <Loader2 className="w-5 h-5 text-processing" />
+          <Loader2 className="w-4 h-4 text-processing" />
         </motion.div>
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Currently Active</h3>
-          <p className="text-[10px] text-muted-foreground mt-0.5">{activeTasks.length} tasks in progress</p>
-        </div>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Currently Active</h3>
+        <span className="text-[10px] text-muted-foreground">{activeTasks.length} tasks in progress</span>
         <motion.div className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-primary bg-primary/10 px-2.5 py-1 rounded-full"
           animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 2, repeat: Infinity }}>
           <motion.span className="w-1.5 h-1.5 rounded-full bg-processing" animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
