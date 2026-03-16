@@ -16,7 +16,7 @@ const LiveNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [newFlash, setNewFlash] = useState(false);
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
-  const { tasks } = useProjectData();
+  const { tasks, selectedProjectId } = useProjectData();
 
   const activeTasks = tasks.filter(t => t.status === "Processing" || t.status === "Initiating");
 
@@ -35,23 +35,29 @@ const LiveNotifications = () => {
   }, []);
 
   useEffect(() => {
+    if (!selectedProjectId) {
+      setNotifications([]);
+      return;
+    }
+
     supabase
       .from("notifications")
       .select("*")
+      .eq("project_id", selectedProjectId)
       .order("created_at", { ascending: false })
-      .limit(20)
+      .limit(30)
       .then(({ data }) => {
         if (data) setNotifications(data as Notification[]);
       });
 
     const channel = supabase
-      .channel("live-notifications")
+      .channel(`live-notifications-${selectedProjectId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications" },
+        { event: "INSERT", schema: "public", table: "notifications", filter: `project_id=eq.${selectedProjectId}` },
         (payload) => {
           const n = payload.new as Notification;
-          setNotifications(prev => [n, ...prev].slice(0, 20));
+          setNotifications(prev => [n, ...prev].slice(0, 30));
           setNewFlash(true);
           setTimeout(() => setNewFlash(false), 3000);
         }
@@ -59,7 +65,7 @@ const LiveNotifications = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [selectedProjectId]);
 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -179,7 +185,7 @@ const LiveNotifications = () => {
         </div>
       )}
 
-      <div className="max-h-[450px] overflow-y-auto">
+      <div className="max-h-[700px] overflow-y-auto">
         <AnimatePresence initial={false}>
           {notifications.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
