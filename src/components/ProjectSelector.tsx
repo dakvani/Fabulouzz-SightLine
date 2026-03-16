@@ -36,6 +36,7 @@ interface TaskProgress {
 const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [taskProgress, setTaskProgress] = useState<Record<string, TaskProgress>>({});
+  const [subscriberCounts, setSubscriberCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
