@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Shield, X, Users, Loader2, LayoutList, Send, Mail, Shuffle, Copy, Check, RefreshCw, Trash2, MailX, MailCheck, Pencil } from "lucide-react";
+import { UserPlus, Shield, X, Users, Loader2, LayoutList, Send, Mail, Shuffle, Copy, Check, RefreshCw, Trash2, MailX, MailCheck, FolderOpen, Plus, Minus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -36,7 +36,7 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [resendingFor, setResendingFor] = useState<string | null>(null);
   const [editingRoleFor, setEditingRoleFor] = useState<string | null>(null);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "tasks" | "subscribers">("tasks");
+  const [activeTab, setActiveTab] = useState<"users" | "tasks" | "subscribers" | "members">("tasks");
   const [sendingNotification, setSendingNotification] = useState(false);
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [subscribers, setSubscribers] = useState<any[]>([]);
@@ -45,13 +45,102 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const [addingSubscriber, setAddingSubscriber] = useState(false);
   const { tasks, projectInfo } = useProjectData();
 
+  // Project Members tab state
+  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [selectedMemberProject, setSelectedMemberProject] = useState<string>("");
+  const [projectMembers, setProjectMembers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [addingMember, setAddingMember] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
       fetchSubscriberCount();
       fetchSubscribers();
+      fetchAllProjects();
     }
   }, [isOpen]);
+
+  const fetchAllProjects = async () => {
+    const { data } = await supabase
+      .from("projects")
+      .select("id, title, project_ref")
+      .order("created_at", { ascending: false });
+    setAllProjects(data || []);
+    if (data && data.length > 0 && !selectedMemberProject) {
+      setSelectedMemberProject(data[0].id);
+    }
+  };
+
+  const fetchProjectMembers = async (projectId: string) => {
+    if (!projectId) return;
+    setLoadingMembers(true);
+    const { data: members } = await supabase
+      .from("project_members")
+      .select("id, user_id")
+      .eq("project_id", projectId);
+
+    const { data: profiles } = await supabase.from("profiles").select("id, email, full_name");
+    const { data: roles } = await supabase.from("user_roles").select("user_id, role");
+
+    const memberUserIds = (members || []).map(m => m.user_id);
+    const enriched = (members || []).map(m => {
+      const profile = (profiles || []).find(p => p.id === m.user_id);
+      const roleRow = (roles || []).find(r => r.user_id === m.user_id);
+      return {
+        membershipId: m.id,
+        userId: m.user_id,
+        email: profile?.email || "—",
+        fullName: profile?.full_name || "—",
+        role: roleRow?.role || "client",
+      };
+    });
+
+    setProjectMembers(enriched);
+    setAllUsers(
+      (profiles || [])
+        .filter(p => !memberUserIds.includes(p.id))
+        .map(p => ({
+          id: p.id,
+          email: p.email,
+          fullName: p.full_name,
+          role: (roles || []).find(r => r.user_id === p.id)?.role || "client",
+        }))
+    );
+    setLoadingMembers(false);
+  };
+
+  useEffect(() => {
+    if (selectedMemberProject) fetchProjectMembers(selectedMemberProject);
+  }, [selectedMemberProject]);
+
+  const addMemberToProject = async (userId: string) => {
+    setAddingMember(true);
+    const { error } = await supabase
+      .from("project_members")
+      .insert({ project_id: selectedMemberProject, user_id: userId });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Member added" });
+      fetchProjectMembers(selectedMemberProject);
+    }
+    setAddingMember(false);
+  };
+
+  const removeMemberFromProject = async (membershipId: string) => {
+    const { error } = await supabase
+      .from("project_members")
+      .delete()
+      .eq("id", membershipId);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Member removed" });
+      fetchProjectMembers(selectedMemberProject);
+    }
+  };
 
   const fetchSubscriberCount = async () => {
     const { count } = await supabase
@@ -102,7 +191,6 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   const sendNotificationToSubscribers = async () => {
     setSendingNotification(true);
     try {
-      // Generate PDF report
       const isDark = theme === "dark";
       const { base64: pdfBase64 } = await generateReportPdf({ tasks, projectInfo, isDark });
 
@@ -258,31 +346,27 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 mb-5 p-1 bg-secondary/30 rounded-lg border border-border/30">
-            <button
-              onClick={() => setActiveTab("tasks")}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === "tasks" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <LayoutList className="w-3.5 h-3.5" /> Scope & Schedule
-            </button>
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === "users" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" /> User Management
-            </button>
-            <button
-              onClick={() => { setActiveTab("subscribers"); fetchSubscribers(); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === "subscribers" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Mail className="w-3.5 h-3.5" /> Subscribers
-            </button>
+          <div className="flex gap-1 mb-5 p-1 bg-secondary/30 rounded-lg border border-border/30 overflow-x-auto">
+            {[
+              { key: "tasks", label: "Scope & Schedule", icon: LayoutList },
+              { key: "users", label: "Users", icon: Users },
+              { key: "members", label: "Project Members", icon: FolderOpen },
+              { key: "subscribers", label: "Subscribers", icon: Mail },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => {
+                  setActiveTab(tab.key as any);
+                  if (tab.key === "subscribers") fetchSubscribers();
+                  if (tab.key === "members") fetchAllProjects();
+                }}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-[11px] font-semibold transition-colors whitespace-nowrap ${
+                  activeTab === tab.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <tab.icon className="w-3.5 h-3.5" /> {tab.label}
+              </button>
+            ))}
           </div>
 
           {activeTab === "tasks" && (
@@ -290,7 +374,6 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
               <ProjectInfoEditor />
               <TaskManagement />
               
-              {/* Send Notification to Subscribers */}
               <div className="p-4 rounded-xl border border-border/50 bg-secondary/20 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -302,7 +385,7 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Send the current timeline status to all subscribed emails. This will notify them about the latest task updates.
+                  Send the current timeline status to all subscribed emails.
                 </p>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -321,7 +404,6 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
 
           {activeTab === "users" && (
             <div className="space-y-6">
-              {/* Create User Form */}
               <form onSubmit={handleCreate} className="space-y-3 p-4 rounded-xl border border-border/50 bg-secondary/20">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-primary" />
@@ -344,7 +426,6 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                   </select>
                 </div>
 
-                {/* Toggles */}
                 <div className="flex flex-col gap-2 pt-1">
                   <div className="flex items-center justify-between">
                     <label className="text-xs text-muted-foreground flex items-center gap-2">
@@ -360,7 +441,6 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                   </div>
                 </div>
 
-                {/* Generated password display */}
                 {generatedPwd && !sendInvite && (
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
                     <span className="text-xs text-muted-foreground">Generated:</span>
@@ -379,7 +459,6 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                 </motion.button>
               </form>
 
-              {/* Users List */}
               <div>
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                   <Users className="w-4 h-4 text-primary" /> Registered Users
@@ -409,7 +488,6 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                             {resendingFor === u.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                             Resend
                           </button>
-                          {/* Role selector */}
                           <select
                             value={u.role}
                             onChange={(e) => handleChangeRole(u.id, e.target.value)}
@@ -420,7 +498,6 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                             <option value="pm">PM / Engineer</option>
                             <option value="client">Client</option>
                           </select>
-                          {/* Delete user */}
                           <button
                             onClick={() => handleDeleteUser(u)}
                             disabled={deletingUser === u.id}
@@ -439,6 +516,105 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
             </div>
           )}
 
+          {/* Project Members Tab */}
+          {activeTab === "members" && (
+            <div className="space-y-5">
+              <div className="p-4 rounded-xl border border-border/50 bg-secondary/20 space-y-4">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4 text-primary" />
+                  Manage Project Access
+                </h3>
+
+                {/* Project selector */}
+                <select
+                  value={selectedMemberProject}
+                  onChange={e => setSelectedMemberProject(e.target.value)}
+                  className="w-full bg-secondary/50 border border-border/50 rounded-lg px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  {allProjects.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.title} {p.project_ref ? `(${p.project_ref})` : ""}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Current members */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                    Current Members ({projectMembers.length})
+                  </p>
+                  {loadingMembers ? (
+                    <div className="flex items-center justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+                  ) : projectMembers.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4 border border-dashed border-border/40 rounded-lg">
+                      No members assigned to this project yet
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {projectMembers.map(m => (
+                        <div key={m.membershipId} className="flex items-center justify-between p-2.5 rounded-lg border border-border/30 bg-card">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-bold">
+                              {(m.fullName || m.email)?.[0]?.toUpperCase() || "?"}
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-foreground">{m.fullName || "—"}</p>
+                              <p className="text-[10px] text-muted-foreground">{m.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${roleLabels[m.role]?.color || "text-muted-foreground"} bg-secondary/50`}>
+                              {roleLabels[m.role]?.label || m.role}
+                            </span>
+                            <button
+                              onClick={() => removeMemberFromProject(m.membershipId)}
+                              className="p-1 rounded-md text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              title="Remove from project"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Available users to add */}
+                {allUsers.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                      Add Members
+                    </p>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {allUsers.map(u => (
+                        <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg border border-dashed border-border/30 hover:border-primary/30 transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-secondary/50 flex items-center justify-center text-muted-foreground text-[10px] font-bold">
+                              {(u.fullName || u.email)?.[0]?.toUpperCase() || "?"}
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-foreground">{u.fullName || "—"}</p>
+                              <p className="text-[10px] text-muted-foreground">{u.email}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => addMemberToProject(u.id)}
+                            disabled={addingMember}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === "subscribers" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -451,7 +627,6 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                 </span>
               </div>
 
-              {/* Add Subscriber Form */}
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
