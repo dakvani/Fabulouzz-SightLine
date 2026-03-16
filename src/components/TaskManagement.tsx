@@ -29,7 +29,7 @@ interface EditingTask {
   task_number: number;
   name: string;
   status: TaskStatus;
-  start_day: number;
+  startDate: Date;
   duration: number;
   dependencies: number[];
 }
