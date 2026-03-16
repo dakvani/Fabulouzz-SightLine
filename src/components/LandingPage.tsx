@@ -112,7 +112,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
               <img
                 src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
                 alt="Fabulouzz"
-                className="h-7 w-auto"
+                className="h-8 w-auto"
               />
             )}
             <div className="flex flex-col border-l border-border/30 pl-2.5">
