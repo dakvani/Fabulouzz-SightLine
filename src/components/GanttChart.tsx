@@ -134,11 +134,12 @@ const GanttChart = () => {
                     >
                       {isMobile ? task.name.slice(0, 30) + (task.name.length > 30 ? "…" : "") : task.name}
                     </span>
-                    {!isMobile && (
-                      <span className="text-[9px] text-muted-foreground font-mono block mt-0.5">
-                        {startDate} → {endDate}
-                      </span>
-                    )}
+                    <span className={`text-[8px] sm:text-[9px] text-muted-foreground font-mono block mt-0.5`}>
+                      {isMobile
+                        ? `${new Date(projectStart.getTime() + task.startDay * 86400000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} — ${new Date(projectStart.getTime() + (task.startDay + task.duration - 1) * 86400000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`
+                        : `${startDate} → ${endDate}`
+                      }
+                    </span>
                   </div>
                 </div>
               );

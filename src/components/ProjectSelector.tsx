@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FolderOpen, Plus, MapPin, Calendar, User, LogOut, Sun, Moon, Users, Search, X, BarChart3 } from "lucide-react";
+import { FolderOpen, Plus, MapPin, Calendar, User, LogOut, Sun, Moon, Users, Search, X, BarChart3, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
@@ -36,6 +36,7 @@ interface TaskProgress {
 const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [taskProgress, setTaskProgress] = useState<Record<string, TaskProgress>>({});
+  const [subscriberCounts, setSubscriberCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -108,6 +109,25 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
           progressMap[project.id] = { total, completed, processing, initiating, planning, percent: weighted };
         }
         setTaskProgress(progressMap);
+      }
+
+      // Fetch subscriber counts per project (admin only)
+      if (admin) {
+        const { data: allSubs } = await supabase
+          .from("email_subscribers")
+          .select("project_id")
+          .in("project_id", projectList.map(p => p.id))
+          .eq("is_active", true);
+
+        if (allSubs) {
+          const subMap: Record<string, number> = {};
+          for (const s of allSubs) {
+            if (s.project_id) {
+              subMap[s.project_id] = (subMap[s.project_id] || 0) + 1;
+            }
+          }
+          setSubscriberCounts(subMap);
+        }
       }
     }
 
@@ -377,6 +397,12 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
                           <div className="flex items-center gap-1.5">
                             <Users className="w-3 h-3 shrink-0 text-primary/50" />
                             <span className="truncate">PM: {project.project_manager}</span>
+                          </div>
+                        )}
+                        {isAdmin && subscriberCounts[project.id] > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="w-3 h-3 shrink-0 text-primary/50" />
+                            <span>{subscriberCounts[project.id]} subscriber{subscriberCounts[project.id] !== 1 ? "s" : ""}</span>
                           </div>
                         )}
                       </div>
