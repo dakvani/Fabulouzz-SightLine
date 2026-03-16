@@ -1,6 +1,13 @@
-import { type ProjectTask, type ProjectInfo, getCalendarDays } from "@/data/projectData";
+import { type ProjectTask, type ProjectInfo } from "@/data/projectData";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
+import {
+  getCalendarDays,
+  getTaskDateRange,
+  getTimelineEndDate,
+  parseProjectDate,
+  formatTimelineDate,
+} from "@/lib/projectTimeline";
 
 const loadImageAsBase64 = (src: string, maxDim = 0, asJpeg = false): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -19,11 +26,7 @@ const loadImageAsBase64 = (src: string, maxDim = 0, asJpeg = false): Promise<str
       canvas.height = h;
       const ctx = canvas.getContext("2d");
       ctx?.drawImage(img, 0, 0, w, h);
-      if (asJpeg) {
-        resolve(canvas.toDataURL("image/jpeg", 0.6));
-      } else {
-        resolve(canvas.toDataURL("image/png"));
-      }
+      resolve(asJpeg ? canvas.toDataURL("image/jpeg", 0.6) : canvas.toDataURL("image/png"));
     };
     img.onerror = reject;
     img.src = src;
@@ -52,34 +55,19 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 16;
 
-  const getStatusCounts = () => ({
-    completed: tasks.filter(t => t.status === "Completed").length,
-    processing: tasks.filter(t => t.status === "Processing").length,
-    initiating: tasks.filter(t => t.status === "Initiating").length,
-    planning: tasks.filter(t => t.status === "Planning").length,
-    total: tasks.length,
-  });
-
-  const getOverallProgress = () => {
-    const weights: Record<string, number> = { Completed: 1, Processing: 0.5, Initiating: 0.2, Planning: 0 };
-    const total = tasks.reduce((sum, t) => sum + (weights[t.status] || 0), 0);
-    return Math.round((total / tasks.length) * 100);
-  };
-
-  const counts = getStatusCounts();
-  const progress = getOverallProgress();
-  const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-
+  /* ── Color palette ── */
   const brandGreen: [number, number, number] = [47, 191, 47];
-  const bgColor: [number, number, number] = isDark ? [18, 18, 24] : [255, 255, 255];
-  const cardBgColor: [number, number, number] = isDark ? [28, 28, 38] : [245, 245, 248];
-  const textPrimary: [number, number, number] = isDark ? [240, 240, 240] : [30, 30, 40];
-  const textSecondary: [number, number, number] = isDark ? [160, 160, 170] : [100, 100, 110];
-  const altRowColor: [number, number, number] = isDark ? [23, 23, 32] : [250, 250, 252];
-  const gridLineColor: [number, number, number] = isDark ? [40, 40, 55] : [220, 220, 230];
-  const weekendBg: [number, number, number] = isDark ? [25, 25, 35] : [240, 240, 245];
-  const altGanttRow: [number, number, number] = isDark ? [22, 22, 30] : [248, 248, 252];
+  const bgColor: [number, number, number] = isDark ? [15, 15, 22] : [255, 255, 255];
+  const cardBg: [number, number, number] = isDark ? [24, 24, 34] : [247, 247, 250];
+  const cardBgAlt: [number, number, number] = isDark ? [20, 20, 28] : [252, 252, 254];
+  const textPrimary: [number, number, number] = isDark ? [240, 240, 245] : [25, 25, 35];
+  const textSecondary: [number, number, number] = isDark ? [140, 140, 155] : [110, 110, 120];
+  const altRow: [number, number, number] = isDark ? [20, 20, 28] : [250, 250, 253];
+  const gridLine: [number, number, number] = isDark ? [40, 40, 55] : [225, 225, 235];
+  const weekendBg: [number, number, number] = isDark ? [22, 22, 32] : [242, 242, 247];
+  const divider: [number, number, number] = isDark ? [50, 50, 65] : [210, 210, 220];
 
   const statusColors: Record<string, [number, number, number]> = {
     Completed: [34, 197, 94],
@@ -88,186 +76,207 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     Planning: [168, 162, 158],
   };
 
-  let logoData: string | null = null;
-  try {
-    logoData = await loadImageAsBase64(isDark ? fabulouzzLogo : fabulouzzLogoLight);
-  } catch {
-    // fallback to text
-  }
+  /* ── Derived data ── */
+  const projectStart = parseProjectDate(projectInfo.startDate);
+  const timelineEnd = getTimelineEndDate(projectInfo, tasks);
+  const calendarDays = getCalendarDays(projectStart, timelineEnd);
 
-  // Pre-load notification media images
-  const mediaCache: Record<string, string> = {};
-  const videoExts = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.ogg'];
-  const isVideoUrl = (url: string) => {
-    const lower = url.toLowerCase().split('?')[0];
-    return videoExts.some(ext => lower.endsWith(ext));
+  const counts = {
+    completed: tasks.filter(t => t.status === "Completed").length,
+    processing: tasks.filter(t => t.status === "Processing").length,
+    initiating: tasks.filter(t => t.status === "Initiating").length,
+    planning: tasks.filter(t => t.status === "Planning").length,
+    total: tasks.length,
   };
 
+  const weights: Record<string, number> = { Completed: 1, Processing: 0.5, Initiating: 0.2, Planning: 0 };
+  const progress = counts.total > 0 ? Math.round((tasks.reduce((s, t) => s + (weights[t.status] || 0), 0) / counts.total) * 100) : 0;
+  const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
+  const now = new Date();
+  const todayIndex = calendarDays.findIndex(d =>
+    d.date.getFullYear() === now.getFullYear() && d.date.getMonth() === now.getMonth() && d.date.getDate() === now.getDate()
+  );
+
+  /* ── Assets ── */
+  let logoData: string | null = null;
+  try { logoData = await loadImageAsBase64(isDark ? fabulouzzLogo : fabulouzzLogoLight); } catch { /* fallback text */ }
+
+  const videoExts = [".mp4", ".webm", ".mov", ".avi", ".mkv", ".ogg"];
+  const isVideoUrl = (url: string) => videoExts.some(ext => url.toLowerCase().split("?")[0].endsWith(ext));
+
+  const mediaCache: Record<string, string> = {};
   for (const n of notifications) {
     if (!n.media_url) continue;
     let urls: string[] = [];
     try { const p = JSON.parse(n.media_url); if (Array.isArray(p)) urls = p; } catch { urls = [n.media_url]; }
     for (const url of urls) {
-      if (isVideoUrl(url)) continue; // skip videos entirely
-      try {
-        mediaCache[url] = await loadImageAsBase64(url, 300, true); // JPEG compressed thumbnails
-      } catch { /* skip failed loads */ }
+      if (isVideoUrl(url)) continue;
+      try { mediaCache[url] = await loadImageAsBase64(url, 300, true); } catch { /* skip */ }
     }
   }
 
-  const calendarDays = getCalendarDays();
-  const now = new Date();
-  const todayIndex = calendarDays.findIndex(d =>
-    d.date.getFullYear() === now.getFullYear() &&
-    d.date.getMonth() === now.getMonth() &&
-    d.date.getDate() === now.getDate()
-  );
-
-  let totalPages = 4; // cover + tasks + updates + gantt
   const hasNotifications = notifications.length > 0;
-  if (!hasNotifications) totalPages = 3;
+  let totalPages = hasNotifications ? 4 : 3;
 
-  const drawPageFooter = (doc: any, pageNum: number, pw: number, ph: number) => {
-    doc.setFillColor(...cardBgColor);
-    doc.rect(0, ph - 14, pw, 14, "F");
-    doc.setFillColor(...brandGreen);
-    doc.rect(0, ph - 14, pw, 0.5, "F");
-    doc.setTextColor(...textSecondary);
-    doc.setFontSize(6.5);
-    doc.setFont("helvetica", "normal");
-    doc.text("Powered by Fabulouzz Technologies  •  SightLine Project Command Center", 14, ph - 5);
-    doc.text(`Page ${pageNum} of ${totalPages}`, pw - 14, ph - 5, { align: "right" });
+  /* ── Shared drawing helpers ── */
+  const drawBg = (d: any, w: number, h: number) => { d.setFillColor(...bgColor); d.rect(0, 0, w, h, "F"); };
+
+  const drawPageFooter = (d: any, pageNum: number, pw: number, ph: number) => {
+    d.setFillColor(...cardBg);
+    d.rect(0, ph - 12, pw, 12, "F");
+    d.setFillColor(...brandGreen);
+    d.rect(0, ph - 12, pw, 0.4, "F");
+    d.setTextColor(...textSecondary);
+    d.setFontSize(5.5);
+    d.setFont("helvetica", "normal");
+    d.text("Powered by Fabulouzz Technologies  •  SightLine Project Command Center", margin, ph - 4.5);
+    d.text(`Page ${pageNum} of ${totalPages}`, pw - margin, ph - 4.5, { align: "right" });
   };
 
-  const drawPageHeader = (doc: any, sectionTitle: string, pw: number) => {
-    doc.setFillColor(...cardBgColor);
-    doc.rect(0, 0, pw, 24, "F");
-    doc.setFillColor(...brandGreen);
-    doc.rect(0, 24, pw, 0.8, "F");
-    if (logoData) {
-      doc.addImage(logoData, "PNG", 14, 4, 40, 13);
-    }
-    doc.setTextColor(...textSecondary);
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.text(sectionTitle, pw - 14, 10, { align: "right" });
-    doc.setTextColor(...brandGreen);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text(projectInfo.projectRef, pw - 14, 17, { align: "right" });
+  const drawPageHeader = (d: any, sectionTitle: string, pw: number) => {
+    d.setFillColor(...cardBg);
+    d.rect(0, 0, pw, 22, "F");
+    d.setFillColor(...brandGreen);
+    d.rect(0, 22, pw, 0.6, "F");
+    if (logoData) d.addImage(logoData, "PNG", margin, 3, 38, 12);
+    d.setTextColor(...textSecondary);
+    d.setFontSize(6.5);
+    d.setFont("helvetica", "normal");
+    d.text(sectionTitle, pw - margin, 9, { align: "right" });
+    d.setTextColor(...brandGreen);
+    d.setFontSize(8);
+    d.setFont("helvetica", "bold");
+    d.text(projectInfo.projectRef, pw - margin, 16, { align: "right" });
   };
 
-  // ======== PAGE 1 — COVER PAGE ========
-  doc.setFillColor(...bgColor);
-  doc.rect(0, 0, pageWidth, pageHeight, "F");
+  const drawSectionTitle = (d: any, title: string, y: number, pw: number) => {
+    d.setTextColor(...brandGreen);
+    d.setFontSize(9);
+    d.setFont("helvetica", "bold");
+    d.text(title, margin, y);
+    d.setDrawColor(...brandGreen);
+    d.setLineWidth(0.3);
+    d.line(margin, y + 1.5, pw - margin, y + 1.5);
+  };
 
+  /* ════════════════════════════════════════════════════
+   *  PAGE 1 — COVER PAGE
+   * ════════════════════════════════════════════════════ */
+  drawBg(doc, pageWidth, pageHeight);
+
+  // Corner accents
   doc.setDrawColor(...brandGreen);
-  doc.setLineWidth(0.8);
-  doc.line(14, 20, 50, 20);
-  doc.line(14, 20, 14, 56);
-  doc.line(pageWidth - 14, pageHeight - 40, pageWidth - 50, pageHeight - 40);
-  doc.line(pageWidth - 14, pageHeight - 40, pageWidth - 14, pageHeight - 76);
+  doc.setLineWidth(0.6);
+  doc.line(margin, 22, margin + 30, 22);
+  doc.line(margin, 22, margin, 52);
+  doc.line(pageWidth - margin, pageHeight - 36, pageWidth - margin - 30, pageHeight - 36);
+  doc.line(pageWidth - margin, pageHeight - 36, pageWidth - margin, pageHeight - 66);
 
+  // Logo & branding
   if (logoData) {
-    doc.addImage(logoData, "PNG", pageWidth / 2 - 45, 50, 90, 28);
+    doc.addImage(logoData, "PNG", pageWidth / 2 - 40, 48, 80, 25);
     doc.setTextColor(...brandGreen);
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text("SIGHTLINE Command Center", pageWidth / 2, 86, { align: "center" });
+    doc.text("SIGHTLINE Command Center", pageWidth / 2, 82, { align: "center" });
   } else {
     doc.setTextColor(...brandGreen);
-    doc.setFontSize(28);
+    doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
-    doc.text("FABULOUZZ TECHNOLOGIES", pageWidth / 2, 72, { align: "center" });
-    doc.setFontSize(12);
-    doc.text("SIGHTLINE Command Center", pageWidth / 2, 82, { align: "center" });
+    doc.text("FABULOUZZ TECHNOLOGIES", pageWidth / 2, 68, { align: "center" });
+    doc.setFontSize(11);
+    doc.text("SIGHTLINE Command Center", pageWidth / 2, 78, { align: "center" });
   }
 
+  // Divider
   doc.setFillColor(...brandGreen);
-  doc.rect(pageWidth / 2 - 30, 92, 60, 0.8, "F");
+  doc.rect(pageWidth / 2 - 25, 88, 50, 0.6, "F");
 
+  // Report label
   doc.setTextColor(...brandGreen);
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text("PROJECT STATUS REPORT", pageWidth / 2, 103, { align: "center", charSpace: 2 });
+  doc.text("PROJECT STATUS REPORT", pageWidth / 2, 98, { align: "center", charSpace: 2.5 });
 
+  // Project title
   doc.setTextColor(...textPrimary);
-  doc.setFontSize(20);
+  doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
-  const titleLines = doc.splitTextToSize(projectInfo.title, pageWidth - 60);
-  doc.text(titleLines, pageWidth / 2, 120, { align: "center" });
+  const titleLines = doc.splitTextToSize(projectInfo.title, pageWidth - 56);
+  doc.text(titleLines, pageWidth / 2, 114, { align: "center" });
 
-  const subtitleY = 120 + titleLines.length * 9 + 6;
+  const afterTitle = 114 + titleLines.length * 8 + 4;
   doc.setTextColor(...textSecondary);
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text(`${projectInfo.client}  •  ${projectInfo.location}`, pageWidth / 2, subtitleY, { align: "center" });
+  doc.text(`${projectInfo.client}  •  ${projectInfo.location}`, pageWidth / 2, afterTitle, { align: "center" });
 
-  // Summary cards
-  const coverCardY = subtitleY + 18;
-  const coverCardW = (pageWidth - 28 - 18) / 4;
-  const coverCardH = 32;
+  // Summary metric cards
+  const cardY = afterTitle + 16;
+  const cardGap = 5;
+  const cardW = (pageWidth - margin * 2 - cardGap * 3) / 4;
+  const cardH = 30;
 
   const summaryCards = [
-    { label: "Overall Progress", value: `${progress}%`, color: brandGreen },
-    { label: "Completed", value: `${counts.completed}`, color: statusColors.Completed },
-    { label: "In Progress", value: `${counts.processing + counts.initiating}`, color: statusColors.Processing },
-    { label: "Planning", value: `${counts.planning}`, color: statusColors.Planning },
+    { label: "OVERALL PROGRESS", value: `${progress}%`, color: brandGreen },
+    { label: "COMPLETED", value: `${counts.completed}`, color: statusColors.Completed },
+    { label: "IN PROGRESS", value: `${counts.processing + counts.initiating}`, color: statusColors.Processing },
+    { label: "PLANNING", value: `${counts.planning}`, color: statusColors.Planning },
   ];
 
   summaryCards.forEach((card, i) => {
-    const cx = 14 + i * (coverCardW + 6);
-    doc.setFillColor(...cardBgColor);
-    doc.roundedRect(cx, coverCardY, coverCardW, coverCardH, 2, 2, "F");
+    const cx = margin + i * (cardW + cardGap);
+    doc.setFillColor(...cardBg);
+    doc.roundedRect(cx, cardY, cardW, cardH, 2.5, 2.5, "F");
     doc.setFillColor(...card.color);
-    doc.rect(cx, coverCardY, coverCardW, 1.5, "F");
+    doc.roundedRect(cx, cardY, cardW, 2, 2.5, 2.5, "F");
+    doc.rect(cx, cardY + 1, cardW, 1, "F"); // clean bottom of top accent
     doc.setTextColor(...card.color);
-    doc.setFontSize(20);
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text(card.value, cx + coverCardW / 2, coverCardY + 16, { align: "center" });
+    doc.text(card.value, cx + cardW / 2, cardY + 15, { align: "center" });
     doc.setTextColor(...textSecondary);
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.text(card.label.toUpperCase(), cx + coverCardW / 2, coverCardY + 25, { align: "center" });
+    doc.setFontSize(5.5);
+    doc.setFont("helvetica", "bold");
+    doc.text(card.label, cx + cardW / 2, cardY + 23, { align: "center" });
   });
 
   // Project details card
-  const detailY = coverCardY + coverCardH + 16;
-  doc.setFillColor(...cardBgColor);
-  doc.roundedRect(30, detailY, pageWidth - 60, 52, 2, 2, "F");
+  const detY = cardY + cardH + 14;
+  const detH = 50;
+  doc.setFillColor(...cardBg);
+  doc.roundedRect(margin + 10, detY, pageWidth - margin * 2 - 20, detH, 2.5, 2.5, "F");
   doc.setFillColor(...brandGreen);
-  doc.rect(30, detailY, 1.5, 52, "F");
+  doc.rect(margin + 10, detY, 2, detH, "F");
 
   const coverDetails = [
     ["Project Ref", projectInfo.projectRef],
     ["Project Manager", projectInfo.projectManager],
     ["Reporting To", projectInfo.reportingTo],
     ["Project Engineer", projectInfo.projectEngineer],
-    ["Duration", `${projectInfo.startDate}  to  ${projectInfo.endDate}`],
+    ["Duration", `${projectInfo.startDate}  →  ${projectInfo.endDate}`],
     ["Report Date", today],
   ];
 
   coverDetails.forEach((item, i) => {
-    const dy = detailY + 9 + i * 7;
+    const dy = detY + 8 + i * 6.8;
     doc.setTextColor(...textSecondary);
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
-    doc.text(`${item[0]}:`, 38, dy);
+    doc.text(`${item[0]}:`, margin + 18, dy);
     doc.setTextColor(...textPrimary);
     doc.setFont("helvetica", "bold");
-    doc.text(item[1], 78, dy);
+    doc.text(item[1], margin + 56, dy);
   });
 
-  // Status breakdown bar
-  const barY = detailY + 58;
-  doc.setTextColor(...brandGreen);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.text("STATUS DISTRIBUTION", 30, barY);
+  // Status distribution bar
+  const barY = detY + detH + 12;
+  drawSectionTitle(doc, "STATUS DISTRIBUTION", barY, pageWidth);
 
-  const barTop = barY + 3;
-  const barWidth = pageWidth - 60;
-  const barHeight = 5;
+  const barTop = barY + 6;
+  const barW = pageWidth - margin * 2;
+  const barH = 6;
   const segments = [
     { count: counts.completed, color: statusColors.Completed, label: "Completed" },
     { count: counts.processing, color: statusColors.Processing, label: "Processing" },
@@ -275,79 +284,86 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     { count: counts.planning, color: statusColors.Planning, label: "Planning" },
   ];
 
-  let segX = 30;
-  segments.forEach(seg => {
-    const w = (seg.count / counts.total) * barWidth;
+  // Bar background
+  doc.setFillColor(...cardBg);
+  doc.roundedRect(margin, barTop, barW, barH, 2, 2, "F");
+
+  let segX = margin;
+  segments.forEach((seg, si) => {
+    const w = (seg.count / counts.total) * barW;
     if (w > 0) {
       doc.setFillColor(...seg.color);
-      doc.roundedRect(segX, barTop, w, barHeight, 1, 1, "F");
-      if (w > 10) {
+      if (si === 0) doc.roundedRect(segX, barTop, w, barH, 2, 2, "F");
+      else if (si === segments.length - 1) doc.roundedRect(segX, barTop, w, barH, 2, 2, "F");
+      else doc.rect(segX, barTop, w, barH, "F");
+      if (w > 12) {
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(5.5);
+        doc.setFontSize(5);
         doc.setFont("helvetica", "bold");
-        doc.text(`${seg.count}`, segX + w / 2, barTop + 3.5, { align: "center" });
+        doc.text(`${seg.count}`, segX + w / 2, barTop + 4, { align: "center" });
       }
       segX += w;
     }
   });
 
-  // Legend below bar
-  let legX = 30;
-  const legY = barTop + barHeight + 5;
+  // Legend
+  const legY = barTop + barH + 5;
+  let legX = margin;
   segments.forEach(seg => {
     doc.setFillColor(...seg.color);
-    doc.roundedRect(legX, legY - 2.5, 5, 3, 0.5, 0.5, "F");
+    doc.roundedRect(legX, legY - 2, 4, 3, 0.8, 0.8, "F");
     doc.setTextColor(...textSecondary);
     doc.setFontSize(6);
     doc.setFont("helvetica", "normal");
-    doc.text(`${seg.label} (${seg.count})`, legX + 7, legY);
-    legX += 38;
+    doc.text(`${seg.label} (${seg.count})`, legX + 6, legY + 0.2);
+    legX += 40;
   });
 
-  // Total tasks + active tasks + notifications count
-  const statsY = legY + 10;
-  doc.setFillColor(...cardBgColor);
-  doc.roundedRect(30, statsY, pageWidth - 60, 12, 2, 2, "F");
+  // Stats bar
+  const statsY = legY + 8;
+  doc.setFillColor(...cardBg);
+  doc.roundedRect(margin, statsY, barW, 10, 2, 2, "F");
   const statsItems = [
     `Total Tasks: ${counts.total}`,
     `Active: ${counts.processing + counts.initiating}`,
     `Updates: ${notifications.length}`,
-    `Media: ${notifications.reduce((sum, n) => {
-      if (!n.media_url) return sum;
-      try { const p = JSON.parse(n.media_url); return sum + (Array.isArray(p) ? p.length : 1); } catch { return sum + 1; }
-    }, 0)} files`,
+    `Media: ${notifications.reduce((sum, n) => { if (!n.media_url) return sum; try { const p = JSON.parse(n.media_url); return sum + (Array.isArray(p) ? p.length : 1); } catch { return sum + 1; } }, 0)} files`,
   ];
-  const statW = (pageWidth - 60) / statsItems.length;
+  const statW = barW / statsItems.length;
   statsItems.forEach((s, i) => {
     doc.setTextColor(...textPrimary);
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
-    doc.text(s, 30 + i * statW + statW / 2, statsY + 7.5, { align: "center" });
+    doc.text(s, margin + i * statW + statW / 2, statsY + 6.5, { align: "center" });
   });
 
+  // Confidential
   doc.setTextColor(...textSecondary);
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
-  doc.text("CONFIDENTIAL — For authorized use only", pageWidth / 2, pageHeight - 22, { align: "center" });
+  doc.text("CONFIDENTIAL — For authorized use only", pageWidth / 2, pageHeight - 18, { align: "center" });
 
   drawPageFooter(doc, 1, pageWidth, pageHeight);
 
-  // ======== PAGE 2 — TASK BREAKDOWN ========
+  /* ════════════════════════════════════════════════════
+   *  PAGE 2 — TASK BREAKDOWN
+   * ════════════════════════════════════════════════════ */
   doc.addPage();
-  doc.setFillColor(...bgColor);
-  doc.rect(0, 0, pageWidth, pageHeight, "F");
+  drawBg(doc, pageWidth, pageHeight);
   drawPageHeader(doc, "TASK BREAKDOWN", pageWidth);
 
-  let y = 32;
-  doc.setFillColor(...cardBgColor);
-  doc.roundedRect(14, y, pageWidth - 28, 42, 2, 2, "F");
+  let y = 28;
+
+  // Project info card
+  doc.setFillColor(...cardBg);
+  doc.roundedRect(margin, y, pageWidth - margin * 2, 38, 2.5, 2.5, "F");
   doc.setFillColor(...brandGreen);
-  doc.rect(14, y, 1.5, 42, "F");
+  doc.rect(margin, y, 2, 38, "F");
 
   doc.setTextColor(...brandGreen);
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text("PROJECT INFORMATION", 20, y + 7);
+  doc.text("PROJECT INFORMATION", margin + 8, y + 7);
 
   const infoItems = [
     ["Project Manager", projectInfo.projectManager, "Reporting To", projectInfo.reportingTo],
@@ -356,69 +372,74 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     ["Start Date", projectInfo.startDate, "End Date", projectInfo.endDate],
   ];
 
-  doc.setFontSize(8);
+  const colLabel1 = margin + 8;
+  const colVal1 = margin + 44;
+  const colLabel2 = pageWidth / 2 + 4;
+  const colVal2 = pageWidth / 2 + 40;
+
   infoItems.forEach((row, i) => {
-    const iy = y + 14 + i * 7;
+    const iy = y + 14 + i * 6;
     doc.setTextColor(...textSecondary);
+    doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
-    doc.text(`${row[0]}:`, 20, iy);
+    doc.text(`${row[0]}:`, colLabel1, iy);
     doc.setTextColor(...textPrimary);
     doc.setFont("helvetica", "bold");
-    doc.text(row[1], 55, iy);
+    doc.text(row[1], colVal1, iy);
     doc.setTextColor(...textSecondary);
     doc.setFont("helvetica", "normal");
-    doc.text(`${row[2]}:`, pageWidth / 2 + 5, iy);
+    doc.text(`${row[2]}:`, colLabel2, iy);
     doc.setTextColor(...textPrimary);
     doc.setFont("helvetica", "bold");
-    doc.text(row[3], pageWidth / 2 + 40, iy);
+    doc.text(row[3], colVal2, iy);
   });
 
-  y += 50;
-
-  doc.setTextColor(...brandGreen);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("TASK BREAKDOWN", 14, y);
-  y += 4;
+  y += 46;
+  drawSectionTitle(doc, "TASK BREAKDOWN", y, pageWidth);
+  y += 6;
 
   autoTable(doc, {
     startY: y,
-    margin: { left: 14, right: 14 },
-    head: [["#", "Task Name", "Status", "Start Day", "Duration", "Dependencies"]],
-    body: tasks.map(t => [
-      String(t.id).padStart(2, "0"),
-      t.name,
-      t.status,
-      `Day ${t.startDay}`,
-      `${t.duration} days`,
-      t.dependencies && t.dependencies.length > 0 ? t.dependencies.map(d => `#${String(d).padStart(2, "0")}`).join(", ") : "—",
-    ]),
+    margin: { left: margin, right: margin },
+    head: [["#", "Task Name", "Status", "Start Date", "End Date", "Duration", "Dependencies"]],
+    body: tasks.map(t => {
+      const range = getTaskDateRange(projectStart, t.startDay, t.duration);
+      return [
+        String(t.id).padStart(2, "0"),
+        t.name,
+        t.status,
+        formatTimelineDate(range.start, true),
+        formatTimelineDate(range.end, true),
+        `${t.duration}d`,
+        t.dependencies && t.dependencies.length > 0 ? t.dependencies.map(d => `#${String(d).padStart(2, "0")}`).join(", ") : "—",
+      ];
+    }),
     theme: "plain",
     styles: {
       fillColor: bgColor,
       textColor: textPrimary,
-      fontSize: 7,
-      cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
-      lineColor: gridLineColor,
-      lineWidth: 0.2,
+      fontSize: 6.5,
+      cellPadding: { top: 2.5, bottom: 2.5, left: 2.5, right: 2 },
+      lineColor: gridLine,
+      lineWidth: 0.15,
       font: "helvetica",
     },
     headStyles: {
-      fillColor: cardBgColor,
+      fillColor: cardBg,
       textColor: brandGreen,
       fontStyle: "bold",
-      fontSize: 7,
+      fontSize: 6.5,
+      cellPadding: { top: 3, bottom: 3, left: 2.5, right: 2 },
     },
-    alternateRowStyles: {
-      fillColor: altRowColor,
-    },
+    alternateRowStyles: { fillColor: altRow },
     columnStyles: {
-      0: { cellWidth: 10, halign: "center" },
-      1: { cellWidth: 70 },
-      2: { cellWidth: 22, halign: "center" },
+      0: { cellWidth: 8, halign: "center" },
+      1: { cellWidth: "auto" },
+      2: { cellWidth: 18, halign: "center" },
       3: { cellWidth: 18, halign: "center" },
-      4: { cellWidth: 20, halign: "center" },
-      5: { cellWidth: 28, halign: "center" },
+      4: { cellWidth: 18, halign: "center" },
+      5: { cellWidth: 14, halign: "center" },
+      6: { cellWidth: 22, halign: "center" },
     },
     didParseCell: (data: any) => {
       if (data.section === "body" && data.column.index === 2) {
@@ -433,113 +454,99 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
 
   drawPageFooter(doc, 2, pageWidth, pageHeight);
 
-  // ======== PAGE 3 — LIVE UPDATES & MEDIA (if notifications exist) ========
+  /* ════════════════════════════════════════════════════
+   *  PAGE 3 — LIVE UPDATES & MEDIA (if any)
+   * ════════════════════════════════════════════════════ */
   let currentPage = 3;
   if (hasNotifications) {
     doc.addPage();
-    doc.setFillColor(...bgColor);
-    doc.rect(0, 0, pageWidth, pageHeight, "F");
+    drawBg(doc, pageWidth, pageHeight);
     drawPageHeader(doc, "LIVE UPDATES & MEDIA", pageWidth);
 
-    let uy = 32;
-
-    // Section title
-    doc.setTextColor(...brandGreen);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text("RECENT STATUS UPDATES", 14, uy);
+    let uy = 28;
+    drawSectionTitle(doc, "RECENT STATUS UPDATES", uy, pageWidth);
     doc.setTextColor(...textSecondary);
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setFont("helvetica", "normal");
-    doc.text(`${notifications.length} updates as of ${today}`, pageWidth - 14, uy, { align: "right" });
-    uy += 6;
+    doc.text(`${notifications.length} updates as of ${today}`, pageWidth - margin, uy, { align: "right" });
+    uy += 8;
 
     for (const n of notifications) {
-      // Check if we need a new page
-      if (uy > pageHeight - 50) {
+      if (uy > pageHeight - 45) {
         drawPageFooter(doc, currentPage, pageWidth, pageHeight);
         doc.addPage();
         totalPages++;
         currentPage++;
-        doc.setFillColor(...bgColor);
-        doc.rect(0, 0, pageWidth, pageHeight, "F");
+        drawBg(doc, pageWidth, pageHeight);
         drawPageHeader(doc, "LIVE UPDATES & MEDIA (CONT.)", pageWidth);
-        uy = 32;
+        uy = 28;
       }
 
-      // Parse media URLs — skip videos entirely
       let mediaUrls: string[] = [];
       if (n.media_url) {
         try { const p = JSON.parse(n.media_url); if (Array.isArray(p)) mediaUrls = p; } catch { mediaUrls = [n.media_url]; }
       }
       const imageUrls = mediaUrls.filter(u => !isVideoUrl(u));
-
-      // Estimate card height
-      const msgLines = doc.splitTextToSize(n.message, pageWidth - 40);
-      const textHeight = msgLines.length * 4;
+      const msgLines = doc.splitTextToSize(n.message, pageWidth - margin * 2 - 16);
+      const textHeight = msgLines.length * 3.8;
       const loadedImages = imageUrls.filter(u => mediaCache[u]);
       const imageRows = Math.ceil(loadedImages.length / 5);
-      const imageRowHeight = loadedImages.length > 0 ? imageRows * 24 : 0;
-      const cardHeight = Math.max(14, textHeight + imageRowHeight + 10);
+      const imageRowH = loadedImages.length > 0 ? imageRows * 24 : 0;
+      const cardHeight = Math.max(16, textHeight + imageRowH + 12);
 
-      // Card background
-      doc.setFillColor(...cardBgColor);
-      doc.roundedRect(14, uy, pageWidth - 28, cardHeight, 2, 2, "F");
+      doc.setFillColor(...cardBg);
+      doc.roundedRect(margin, uy, pageWidth - margin * 2, cardHeight, 2.5, 2.5, "F");
 
-      // Accent bar
       const accentColor = n.type === "status_update" ? statusColors.Processing : brandGreen;
       doc.setFillColor(...accentColor);
-      doc.rect(14, uy, 1.5, cardHeight, "F");
+      doc.rect(margin, uy, 2, cardHeight, "F");
+
+      // Type badge
+      doc.setFillColor(...accentColor);
+      doc.roundedRect(margin + 6, uy + 2.5, 18, 4, 1.2, 1.2, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(4.5);
+      doc.setFont("helvetica", "bold");
+      doc.text(n.type.toUpperCase().replace("_", " "), margin + 15, uy + 5.2, { align: "center" });
 
       // Timestamp
       const dateStr = new Date(n.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
       doc.setTextColor(...textSecondary);
-      doc.setFontSize(6);
+      doc.setFontSize(5.5);
       doc.setFont("helvetica", "normal");
-      doc.text(dateStr, pageWidth - 18, uy + 5, { align: "right" });
-
-      // Type badge
-      doc.setFillColor(...accentColor);
-      doc.roundedRect(20, uy + 2, 18, 4, 1, 1, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(5);
-      doc.setFont("helvetica", "bold");
-      doc.text(n.type.toUpperCase().replace("_", " "), 29, uy + 4.8, { align: "center" });
+      doc.text(dateStr, pageWidth - margin - 4, uy + 5.2, { align: "right" });
 
       // Message
       doc.setTextColor(...textPrimary);
-      doc.setFontSize(7.5);
+      doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
-      doc.text(msgLines, 20, uy + 11);
+      doc.text(msgLines, margin + 6, uy + 11);
 
-      // Images grid — compact thumbnails
-      let imgY = uy + 10 + textHeight;
+      // Images grid
       if (loadedImages.length > 0) {
-        let imgX = 20;
+        let imgY = uy + 10 + textHeight;
+        let imgX = margin + 6;
         const imgSize = 22;
-        const imgGap = 2;
+        const imgGap = 2.5;
 
         for (const url of loadedImages) {
-          if (imgX + imgSize > pageWidth - 20) {
-            imgX = 20;
+          if (imgX + imgSize > pageWidth - margin - 4) {
+            imgX = margin + 6;
             imgY += imgSize + imgGap;
           }
           try {
             doc.addImage(mediaCache[url], "JPEG", imgX, imgY, imgSize, imgSize);
-            doc.setDrawColor(...gridLineColor);
+            doc.setDrawColor(...gridLine);
             doc.setLineWidth(0.2);
-            doc.roundedRect(imgX, imgY, imgSize, imgSize, 1, 1, "S");
+            doc.roundedRect(imgX, imgY, imgSize, imgSize, 1.2, 1.2, "S");
           } catch { /* skip */ }
           imgX += imgSize + imgGap;
         }
-      }
 
-      // Photo count label
-      if (loadedImages.length > 0) {
         doc.setTextColor(...textSecondary);
-        doc.setFontSize(5.5);
+        doc.setFontSize(5);
         doc.setFont("helvetica", "normal");
-        doc.text(`${loadedImages.length} photo${loadedImages.length !== 1 ? "s" : ""}`, pageWidth - 18, uy + cardHeight - 3, { align: "right" });
+        doc.text(`${loadedImages.length} photo${loadedImages.length !== 1 ? "s" : ""}`, pageWidth - margin - 4, uy + cardHeight - 3, { align: "right" });
       }
 
       uy += cardHeight + 4;
@@ -549,46 +556,47 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     currentPage++;
   }
 
-  // ======== LAST PAGE — GANTT CHART TIMELINE (landscape) ========
+  /* ════════════════════════════════════════════════════
+   *  LAST PAGE — GANTT CHART TIMELINE (landscape)
+   * ════════════════════════════════════════════════════ */
   doc.addPage("a4", "landscape");
   const lw = doc.internal.pageSize.getWidth();
   const lh = doc.internal.pageSize.getHeight();
 
-  doc.setFillColor(...bgColor);
-  doc.rect(0, 0, lw, lh, "F");
+  drawBg(doc, lw, lh);
 
-  doc.setFillColor(...cardBgColor);
-  doc.rect(0, 0, lw, 20, "F");
+  // Header
+  doc.setFillColor(...cardBg);
+  doc.rect(0, 0, lw, 18, "F");
   doc.setFillColor(...brandGreen);
-  doc.rect(0, 20, lw, 0.8, "F");
+  doc.rect(0, 18, lw, 0.6, "F");
 
-  if (logoData) {
-    doc.addImage(logoData, "PNG", 10, 3, 36, 11);
-  }
+  if (logoData) doc.addImage(logoData, "PNG", 10, 3, 34, 10);
   doc.setTextColor(...brandGreen);
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text("PROJECT TIMELINE — GANTT CHART", lw / 2, 13, { align: "center" });
+  doc.text("PROJECT TIMELINE — GANTT CHART", lw / 2, 12, { align: "center" });
   doc.setTextColor(...textSecondary);
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setFont("helvetica", "normal");
-  doc.text(projectInfo.projectRef, lw - 10, 13, { align: "right" });
+  doc.text(projectInfo.projectRef, lw - 10, 12, { align: "right" });
 
-  const ganttTop = 28;
-  const labelWidth = 90;
-  const ganttLeft = labelWidth + 12;
-  const ganttRight = lw - 10;
+  const ganttTop = 24;
+  const labelWidth = 88;
+  const ganttLeft = labelWidth + 10;
+  const ganttRight = lw - 8;
   const ganttWidth = ganttRight - ganttLeft;
   const totalDays = calendarDays.length;
   const dayWidth = ganttWidth / totalDays;
-  const rowHeight = 7.5;
-  const headerHeight = 14;
+  const rowHeight = Math.min(7.5, (lh - ganttTop - 35) / (tasks.length + 2));
+  const headerHeight = 12;
   const ganttBodyHeight = tasks.length * rowHeight;
 
-  doc.setFillColor(...cardBgColor);
+  // Day headers bg
+  doc.setFillColor(...cardBg);
   doc.rect(ganttLeft, ganttTop, ganttWidth, headerHeight, "F");
 
-  const monthNames = ["Jan", "Feb", "Mar", "Apr"];
+  // Month labels + day numbers
   let lastMonth = -1;
   calendarDays.forEach((day, i) => {
     const x = ganttLeft + i * dayWidth;
@@ -597,134 +605,161 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
 
     if (month !== lastMonth) {
       doc.setTextColor(...brandGreen);
-      doc.setFontSize(6.5);
+      doc.setFontSize(5.5);
       doc.setFont("helvetica", "bold");
-      doc.text(monthNames[month] || "", x + 1, ganttTop + 5);
+      const monthName = day.date.toLocaleDateString("en-GB", { month: "short" });
+      doc.text(monthName, x + 1, ganttTop + 4.5);
       lastMonth = month;
     }
 
     if (isToday) {
       doc.setFillColor(brandGreen[0], brandGreen[1], brandGreen[2]);
-      doc.setGState(doc.GState({ opacity: 0.2 }));
-      doc.rect(x, ganttTop, dayWidth, headerHeight, "F");
-      doc.rect(x, ganttTop + headerHeight, dayWidth, ganttBodyHeight, "F");
+      doc.setGState(doc.GState({ opacity: 0.15 }));
+      doc.rect(x, ganttTop, dayWidth, headerHeight + ganttBodyHeight, "F");
       doc.setGState(doc.GState({ opacity: 1 }));
-    }
-
-    if (day.isWeekend && !isToday) {
+    } else if (day.isWeekend) {
       doc.setFillColor(...weekendBg);
       doc.rect(x, ganttTop + headerHeight, dayWidth, ganttBodyHeight, "F");
     }
 
     if (isToday) {
       doc.setTextColor(...brandGreen);
-      doc.setFontSize(5.5);
+      doc.setFontSize(5);
       doc.setFont("helvetica", "bold");
     } else {
-      const dimness = day.isWeekend ? (isDark ? 80 : 170) : (isDark ? 140 : 100);
-      doc.setTextColor(dimness, dimness, dimness + 5);
-      doc.setFontSize(5);
+      const dim = day.isWeekend ? (isDark ? 75 : 170) : (isDark ? 130 : 105);
+      doc.setTextColor(dim, dim, dim + 5);
+      doc.setFontSize(4.5);
       doc.setFont("helvetica", "normal");
     }
-    doc.text(day.label, x + dayWidth / 2, ganttTop + 11, { align: "center" });
+    doc.text(day.label, x + dayWidth / 2, ganttTop + 10, { align: "center" });
 
-    doc.setDrawColor(...gridLineColor);
-    doc.setLineWidth(0.15);
+    // Vertical gridlines
+    doc.setDrawColor(...gridLine);
+    doc.setLineWidth(0.1);
     doc.line(x, ganttTop + headerHeight, x, ganttTop + headerHeight + ganttBodyHeight);
   });
 
+  // Today marker
   if (todayIndex >= 0) {
     const todayX = ganttLeft + todayIndex * dayWidth + dayWidth / 2;
     doc.setDrawColor(...brandGreen);
-    doc.setLineWidth(0.6);
+    doc.setLineWidth(0.5);
     const segLen = 2;
     const gapLen = 1.5;
     for (let sy = ganttTop; sy < ganttTop + headerHeight + ganttBodyHeight; sy += segLen + gapLen) {
-      const endY = Math.min(sy + segLen, ganttTop + headerHeight + ganttBodyHeight);
-      doc.line(todayX, sy, todayX, endY);
+      doc.line(todayX, sy, todayX, Math.min(sy + segLen, ganttTop + headerHeight + ganttBodyHeight));
     }
     doc.setFillColor(...brandGreen);
-    doc.roundedRect(todayX - 6, ganttTop - 4, 12, 4, 1, 1, "F");
-    doc.setTextColor(...(isDark ? [18, 18, 24] as [number, number, number] : [255, 255, 255] as [number, number, number]));
+    doc.roundedRect(todayX - 5, ganttTop - 3.5, 10, 3.5, 1, 1, "F");
+    doc.setTextColor(...(isDark ? [15, 15, 22] as [number, number, number] : [255, 255, 255] as [number, number, number]));
     doc.setFontSize(3.5);
     doc.setFont("helvetica", "bold");
-    doc.text("TODAY", todayX, ganttTop - 1, { align: "center" });
+    doc.text("TODAY", todayX, ganttTop - 0.8, { align: "center" });
   }
 
+  // Header bottom line
   doc.setFillColor(...brandGreen);
-  doc.rect(ganttLeft, ganttTop + headerHeight - 0.4, ganttWidth, 0.4, "F");
+  doc.rect(ganttLeft, ganttTop + headerHeight - 0.3, ganttWidth, 0.3, "F");
 
+  // Task rows
   tasks.forEach((task, i) => {
     const ry = ganttTop + headerHeight + i * rowHeight;
 
+    // Alternating row bg
     if (i % 2 === 0) {
-      doc.setFillColor(...altGanttRow);
-      doc.rect(10, ry, ganttRight - 10, rowHeight, "F");
+      doc.setFillColor(...cardBgAlt);
+      doc.rect(8, ry, ganttRight - 8, rowHeight, "F");
     }
 
+    // Row divider
+    doc.setDrawColor(...gridLine);
+    doc.setLineWidth(0.08);
+    doc.line(8, ry + rowHeight, ganttRight, ry + rowHeight);
+
+    // Task number
     doc.setTextColor(...textSecondary);
-    doc.setFontSize(5);
-    doc.setFont("helvetica", "normal");
-    doc.text(String(task.id).padStart(2, "0"), 12, ry + rowHeight / 2 + 1.2);
+    doc.setFontSize(4.5);
+    doc.setFont("helvetica", "bold");
+    doc.text(String(task.id).padStart(2, "0"), 10, ry + rowHeight / 2 + 1.2);
 
+    // Task name
     doc.setTextColor(...textPrimary);
-    doc.setFontSize(5);
+    doc.setFontSize(4.5);
     doc.setFont("helvetica", "normal");
-    const maxNameWidth = labelWidth - 12;
-    const nameLines = doc.splitTextToSize(task.name, maxNameWidth);
-    const nameText = nameLines.length > 2 ? nameLines.slice(0, 2).join(" ").slice(0, 70) + "…" : nameLines.join(" ");
-    doc.text(nameText, 20, ry + rowHeight / 2 + 1.2);
+    const maxNameW = labelWidth - 10;
+    const nameLines = doc.splitTextToSize(task.name, maxNameW);
+    const nameText = nameLines.length > 2 ? nameLines.slice(0, 2).join(" ").slice(0, 75) + "…" : nameLines.join(" ");
+    doc.text(nameText, 18, ry + rowHeight / 2 + 1.2);
 
+    // Gantt bar
     const barX = ganttLeft + task.startDay * dayWidth + 0.5;
-    const barW = task.duration * dayWidth - 1;
-    const barYPos = ry + 1.5;
-    const barH = rowHeight - 3;
+    const barBW = task.duration * dayWidth - 1;
+    const barYPos = ry + 1.8;
+    const barBH = rowHeight - 3.6;
     const color = statusColors[task.status] || textSecondary;
 
+    // Shadow
     doc.setFillColor(color[0], color[1], color[2]);
-    doc.setGState(doc.GState({ opacity: 0.25 }));
-    doc.roundedRect(barX + 0.3, barYPos + 0.3, barW, barH, 1, 1, "F");
+    doc.setGState(doc.GState({ opacity: 0.2 }));
+    doc.roundedRect(barX + 0.3, barYPos + 0.3, barBW, barBH, 1.2, 1.2, "F");
     doc.setGState(doc.GState({ opacity: 1 }));
 
+    // Bar
     doc.setFillColor(...color);
-    doc.roundedRect(barX, barYPos, barW, barH, 1, 1, "F");
+    doc.roundedRect(barX, barYPos, barBW, barBH, 1.2, 1.2, "F");
 
-    doc.setDrawColor(...gridLineColor);
-    doc.setLineWidth(0.1);
-    doc.line(10, ry + rowHeight, ganttRight, ry + rowHeight);
+    // Duration label on bar
+    if (barBW > 12) {
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(3.5);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${task.duration}d`, barX + barBW / 2, barYPos + barBH / 2 + 1, { align: "center" });
+    }
   });
 
-  const legendY = ganttTop + headerHeight + ganttBodyHeight + 8;
+  // Legend
+  const legendY = ganttTop + headerHeight + ganttBodyHeight + 6;
   doc.setTextColor(...textSecondary);
-  doc.setFontSize(6.5);
+  doc.setFontSize(6);
   doc.setFont("helvetica", "bold");
   doc.text("LEGEND:", 10, legendY);
 
-  let legendX = 30;
+  let legendX = 28;
   Object.entries(statusColors).forEach(([status, color]) => {
     doc.setFillColor(...color);
-    doc.roundedRect(legendX, legendY - 3, 8, 3.5, 0.8, 0.8, "F");
+    doc.roundedRect(legendX, legendY - 2.5, 7, 3, 0.8, 0.8, "F");
     doc.setTextColor(...textPrimary);
-    doc.setFontSize(6);
+    doc.setFontSize(5.5);
     doc.setFont("helvetica", "normal");
-    doc.text(status, legendX + 10, legendY);
-    legendX += 35;
+    doc.text(status, legendX + 9, legendY);
+    legendX += 34;
   });
 
   doc.setFillColor(...brandGreen);
-  doc.roundedRect(legendX, legendY - 3, 8, 3.5, 0.8, 0.8, "F");
+  doc.roundedRect(legendX, legendY - 2.5, 7, 3, 0.8, 0.8, "F");
   doc.setTextColor(...textPrimary);
-  doc.setFontSize(6);
-  doc.text("Today", legendX + 10, legendY);
-  legendX += 30;
+  doc.setFontSize(5.5);
+  doc.text("Today", legendX + 9, legendY);
+  legendX += 28;
 
   doc.setTextColor(...textSecondary);
-  doc.setFontSize(5.5);
-  doc.text("Shaded columns = Weekends (Fri/Sat — Saudi calendar)", legendX + 10, legendY);
+  doc.setFontSize(5);
+  doc.text("Shaded columns = Weekends (Fri/Sat — Saudi calendar)", legendX + 8, legendY);
+
+  // Timeline date range label
+  doc.setTextColor(...textSecondary);
+  doc.setFontSize(5);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    `Timeline: ${formatTimelineDate(projectStart)} → ${formatTimelineDate(timelineEnd)}  (${totalDays} days)`,
+    lw - 10,
+    legendY,
+    { align: "right" }
+  );
 
   drawPageFooter(doc, currentPage, lw, lh);
 
   const base64 = doc.output("datauristring").split(",")[1];
-
   return { doc, base64 };
 }
