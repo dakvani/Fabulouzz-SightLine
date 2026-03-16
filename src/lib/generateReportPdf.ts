@@ -202,14 +202,15 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
   doc.setFont("helvetica", "bold");
   doc.text("PROJECT STATUS REPORT", pageWidth / 2, dividerY + 10, { align: "center", charSpace: 2.5 });
 
-  // Project title
+  // Project title — centered
+  const titleY = dividerY + 24;
   doc.setTextColor(...textPrimary);
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
   const titleLines = doc.splitTextToSize(projectInfo.title, pageWidth - 56);
-  doc.text(titleLines, pageWidth / 2, 114, { align: "center" });
+  doc.text(titleLines, pageWidth / 2, titleY, { align: "center" });
 
-  const afterTitle = 114 + titleLines.length * 8 + 4;
+  const afterTitle = titleY + titleLines.length * 8 + 4;
   doc.setTextColor(...textSecondary);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
