@@ -110,7 +110,7 @@ const LiveNotifications = () => {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.7 }}
-      className="glass-card overflow-hidden relative min-h-[680px] sm:min-h-[760px] xl:min-h-[860px]"
+      className="glass-card overflow-hidden relative"
     >
       {newFlash && (
         <motion.div
@@ -137,7 +137,7 @@ const LiveNotifications = () => {
       </div>
 
       {activeTasks.length > 0 && (
-        <div className="px-5 py-5 sm:px-6 sm:py-6 border-b-2 border-processing/30 bg-processing/10 max-h-[280px] sm:max-h-[340px] overflow-y-auto">
+        <div className="px-5 py-5 sm:px-6 sm:py-6 bg-processing/5 max-h-[280px] sm:max-h-[340px] overflow-y-auto">
           <div className="flex items-center gap-2 mb-4">
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
               <Loader2 className="w-4 h-4 text-processing" />
@@ -184,21 +184,16 @@ const LiveNotifications = () => {
         </div>
       )}
 
-      <div className="min-h-[380px] sm:min-h-[440px] max-h-[720px] sm:max-h-[820px] xl:max-h-[920px] overflow-y-auto">
+      <div className="max-h-[720px] sm:max-h-[820px] xl:max-h-[920px] overflow-y-auto">
         <AnimatePresence initial={false}>
-          {notifications.length === 0 ? (
-            <div className="min-h-[380px] sm:min-h-[440px] px-6 py-10 flex items-center justify-center text-center text-sm text-muted-foreground">
-              No updates yet. Status changes will appear here in real-time.
-            </div>
-          ) : (
-            notifications.map((n) => (
+          {notifications.map((n) => (
               <motion.div
                 key={n.id}
                 initial={{ opacity: 0, x: -20, height: 0 }}
                 animate={{ opacity: 1, x: 0, height: "auto" }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3 }}
-                className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/20 hover:bg-secondary/20 transition-colors"
+                className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/10 hover:bg-secondary/20 transition-colors"
               >
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
@@ -250,8 +245,7 @@ const LiveNotifications = () => {
                   </div>
                 </div>
               </motion.div>
-            ))
-          )}
+            ))}
         </AnimatePresence>
       </div>
     </motion.div>
