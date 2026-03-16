@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Save, Edit3, X, CalendarDays, Clock, Link2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, Edit3, X, CalendarDays, Clock, Link2, Loader2, ChevronDown, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useProjectData } from "@/contexts/ProjectDataContext";
@@ -25,6 +25,13 @@ const statusBadge: Record<TaskStatus, string> = {
   Planning: "bg-planning/15 text-planning border-planning/30",
 };
 
+const statusDot: Record<TaskStatus, string> = {
+  Completed: "bg-completed",
+  Processing: "bg-processing",
+  Initiating: "bg-initiating",
+  Planning: "bg-planning",
+};
+
 interface EditingTask {
   task_number: number;
   name: string;
@@ -41,6 +48,78 @@ interface NewTaskForm {
   duration: number;
   dependencies: number[];
 }
+
+/* ── Dependency multi-select dropdown ── */
+interface DependencyPickerProps {
+  selected: number[];
+  onChange: (deps: number[]) => void;
+  availableTasks: { id: number; name: string; status: TaskStatus }[];
+  excludeTaskNumber?: number;
+}
+
+const DependencyPicker = ({ selected, onChange, availableTasks, excludeTaskNumber }: DependencyPickerProps) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = availableTasks.filter(t => t.id !== excludeTaskNumber);
+
+  const toggle = (id: number) => {
+    onChange(selected.includes(id) ? selected.filter(d => d !== id) : [...selected, id]);
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center justify-between w-full bg-secondary/50 border border-border/50 rounded-lg px-2.5 py-1.5 text-sm text-foreground hover:bg-secondary/70 transition-colors mt-1"
+      >
+        <span className="truncate text-left">
+          {selected.length === 0
+            ? <span className="text-muted-foreground">Select dependencies...</span>
+            : selected.map(d => `#${d}`).join(", ")}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 ml-1 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-xs text-muted-foreground">No other tasks available</div>
+          ) : (
+            filtered.map(t => {
+              const isSelected = selected.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => toggle(t.id)}
+                  className={`flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-accent/50 transition-colors ${isSelected ? "bg-accent/30" : ""}`}
+                >
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? "bg-primary border-primary" : "border-border"}`}>
+                    {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                  </div>
+                  <span className="font-mono text-[10px] text-primary shrink-0">#{t.id}</span>
+                  <span className="truncate flex-1">{t.name}</span>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[t.status]}`} />
+                  <span className="text-[10px] text-muted-foreground shrink-0">{t.status}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const TaskManagement = () => {
   const { tasks, projectId, projectInfo, refresh } = useProjectData();
@@ -171,6 +250,8 @@ const TaskManagement = () => {
   const inputClass = "bg-secondary/50 border border-border/50 rounded-lg px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50";
   const labelClass = "text-[10px] text-muted-foreground uppercase tracking-wider font-medium";
 
+  const taskListForDeps = tasks.map(t => ({ id: t.id, name: t.name, status: t.status }));
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -266,12 +347,11 @@ const TaskManagement = () => {
               )}
 
               <div>
-                <label className={labelClass}>Dependencies (comma-separated task #s)</label>
-                <input
-                  value={newTask.dependencies.join(",")}
-                  onChange={e => setNewTask(p => ({ ...p, dependencies: e.target.value.split(",").map(Number).filter(n => !isNaN(n) && n > 0) }))}
-                  placeholder="e.g. 1,2,3"
-                  className={`${inputClass} w-full mt-1`}
+                <label className={labelClass}>Dependencies</label>
+                <DependencyPicker
+                  selected={newTask.dependencies}
+                  onChange={(deps) => setNewTask(p => ({ ...p, dependencies: deps }))}
+                  availableTasks={taskListForDeps}
                 />
               </div>
 
@@ -373,12 +453,12 @@ const TaskManagement = () => {
                   })()}
 
                   <div>
-                    <label className={labelClass}>Dependencies (comma-separated task #s)</label>
-                    <input
-                      value={editData.dependencies.join(",")}
-                      onChange={e => setEditData(p => p ? { ...p, dependencies: e.target.value.split(",").map(Number).filter(n => !isNaN(n) && n > 0) } : p)}
-                      placeholder="e.g. 1,2,3"
-                      className={`${inputClass} w-full mt-1`}
+                    <label className={labelClass}>Dependencies</label>
+                    <DependencyPicker
+                      selected={editData.dependencies}
+                      onChange={(deps) => setEditData(p => p ? { ...p, dependencies: deps } : p)}
+                      availableTasks={taskListForDeps}
+                      excludeTaskNumber={editData.task_number}
                     />
                   </div>
 
@@ -409,7 +489,7 @@ const TaskManagement = () => {
                       </span>
                       {task.dependencies && task.dependencies.length > 0 && (
                         <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
-                          <Link2 className="w-2.5 h-2.5" /> {task.dependencies.map(d => `#${d}`).join(",")}
+                          <Link2 className="w-2.5 h-2.5" /> {task.dependencies.map(d => `#${d}`).join(", ")}
                         </span>
                       )}
                     </div>
@@ -417,7 +497,7 @@ const TaskManagement = () => {
                   <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full border ${statusBadge[task.status]}`}>
                     {task.status}
                   </span>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => startEdit(task)}
                       className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
