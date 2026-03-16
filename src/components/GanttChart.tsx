@@ -244,22 +244,27 @@ const GanttChart = () => {
                 </>
               )}
             </svg>
-            {!isMobile && (
-              <svg className="absolute pointer-events-none" style={{ top: headerHeight, left: 0, width: svgWidth, height: svgHeight }}>
-                <defs>
-                  <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
-                    <polygon points="0 0, 6 2, 0 4" fill="hsl(var(--muted-foreground))" opacity="0.5" />
+            <svg className="absolute pointer-events-none" style={{ top: headerHeight, left: 0, width: svgWidth, height: svgHeight }}>
+              <defs>
+                {arrows.map((a, i) => (
+                  <marker key={`marker-${i}`} id={`arrowhead-${i}`} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                    <polygon points="0 0, 8 3, 0 6" fill={a.color} opacity="0.85" />
                   </marker>
-                </defs>
-                {arrows.map((a, i) => {
-                  const midX = (a.fromX + a.toX) / 2;
-                  return (
-                    <path key={i} d={`M ${a.fromX} ${a.fromY} C ${midX} ${a.fromY}, ${midX} ${a.toY}, ${a.toX} ${a.toY}`}
-                      fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="1" strokeOpacity="0.35" markerEnd="url(#arrowhead)" />
-                  );
-                })}
-              </svg>
-            )}
+                ))}
+              </defs>
+              {arrows.map((a, i) => {
+                const midX = (a.fromX + a.toX) / 2;
+                return (
+                  <g key={i}>
+                    <path
+                      d={`M ${a.fromX} ${a.fromY} C ${midX} ${a.fromY}, ${midX} ${a.toY}, ${a.toX} ${a.toY}`}
+                      fill="none" stroke={a.color} strokeWidth="2" strokeOpacity="0.7" markerEnd={`url(#arrowhead-${i})`}
+                    />
+                    <circle cx={a.fromX} cy={a.fromY} r="3" fill={a.color} opacity="0.8" />
+                  </g>
+                );
+              })}
+            </svg>
           </div>
         </div>
       </div>
