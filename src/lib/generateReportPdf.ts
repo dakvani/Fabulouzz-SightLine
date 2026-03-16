@@ -140,13 +140,15 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     d.setFillColor(...brandGreen);
     d.rect(0, 22, pw, 0.6, "F");
     if (logoData) d.addImage(logoData, "PNG", margin, 3, 38, 12);
+    // Center-aligned section title
+    d.setTextColor(...brandGreen);
+    d.setFontSize(9);
+    d.setFont("helvetica", "bold");
+    d.text(sectionTitle, pw / 2, 10, { align: "center" });
+    // Right-aligned project ref
     d.setTextColor(...textSecondary);
     d.setFontSize(6.5);
     d.setFont("helvetica", "normal");
-    d.text(sectionTitle, pw - margin, 9, { align: "right" });
-    d.setTextColor(...brandGreen);
-    d.setFontSize(8);
-    d.setFont("helvetica", "bold");
     d.text(projectInfo.projectRef, pw - margin, 16, { align: "right" });
   };
 
