@@ -161,7 +161,7 @@ const Index = () => {
         </main>
 
         <motion.footer initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="text-center text-[10px] sm:text-xs text-muted-foreground py-4 sm:py-6 border-t border-border/30">
-          <p>Powered by <a href="https://fabulouzz.com" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Fabulouzz Technologies</a> • SightLine Project Command Center</p>
+          <p>Powered by <a href="https://www.fabulouzz.com" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Fabulouzz Technologies</a> • SightLine Project Command Center</p>
         </motion.footer>
       </div>
       <ScrollToTop />

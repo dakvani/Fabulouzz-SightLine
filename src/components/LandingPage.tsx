@@ -67,7 +67,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `https://fabulouzzsightline.vercel.app/reset-password`,
+        redirectTo: `https://fabulouzzsightline.lovable.app/reset-password`,
       });
       setLoading(false);
       if (error) {
@@ -112,17 +112,17 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
               <img
                 src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
                 alt="Fabulouzz"
-                className="h-7 w-auto"
+                className="h-8 w-auto"
               />
             )}
             <div className="flex flex-col border-l border-border/30 pl-2.5">
-              <span
-                className="text-[10px] font-bold tracking-wide text-primary"
+               <span
+                 className="text-xs font-bold tracking-wide text-primary"
                 style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
               >
                 SIGHTLINE
               </span>
-              <span className="text-[7px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
+              <span className="text-[8px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
                 Command Center
               </span>
             </div>
@@ -247,7 +247,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
           )}
 
           {/* Footer */}
-          <p className="mt-10 text-[10px] text-muted-foreground">
+          <p className="mt-10 text-xs text-muted-foreground">
             Powered by <a href="https://www.fabulouzz.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Fabulouzz Technologies</a>
           </p>
         </motion.div>
@@ -291,7 +291,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
               <img
                 src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
                 alt="Fabulouzz Technologies"
-                className="h-14 xl:h-16 w-auto"
+                className="h-16 xl:h-20 w-auto"
               />
             </motion.a>
           )}
