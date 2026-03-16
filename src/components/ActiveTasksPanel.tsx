@@ -35,7 +35,7 @@ const ActiveTasksPanel = () => {
           const isProcessing = task.status === "Processing";
           return (
             <motion.div key={task.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.06 }}
-              className="px-4 sm:px-5 py-4 flex items-center gap-3 sm:gap-4 group hover:bg-primary/5 transition-colors relative overflow-hidden">
+              className="px-3 sm:px-4 md:px-5 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 md:gap-4 group hover:bg-primary/5 transition-colors relative overflow-hidden">
               {isProcessing && (
                 <motion.div className="absolute left-0 top-0 bottom-0 w-0.5 bg-processing" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }} />
               )}
