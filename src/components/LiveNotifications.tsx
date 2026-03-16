@@ -264,7 +264,7 @@ const LiveNotifications = () => {
                   {/* Admin delete button */}
                   {isAdmin && (
                     <button
-                      onClick={() => handleDelete(n.id)}
+                      onClick={() => setDeleteTarget(n.id)}
                       className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover/card:opacity-100 flex-shrink-0"
                       title="Delete notification"
                     >
