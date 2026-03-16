@@ -67,7 +67,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `https://fabulouzzsightline.vercel.app/reset-password`,
+        redirectTo: `https://fabulouzzsightline.lovable.app/reset-password`,
       });
       setLoading(false);
       if (error) {
