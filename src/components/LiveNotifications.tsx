@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Image, Clock, Loader2, Video, Play, FileText } from "lucide-react";
+import { Bell, Image, Clock, Loader2, Video, Play, FileText, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjectData } from "@/contexts/ProjectDataContext";
+import { toast } from "@/hooks/use-toast";
 import MediaLightbox from "./MediaLightbox";
 import CreateUpdateForm from "./CreateUpdateForm";
 
@@ -21,10 +22,22 @@ const LiveNotifications = () => {
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
   const [tickerIndex, setTickerIndex] = useState(0);
   const [tickerText, setTickerText] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const { tasks, selectedProjectId } = useProjectData();
 
   const activeTasks = tasks.filter(t => t.status === "Processing" || t.status === "Initiating");
   const allTickerItems = activeTasks.map(t => t.name);
+
+  // Check admin role
+  useEffect(() => {
+    const check = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { setIsAdmin(false); return; }
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id).single();
+      setIsAdmin(data?.role === "admin");
+    };
+    check();
+  }, []);
 
   // Typewriter effect
   useEffect(() => {
@@ -93,6 +106,16 @@ const LiveNotifications = () => {
     return () => { supabase.removeChannel(channel); };
   }, [selectedProjectId]);
 
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      toast({ title: "Deleted", description: "Notification removed" });
+    }
+  };
+
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
@@ -139,53 +162,52 @@ const LiveNotifications = () => {
         )}
       </AnimatePresence>
 
-      {/* Header with latest update on the right */}
-      <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
+      {/* Header: Bell + LIVE UPDATES + Ticker + Latest update */}
+      <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3 min-h-[56px]">
         <motion.div
           animate={newFlash ? { scale: [1, 1.15, 1] } : {}}
           transition={{ duration: 0.6, ease: "easeOut" }}
+          className="flex-shrink-0"
         >
           <Bell className="w-4 h-4 text-primary" />
         </motion.div>
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Live Updates</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex-shrink-0">Live Updates</h3>
 
+        {/* Typewriter ticker inline in header */}
+        {activeTasks.length > 0 && (
+          <div className="flex items-center gap-2 min-w-0 flex-shrink">
+            <span className="text-border/40">|</span>
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="flex-shrink-0">
+              <Loader2 className="w-3 h-3 text-processing" />
+            </motion.div>
+            <span className="text-xs font-semibold text-processing truncate min-w-0">
+              {tickerText}
+              <motion.span
+                animate={{ opacity: [1, 0] }}
+                transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+                className="inline-block w-[2px] h-3 bg-processing ml-0.5 align-middle"
+              />
+            </span>
+            <span className="text-[9px] font-mono bg-processing/20 text-processing px-2 py-0.5 rounded-full font-bold flex-shrink-0">
+              {activeTasks.length} LIVE
+            </span>
+          </div>
+        )}
+
+        {/* Latest notification accent pill */}
         {notifications.length > 0 && (
-          <div className="ml-auto flex items-center gap-2 max-w-[50%]">
-            <span className="text-[10px] font-medium text-accent-foreground bg-accent/20 px-2.5 py-1 rounded-full truncate">
-              {notifications[0].message.length > 50 ? notifications[0].message.slice(0, 50) + "…" : notifications[0].message}
+          <div className="ml-auto flex-shrink-0 max-w-[30%]">
+            <span className="text-[10px] font-medium text-accent-foreground bg-accent/20 px-2.5 py-1 rounded-full truncate block">
+              {notifications[0].message.length > 40 ? notifications[0].message.slice(0, 40) + "…" : notifications[0].message}
             </span>
           </div>
         )}
       </div>
 
-      {/* Typewriter ticker for active tasks */}
-      {activeTasks.length > 0 && (
-        <div className="px-5 py-3 sm:px-6 flex items-center gap-3 bg-processing/5">
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
-            <Loader2 className="w-3.5 h-3.5 text-processing flex-shrink-0" />
-          </motion.div>
-          <div className="flex-1 min-w-0 h-5 flex items-center">
-            <span className="text-xs font-semibold text-processing truncate">
-              {tickerText}
-              <motion.span
-                animate={{ opacity: [1, 0] }}
-                transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
-                className="inline-block w-[2px] h-3.5 bg-processing ml-0.5 align-middle"
-              />
-            </span>
-          </div>
-          <span className="text-[10px] font-mono bg-processing/20 text-processing px-2.5 py-1 rounded-full font-bold flex-shrink-0">
-            {activeTasks.length} LIVE
-          </span>
-        </div>
-      )}
-
       {/* Compose + Feed */}
       <div className="max-h-[720px] sm:max-h-[820px] xl:max-h-[920px] overflow-y-auto px-5 py-4 sm:px-6 sm:py-5 space-y-3">
-        {/* Compose new update */}
         <CreateUpdateForm />
 
-        {/* Updates Feed */}
         <AnimatePresence initial={false}>
           {notifications.map((n) => {
             const mediaUrls = getMediaUrls(n.media_url);
@@ -200,7 +222,7 @@ const LiveNotifications = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
-                className="rounded-[0.625rem] border border-border/30 bg-secondary/10 hover:bg-secondary/20 transition-colors overflow-hidden"
+                className="rounded-[0.625rem] border border-border/30 bg-secondary/10 hover:bg-secondary/20 transition-colors overflow-hidden group/card"
               >
                 <div className="px-4 py-3 sm:px-5 sm:py-4 flex items-start gap-3">
                   <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -226,6 +248,16 @@ const LiveNotifications = () => {
                       )}
                     </div>
                   </div>
+                  {/* Admin delete button */}
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDelete(n.id)}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover/card:opacity-100 flex-shrink-0"
+                      title="Delete notification"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 {hasMedia && (
