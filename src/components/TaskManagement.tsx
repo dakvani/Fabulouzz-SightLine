@@ -93,12 +93,13 @@ const TaskManagement = () => {
     if (!editData || !projectId) return;
     setSaving(true);
     try {
+      const startDay = getStartDayFromDate(projectStart, editData.startDate);
       const { error } = await supabase
         .from("tasks")
         .update({
           name: editData.name,
           status: editData.status,
-          start_day: editData.start_day,
+          start_day: startDay,
           duration: editData.duration,
           dependencies: editData.dependencies,
         })
