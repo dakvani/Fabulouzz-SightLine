@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 const ExportReport = () => {
   const [loading, setLoading] = useState(false);
   const { theme } = useTheme();
-  const { tasks, projectInfo } = useProjectData();
+  const { tasks, projectInfo, projectId } = useProjectData();
 
   const exportReport = async () => {
     setLoading(true);
@@ -18,12 +18,16 @@ const ExportReport = () => {
       const isDark = theme === "dark";
       const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
-      // Fetch latest notifications with media
-      const { data: notifications } = await supabase
+      // Fetch latest notifications scoped to current project
+      const query = supabase
         .from("notifications")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(50);
+
+      if (projectId) query.eq("project_id", projectId);
+
+      const { data: notifications } = await query;
 
       const { doc } = await generateReportPdf({
         tasks,
