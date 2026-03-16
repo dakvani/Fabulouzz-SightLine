@@ -1,8 +1,9 @@
-import { getCalendarDays, getStatusColor, type TaskStatus } from "@/data/projectData";
+import { getStatusColor, type TaskStatus } from "@/data/projectData";
 import { motion } from "framer-motion";
 import { useRef, useState, useMemo, useEffect } from "react";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getCalendarDays, getTaskDateRange, getTimelineEndDate, parseProjectDate } from "@/lib/projectTimeline";
 
 const statusBgMap: Record<string, string> = {
   completed: "bg-completed",
@@ -27,7 +28,6 @@ const statusColorVar: Record<string, string> = {
 
 const GanttChart = () => {
   const { tasks, projectInfo } = useProjectData();
-  const days = getCalendarDays();
   const [hoveredTask, setHoveredTask] = useState<number | null>(null);
   const isMobile = useIsMobile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -39,17 +39,19 @@ const GanttChart = () => {
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const projectStart = projectInfo.startDate ? new Date(projectInfo.startDate) : new Date(2026, 1, 21);
+  const projectStart = useMemo(
+    () => parseProjectDate(projectInfo.startDate, new Date(2026, 1, 21)),
+    [projectInfo.startDate]
+  );
+  const timelineEndDate = useMemo(
+    () => getTimelineEndDate(projectInfo, tasks),
+    [projectInfo, tasks]
+  );
+  const days = useMemo(
+    () => getCalendarDays(projectStart, timelineEndDate),
+    [projectStart, timelineEndDate]
+  );
   const todayOffset = Math.floor((today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
-
-  const getTaskDateRange = (startDay: number, duration: number) => {
-    const start = new Date(projectStart);
-    start.setDate(start.getDate() + startDay);
-    const end = new Date(start);
-    end.setDate(end.getDate() + duration - 1);
-    const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-    return { startDate: fmt(start), endDate: fmt(end) };
-  };
 
   // Auto-scroll to today on mount
   useEffect(() => {
@@ -117,7 +119,7 @@ const GanttChart = () => {
               <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scope of Work</span>
             </div>
             {tasks.map((task) => {
-              const { startDate, endDate } = getTaskDateRange(task.startDay, task.duration);
+              const taskDateRange = getTaskDateRange(projectStart, task.startDay, task.duration);
               return (
                 <div
                   key={task.id}
@@ -135,10 +137,7 @@ const GanttChart = () => {
                       {isMobile ? task.name.slice(0, 30) + (task.name.length > 30 ? "…" : "") : task.name}
                     </span>
                     <span className={`text-[8px] sm:text-[9px] text-muted-foreground font-mono block mt-0.5`}>
-                      {isMobile
-                        ? `${new Date(projectStart.getTime() + task.startDay * 86400000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} — ${new Date(projectStart.getTime() + (task.startDay + task.duration - 1) * 86400000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`
-                        : `${startDate} → ${endDate}`
-                      }
+                      {isMobile ? taskDateRange.compactLabel : taskDateRange.fullLabel}
                     </span>
                   </div>
                 </div>
@@ -206,7 +205,7 @@ const GanttChart = () => {
                       width: barWidth,
                       height: barHeight,
                     }}
-                    title={`${task.name} (${task.status} ${progress}%) — Day ${task.startDay + 1} to ${task.startDay + task.duration}`}
+                    title={`${task.name} (${task.status} ${progress}%) — ${getTaskDateRange(projectStart, task.startDay, task.duration).fullLabel}`}
                   >
                     {progress > 0 && progress < 100 && (
                       <div className="absolute inset-y-0 left-0 bg-background/15 rounded-l-md" style={{ width: `${progress}%` }} />
