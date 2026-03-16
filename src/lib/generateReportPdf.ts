@@ -323,10 +323,15 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
   const statsY = legY + 8;
   doc.setFillColor(...cardBg);
   doc.roundedRect(margin, statsY, barW, 10, 2, 2, "F");
+  const activeTasks = tasks.filter(t => t.status === "Processing" || t.status === "Initiating");
+  const liveUpdates = notifications.filter(n => n.type === "live_update");
+  const statusUpdates = notifications.filter(n => n.type === "status_update");
+
   const statsItems = [
     `Total Tasks: ${counts.total}`,
-    `Active: ${counts.processing + counts.initiating}`,
-    `Updates: ${notifications.length}`,
+    `Active: ${activeTasks.length}`,
+    `Live Updates: ${liveUpdates.length}`,
+    `Status Updates: ${statusUpdates.length}`,
     `Media: ${notifications.reduce((sum, n) => { if (!n.media_url) return sum; try { const p = JSON.parse(n.media_url); return sum + (Array.isArray(p) ? p.length : 1); } catch { return sum + 1; } }, 0)} files`,
   ];
   const statW = barW / statsItems.length;
