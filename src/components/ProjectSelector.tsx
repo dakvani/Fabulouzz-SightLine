@@ -171,17 +171,17 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
               <img
                 src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
                 alt="Fabulouzz"
-                className="h-6 w-auto"
+                className="h-8 w-auto"
               />
             )}
             <div className="hidden sm:flex flex-col border-l border-border/30 pl-3">
               <span
-                className="text-sm font-bold tracking-wide text-primary"
+                className="text-base font-bold tracking-wide text-primary"
                 style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
               >
                 SIGHTLINE
               </span>
-              <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
+              <span className="text-[10px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
                 Command Center
               </span>
             </div>
