@@ -110,7 +110,7 @@ const LiveNotifications = () => {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.7 }}
-      className="glass-card overflow-hidden relative min-h-[680px] sm:min-h-[760px] xl:min-h-[860px]"
+      className="glass-card overflow-hidden relative"
     >
       {newFlash && (
         <motion.div
