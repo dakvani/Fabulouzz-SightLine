@@ -119,7 +119,7 @@ const GanttChart = () => {
               <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scope of Work</span>
             </div>
             {tasks.map((task) => {
-              const { startDate, endDate } = getTaskDateRange(task.startDay, task.duration);
+              const taskDateRange = getTaskDateRange(projectStart, task.startDay, task.duration);
               return (
                 <div
                   key={task.id}
@@ -137,10 +137,7 @@ const GanttChart = () => {
                       {isMobile ? task.name.slice(0, 30) + (task.name.length > 30 ? "…" : "") : task.name}
                     </span>
                     <span className={`text-[8px] sm:text-[9px] text-muted-foreground font-mono block mt-0.5`}>
-                      {isMobile
-                        ? `${new Date(projectStart.getTime() + task.startDay * 86400000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} — ${new Date(projectStart.getTime() + (task.startDay + task.duration - 1) * 86400000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`
-                        : `${startDate} → ${endDate}`
-                      }
+                      {isMobile ? taskDateRange.compactLabel : taskDateRange.fullLabel}
                     </span>
                   </div>
                 </div>
