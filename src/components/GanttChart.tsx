@@ -116,23 +116,33 @@ const GanttChart = () => {
             >
               <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scope of Work</span>
             </div>
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                className={`flex items-center px-3 sm:px-4 border-b border-border/30 transition-colors ${hoveredTask === task.id ? "bg-secondary/50" : ""} ${task.status === "Processing" ? "bg-processing/5" : ""}`}
-                style={{ height: rowHeight }}
-                onMouseEnter={() => setHoveredTask(task.id)}
-                onMouseLeave={() => setHoveredTask(null)}
-              >
-                <span className="text-[10px] sm:text-xs font-mono text-muted-foreground mr-2 sm:mr-3 w-5 sm:w-6 flex-shrink-0">{task.id}</span>
-                <span
-                  className={`text-[10px] sm:text-xs leading-tight ${task.status === "Processing" ? "text-processing font-medium" : "text-foreground"}`}
-                  style={{ wordBreak: "break-word", whiteSpace: "normal" }}
+            {tasks.map((task) => {
+              const { startDate, endDate } = getTaskDateRange(task.startDay, task.duration);
+              return (
+                <div
+                  key={task.id}
+                  className={`flex items-center px-3 sm:px-4 border-b border-border/30 transition-colors ${hoveredTask === task.id ? "bg-secondary/50" : ""} ${task.status === "Processing" ? "bg-processing/5" : ""}`}
+                  style={{ height: rowHeight }}
+                  onMouseEnter={() => setHoveredTask(task.id)}
+                  onMouseLeave={() => setHoveredTask(null)}
                 >
-                  {isMobile ? task.name.slice(0, 30) + (task.name.length > 30 ? "…" : "") : task.name}
-                </span>
-              </div>
-            ))}
+                  <span className="text-[10px] sm:text-xs font-mono text-muted-foreground mr-2 sm:mr-3 w-5 sm:w-6 flex-shrink-0">{task.id}</span>
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className={`text-[10px] sm:text-xs leading-tight block ${task.status === "Processing" ? "text-processing font-medium" : "text-foreground"}`}
+                      style={{ wordBreak: "break-word", whiteSpace: "normal" }}
+                    >
+                      {isMobile ? task.name.slice(0, 30) + (task.name.length > 30 ? "…" : "") : task.name}
+                    </span>
+                    {!isMobile && (
+                      <span className="text-[9px] text-muted-foreground font-mono block mt-0.5">
+                        {startDate} → {endDate}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Timeline area */}

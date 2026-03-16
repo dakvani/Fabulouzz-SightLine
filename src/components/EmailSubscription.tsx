@@ -3,20 +3,22 @@ import { motion } from "framer-motion";
 import { Mail, CheckCircle2, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 
 const EmailSubscription = () => {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { projectId } = useProjectData();
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !projectId) return;
     setLoading(true);
     try {
       const { error } = await supabase
         .from("email_subscribers")
-        .insert({ email });
+        .insert({ email, project_id: projectId } as any);
 
       if (error) {
         if (error.code === "23505") {
