@@ -110,7 +110,7 @@ const LiveNotifications = () => {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.7 }}
-      className="glass-card overflow-hidden relative"
+      className="glass-card overflow-hidden relative min-h-[680px] sm:min-h-[760px] xl:min-h-[860px]"
     >
       {newFlash && (
         <motion.div
@@ -121,7 +121,7 @@ const LiveNotifications = () => {
         />
       )}
 
-      <div className="p-4 border-b border-border/50 flex items-center gap-2">
+      <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
         <motion.div
           animate={newFlash ? { rotate: [0, -15, 15, -15, 0], scale: [1, 1.2, 1] } : {}}
           transition={{ duration: 0.5 }}
@@ -130,16 +130,15 @@ const LiveNotifications = () => {
         </motion.div>
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Live Updates</h3>
         {notifications.length > 0 && (
-          <span className="ml-auto text-[10px] font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+          <span className="ml-auto text-[10px] font-mono bg-primary/10 text-primary px-2.5 py-1 rounded-full">
             {notifications.length}
           </span>
         )}
       </div>
 
-      {/* Currently Active Tasks — Prominent Section */}
       {activeTasks.length > 0 && (
-        <div className="px-4 py-4 border-b-2 border-processing/30 bg-processing/10 max-h-[200px] overflow-y-auto">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="px-5 py-5 sm:px-6 sm:py-6 border-b-2 border-processing/30 bg-processing/10 max-h-[280px] sm:max-h-[340px] overflow-y-auto">
+          <div className="flex items-center gap-2 mb-4">
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
               <Loader2 className="w-4 h-4 text-processing" />
             </motion.div>
@@ -150,7 +149,7 @@ const LiveNotifications = () => {
               {activeTasks.length} LIVE
             </span>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {activeTasks.map(task => {
               const isProcessing = task.status === "Processing";
               return (
@@ -158,7 +157,7 @@ const LiveNotifications = () => {
                   key={task.id}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-[0.625rem] border ${
                     isProcessing
                       ? "bg-processing/10 border-processing/25"
                       : "bg-initiating/10 border-initiating/25"
@@ -166,10 +165,10 @@ const LiveNotifications = () => {
                 >
                   {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin text-processing flex-shrink-0" /> : <Zap className="w-3.5 h-3.5 text-initiating flex-shrink-0" />}
                   <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-semibold truncate ${isProcessing ? "text-processing" : "text-initiating"}`}>
+                    <p className={`text-sm font-semibold truncate ${isProcessing ? "text-processing" : "text-initiating"}`}>
                       {task.name}
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
                       {isProcessing ? "In Progress" : "Starting Up"}
                     </p>
                   </div>
@@ -185,10 +184,10 @@ const LiveNotifications = () => {
         </div>
       )}
 
-      <div className="max-h-[700px] overflow-y-auto">
+      <div className="min-h-[380px] sm:min-h-[440px] max-h-[720px] sm:max-h-[820px] xl:max-h-[920px] overflow-y-auto">
         <AnimatePresence initial={false}>
           {notifications.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
+            <div className="min-h-[380px] sm:min-h-[440px] px-6 py-10 flex items-center justify-center text-center text-sm text-muted-foreground">
               No updates yet. Status changes will appear here in real-time.
             </div>
           ) : (
@@ -199,16 +198,16 @@ const LiveNotifications = () => {
                 animate={{ opacity: 1, x: 0, height: "auto" }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3 }}
-                className="px-4 py-3 border-b border-border/20 hover:bg-secondary/20 transition-colors"
+                className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/20 hover:bg-secondary/20 transition-colors"
               >
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground leading-relaxed">{n.message}</p>
                     {getMediaUrls(n.media_url).length > 0 && (
-                      <div className={`mt-2 grid gap-1.5 ${getMediaUrls(n.media_url).length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3'}`}>
+                      <div className={`mt-3 grid gap-2 ${getMediaUrls(n.media_url).length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3'}`}>
                         {getMediaUrls(n.media_url).map((url, i) => (
-                          <div key={i} className="rounded-lg overflow-hidden border border-border/30 cursor-pointer relative" onClick={() => openLightbox(getMediaUrls(n.media_url), i)}>
+                          <div key={i} className="rounded-[0.625rem] overflow-hidden border border-border/30 cursor-pointer relative" onClick={() => openLightbox(getMediaUrls(n.media_url), i)}>
                             {isVideo(url) ? (
                               <>
                                 <video src={url} muted className="w-full h-36 object-cover" preload="metadata" />
@@ -223,7 +222,7 @@ const LiveNotifications = () => {
                         ))}
                       </div>
                     )}
-                    <div className="flex items-center gap-1 mt-1">
+                    <div className="flex items-center gap-1 mt-2">
                       <Clock className="w-3 h-3 text-muted-foreground" />
                       <span className="text-[10px] text-muted-foreground">{timeAgo(n.created_at)}</span>
                       {getMediaUrls(n.media_url).length > 0 && (() => {
