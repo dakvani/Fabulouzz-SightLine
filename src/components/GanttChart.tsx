@@ -205,7 +205,7 @@ const GanttChart = () => {
                       width: barWidth,
                       height: barHeight,
                     }}
-                    title={`${task.name} (${task.status} ${progress}%) — Day ${task.startDay + 1} to ${task.startDay + task.duration}`}
+                    title={`${task.name} (${task.status} ${progress}%) — ${getTaskDateRange(projectStart, task.startDay, task.duration).fullLabel}`}
                   >
                     {progress > 0 && progress < 100 && (
                       <div className="absolute inset-y-0 left-0 bg-background/15 rounded-l-md" style={{ width: `${progress}%` }} />

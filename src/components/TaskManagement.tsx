@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Save, Edit3, X, Calendar, Clock, Link2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, Edit3, X, CalendarDays, Clock, Link2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import type { TaskStatus } from "@/data/projectData";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  formatTimelineDate,
+  getStartDayFromDate,
+  getTaskDateRange,
+  parseProjectDate,
+  startOfDay,
+} from "@/lib/projectTimeline";
 
 const statusOptions: TaskStatus[] = ["Planning", "Initiating", "Processing", "Completed"];
 
@@ -24,20 +34,41 @@ interface EditingTask {
   dependencies: number[];
 }
 
+interface NewTaskForm {
+  name: string;
+  status: TaskStatus;
+  startDate?: Date;
+  duration: number;
+  dependencies: number[];
+}
+
 const TaskManagement = () => {
-  const { tasks, projectId, refresh } = useProjectData();
+  const { tasks, projectId, projectInfo, refresh } = useProjectData();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<EditingTask | null>(null);
   const [addingNew, setAddingNew] = useState(false);
-  const [newTask, setNewTask] = useState<EditingTask>({
-    task_number: 0,
+  const [newTask, setNewTask] = useState<NewTaskForm>({
     name: "",
     status: "Planning",
-    start_day: 0,
+    startDate: undefined,
     duration: 1,
     dependencies: [],
   });
   const [saving, setSaving] = useState(false);
+
+  const projectStart = useMemo(
+    () => parseProjectDate(projectInfo.startDate),
+    [projectInfo.startDate]
+  );
+
+  const newTaskDateRange = useMemo(() => {
+    if (!newTask.startDate) return null;
+    return getTaskDateRange(
+      projectStart,
+      getStartDayFromDate(projectStart, newTask.startDate),
+      newTask.duration
+    );
+  }, [newTask.startDate, newTask.duration, projectStart]);
 
   const startEdit = (task: typeof tasks[0]) => {
     setEditingId(task.id);
@@ -103,15 +134,22 @@ const TaskManagement = () => {
 
   const addTask = async () => {
     if (!projectId || !newTask.name.trim()) return;
+    if (!newTask.startDate) {
+      toast({ title: "Start date is required", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     const nextNumber = Math.max(...tasks.map(t => t.id), 0) + 1;
+    const startDay = getStartDayFromDate(projectStart, newTask.startDate);
+
     try {
       const { error } = await supabase.from("tasks").insert({
         project_id: projectId,
         task_number: nextNumber,
         name: newTask.name,
         status: newTask.status,
-        start_day: newTask.start_day,
+        start_day: startDay,
         duration: newTask.duration,
         dependencies: newTask.dependencies,
       });
@@ -119,7 +157,7 @@ const TaskManagement = () => {
       if (error) throw error;
       toast({ title: "Task added", description: `Task #${nextNumber} created` });
       setAddingNew(false);
-      setNewTask({ task_number: 0, name: "", status: "Planning", start_day: 0, duration: 1, dependencies: [] });
+      setNewTask({ name: "", status: "Planning", startDate: undefined, duration: 1, dependencies: [] });
       await refresh();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -134,7 +172,7 @@ const TaskManagement = () => {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-primary" />
+          <CalendarDays className="w-4 h-4 text-primary" />
           Scope & Schedule Management
         </h3>
         <motion.button
@@ -148,7 +186,6 @@ const TaskManagement = () => {
         </motion.button>
       </div>
 
-      {/* Add New Task Form */}
       <AnimatePresence>
         {addingNew && (
           <motion.div
@@ -167,7 +204,8 @@ const TaskManagement = () => {
                   className={`${inputClass} w-full mt-1`}
                 />
               </div>
-              <div className="grid grid-cols-3 gap-3">
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className={labelClass}>Status</label>
                   <select
@@ -178,18 +216,36 @@ const TaskManagement = () => {
                     {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
+
                 <div>
-                  <label className={labelClass}>Start Day</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={newTask.start_day}
-                    onChange={e => setNewTask(p => ({ ...p, start_day: parseInt(e.target.value) || 0 }))}
-                    className={`${inputClass} w-full mt-1`}
-                  />
+                  <label className={labelClass}>Start Date</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full mt-1 justify-start bg-secondary/50 border-border/50 font-normal text-left hover:bg-secondary/70"
+                      >
+                        <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                        <span className="truncate">
+                          {newTask.startDate ? formatTimelineDate(newTask.startDate) : "Pick start date"}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={newTask.startDate}
+                        onSelect={(date) => setNewTask(p => ({ ...p, startDate: date || undefined }))}
+                        disabled={(date) => startOfDay(date) < projectStart}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
+
                 <div>
-                  <label className={labelClass}>Duration (days)</label>
+                  <label className={labelClass}>How Many Days</label>
                   <input
                     type="number"
                     min={1}
@@ -199,6 +255,13 @@ const TaskManagement = () => {
                   />
                 </div>
               </div>
+
+              {newTaskDateRange && (
+                <div className="rounded-lg border border-border/40 bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+                  Assigned from <span className="font-medium text-foreground">{newTaskDateRange.startDate}</span> to <span className="font-medium text-foreground">{newTaskDateRange.endDate}</span>
+                </div>
+              )}
+
               <div>
                 <label className={labelClass}>Dependencies (comma-separated task #s)</label>
                 <input
@@ -208,11 +271,12 @@ const TaskManagement = () => {
                   className={`${inputClass} w-full mt-1`}
                 />
               </div>
+
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={addTask}
-                disabled={saving || !newTask.name.trim()}
+                disabled={saving || !newTask.name.trim() || !newTask.startDate}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50"
                 style={{ background: "var(--gradient-primary)" }}
               >
@@ -224,107 +288,110 @@ const TaskManagement = () => {
         )}
       </AnimatePresence>
 
-      {/* Tasks List */}
       <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
-        {tasks.map(task => (
-          <div key={task.id}>
-            {editingId === task.id && editData ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-2"
-              >
-                <input
-                  value={editData.name}
-                  onChange={e => setEditData(p => p ? { ...p, name: e.target.value } : p)}
-                  className={`${inputClass} w-full text-xs`}
-                />
-                <div className="grid grid-cols-3 gap-2">
-                  <select
-                    value={editData.status}
-                    onChange={e => setEditData(p => p ? { ...p, status: e.target.value as TaskStatus } : p)}
-                    className={`${inputClass} text-xs`}
-                  >
-                    {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+        {tasks.map(task => {
+          const taskDateRange = getTaskDateRange(projectStart, task.startDay, task.duration);
+
+          return (
+            <div key={task.id}>
+              {editingId === task.id && editData ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-2"
+                >
                   <input
-                    type="number"
-                    min={0}
-                    value={editData.start_day}
-                    onChange={e => setEditData(p => p ? { ...p, start_day: parseInt(e.target.value) || 0 } : p)}
-                    placeholder="Start Day"
-                    className={`${inputClass} text-xs`}
+                    value={editData.name}
+                    onChange={e => setEditData(p => p ? { ...p, name: e.target.value } : p)}
+                    className={`${inputClass} w-full text-xs`}
                   />
-                  <input
-                    type="number"
-                    min={1}
-                    value={editData.duration}
-                    onChange={e => setEditData(p => p ? { ...p, duration: parseInt(e.target.value) || 1 } : p)}
-                    placeholder="Duration"
-                    className={`${inputClass} text-xs`}
-                  />
-                </div>
-                <div>
-                  <input
-                    value={editData.dependencies.join(",")}
-                    onChange={e => setEditData(p => p ? { ...p, dependencies: e.target.value.split(",").map(Number).filter(n => !isNaN(n) && n > 0) } : p)}
-                    placeholder="Dependencies: 1,2,3"
-                    className={`${inputClass} text-xs w-full`}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={saveEdit}
-                    disabled={saving}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary-foreground disabled:opacity-50"
-                    style={{ background: "var(--gradient-primary)" }}
-                  >
-                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    Save
-                  </motion.button>
-                  <button onClick={cancelEdit} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-border/50 text-muted-foreground hover:text-foreground transition-colors">
-                    Cancel
-                  </button>
-                </div>
-              </motion.div>
-            ) : (
-              <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/30 bg-secondary/10 hover:bg-secondary/20 transition-colors group">
-                <span className="text-[10px] font-mono text-primary w-5 flex-shrink-0">#{task.id}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-foreground truncate">{task.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
-                      <Clock className="w-2.5 h-2.5" /> Day {task.startDay} • {task.duration}d
-                    </span>
-                    {task.dependencies && task.dependencies.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <select
+                      value={editData.status}
+                      onChange={e => setEditData(p => p ? { ...p, status: e.target.value as TaskStatus } : p)}
+                      className={`${inputClass} text-xs`}
+                    >
+                      {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editData.start_day}
+                      onChange={e => setEditData(p => p ? { ...p, start_day: parseInt(e.target.value) || 0 } : p)}
+                      placeholder="Start Day"
+                      className={`${inputClass} text-xs`}
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={editData.duration}
+                      onChange={e => setEditData(p => p ? { ...p, duration: parseInt(e.target.value) || 1 } : p)}
+                      placeholder="Duration"
+                      className={`${inputClass} text-xs`}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      value={editData.dependencies.join(",")}
+                      onChange={e => setEditData(p => p ? { ...p, dependencies: e.target.value.split(",").map(Number).filter(n => !isNaN(n) && n > 0) } : p)}
+                      placeholder="Dependencies: 1,2,3"
+                      className={`${inputClass} text-xs w-full`}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={saveEdit}
+                      disabled={saving}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                      style={{ background: "var(--gradient-primary)" }}
+                    >
+                      {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      Save
+                    </motion.button>
+                    <button onClick={cancelEdit} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-border/50 text-muted-foreground hover:text-foreground transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border/30 bg-secondary/10 hover:bg-secondary/20 transition-colors group">
+                  <span className="text-[10px] font-mono text-primary w-5 flex-shrink-0">#{task.id}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-foreground truncate">{task.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
-                        <Link2 className="w-2.5 h-2.5" /> {task.dependencies.map(d => `#${d}`).join(",")}
+                        <Clock className="w-2.5 h-2.5" /> {taskDateRange.compactLabel} • {task.duration}d
                       </span>
-                    )}
+                      {task.dependencies && task.dependencies.length > 0 && (
+                        <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
+                          <Link2 className="w-2.5 h-2.5" /> {task.dependencies.map(d => `#${d}`).join(",")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full border ${statusBadge[task.status]}`}>
+                    {task.status}
+                  </span>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => startEdit(task)}
+                      className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
-                <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full border ${statusBadge[task.status]}`}>
-                  {task.status}
-                </span>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => startEdit(task)}
-                    className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
