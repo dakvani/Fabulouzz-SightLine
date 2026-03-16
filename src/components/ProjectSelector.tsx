@@ -399,6 +399,12 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
                             <span className="truncate">PM: {project.project_manager}</span>
                           </div>
                         )}
+                        {isAdmin && subscriberCounts[project.id] > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="w-3 h-3 shrink-0 text-primary/50" />
+                            <span>{subscriberCounts[project.id]} subscriber{subscriberCounts[project.id] !== 1 ? "s" : ""}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </motion.button>
