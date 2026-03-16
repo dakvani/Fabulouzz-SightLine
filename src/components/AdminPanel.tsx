@@ -143,18 +143,22 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
   };
 
   const fetchSubscriberCount = async () => {
+    if (!projectId) return;
     const { count } = await supabase
       .from("email_subscribers")
       .select("*", { count: "exact", head: true })
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("project_id", projectId);
     setSubscriberCount(count || 0);
   };
 
   const fetchSubscribers = async () => {
+    if (!projectId) return;
     setLoadingSubscribers(true);
     const { data } = await supabase
       .from("email_subscribers")
       .select("*")
+      .eq("project_id", projectId)
       .order("subscribed_at", { ascending: false });
     setSubscribers(data || []);
     setLoadingSubscribers(false);
