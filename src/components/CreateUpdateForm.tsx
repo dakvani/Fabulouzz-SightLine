@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Send, Upload, X, Play, Loader2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,21 @@ const CreateUpdateForm = () => {
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [canPost, setCanPost] = useState(false);
   const { projectId } = useProjectData();
+
+  // Check if user has admin/pm/engineer role
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { setCanPost(false); return; }
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id).single();
+      setCanPost(data?.role === "admin" || data?.role === "pm" || data?.role === "engineer");
+    };
+    checkRole();
+  }, []);
+
+  if (!canPost) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -112,7 +126,6 @@ const CreateUpdateForm = () => {
           autoFocus
         />
 
-        {/* Media previews */}
         {mediaPreviews.length > 0 && (
           <div className="grid grid-cols-4 gap-1.5">
             {mediaPreviews.map((preview, i) => {
