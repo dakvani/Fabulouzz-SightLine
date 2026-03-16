@@ -116,8 +116,8 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
               />
             )}
             <div className="flex flex-col border-l border-border/30 pl-2.5">
-              <span
-                className="text-[10px] font-bold tracking-wide text-primary"
+               <span
+                 className="text-xs font-bold tracking-wide text-primary"
                 style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
               >
                 SIGHTLINE
