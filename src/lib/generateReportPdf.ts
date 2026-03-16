@@ -583,14 +583,16 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
   doc.rect(0, 18, lw, 0.6, "F");
 
   if (logoData) doc.addImage(logoData, "PNG", 10, 3, 34, 10);
+  // Center-aligned title
   doc.setTextColor(...brandGreen);
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text("PROJECT TIMELINE — GANTT CHART", lw / 2, 12, { align: "center" });
+  doc.text("PROJECT TIMELINE — GANTT CHART", lw / 2, 10, { align: "center" });
+  // Right-aligned ref
   doc.setTextColor(...textSecondary);
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "normal");
-  doc.text(projectInfo.projectRef, lw - 10, 12, { align: "right" });
+  doc.text(projectInfo.projectRef, lw - 10, 14, { align: "right" });
 
   const ganttTop = 24;
   const labelWidth = 88;
