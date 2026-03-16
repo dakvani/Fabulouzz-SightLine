@@ -140,13 +140,15 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     d.setFillColor(...brandGreen);
     d.rect(0, 22, pw, 0.6, "F");
     if (logoData) d.addImage(logoData, "PNG", margin, 3, 38, 12);
+    // Center-aligned section title
+    d.setTextColor(...brandGreen);
+    d.setFontSize(9);
+    d.setFont("helvetica", "bold");
+    d.text(sectionTitle, pw / 2, 10, { align: "center" });
+    // Right-aligned project ref
     d.setTextColor(...textSecondary);
     d.setFontSize(6.5);
     d.setFont("helvetica", "normal");
-    d.text(sectionTitle, pw - margin, 9, { align: "right" });
-    d.setTextColor(...brandGreen);
-    d.setFontSize(8);
-    d.setFont("helvetica", "bold");
     d.text(projectInfo.projectRef, pw - margin, 16, { align: "right" });
   };
 
@@ -173,40 +175,42 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
   doc.line(pageWidth - margin, pageHeight - 36, pageWidth - margin - 30, pageHeight - 36);
   doc.line(pageWidth - margin, pageHeight - 36, pageWidth - margin, pageHeight - 66);
 
-  // Logo & branding
+  // Logo & branding — all center-aligned
   if (logoData) {
-    doc.addImage(logoData, "PNG", pageWidth / 2 - 40, 48, 80, 25);
-    doc.setTextColor(...brandGreen);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text("SIGHTLINE Command Center", pageWidth / 2, 82, { align: "center" });
+    doc.addImage(logoData, "PNG", pageWidth / 2 - 40, 44, 80, 25);
   } else {
     doc.setTextColor(...brandGreen);
     doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
-    doc.text("FABULOUZZ TECHNOLOGIES", pageWidth / 2, 68, { align: "center" });
-    doc.setFontSize(11);
-    doc.text("SIGHTLINE Command Center", pageWidth / 2, 78, { align: "center" });
+    doc.text("FABULOUZZ TECHNOLOGIES", pageWidth / 2, 62, { align: "center" });
   }
 
-  // Divider
-  doc.setFillColor(...brandGreen);
-  doc.rect(pageWidth / 2 - 25, 88, 50, 0.6, "F");
-
-  // Report label
+  // SIGHTLINE Command Center — centered
   doc.setTextColor(...brandGreen);
-  doc.setFontSize(9);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("PROJECT STATUS REPORT", pageWidth / 2, 98, { align: "center", charSpace: 2.5 });
+  doc.text("SIGHTLINE Command Center", pageWidth / 2, logoData ? 80 : 76, { align: "center" });
 
-  // Project title
+  // Divider — centered
+  const dividerY = logoData ? 86 : 82;
+  doc.setFillColor(...brandGreen);
+  doc.rect(pageWidth / 2 - 30, dividerY, 60, 0.6, "F");
+
+  // PROJECT STATUS REPORT — centered with letter spacing
+  doc.setTextColor(...brandGreen);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("PROJECT STATUS REPORT", pageWidth / 2, dividerY + 10, { align: "center", charSpace: 2.5 });
+
+  // Project title — centered
+  const titleY = dividerY + 24;
   doc.setTextColor(...textPrimary);
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
   const titleLines = doc.splitTextToSize(projectInfo.title, pageWidth - 56);
-  doc.text(titleLines, pageWidth / 2, 114, { align: "center" });
+  doc.text(titleLines, pageWidth / 2, titleY, { align: "center" });
 
-  const afterTitle = 114 + titleLines.length * 8 + 4;
+  const afterTitle = titleY + titleLines.length * 8 + 4;
   doc.setTextColor(...textSecondary);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
@@ -579,14 +583,16 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
   doc.rect(0, 18, lw, 0.6, "F");
 
   if (logoData) doc.addImage(logoData, "PNG", 10, 3, 34, 10);
+  // Center-aligned title
   doc.setTextColor(...brandGreen);
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text("PROJECT TIMELINE — GANTT CHART", lw / 2, 12, { align: "center" });
+  doc.text("PROJECT TIMELINE — GANTT CHART", lw / 2, 10, { align: "center" });
+  // Right-aligned ref
   doc.setTextColor(...textSecondary);
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "normal");
-  doc.text(projectInfo.projectRef, lw - 10, 12, { align: "right" });
+  doc.text(projectInfo.projectRef, lw - 10, 14, { align: "right" });
 
   const ganttTop = 24;
   const labelWidth = 88;
