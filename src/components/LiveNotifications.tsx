@@ -117,14 +117,16 @@ const LiveNotifications = () => {
     return () => { supabase.removeChannel(channel); };
   }, [selectedProjectId]);
 
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("notifications").delete().eq("id", id);
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase.from("notifications").delete().eq("id", deleteTarget);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      setNotifications(prev => prev.filter(n => n.id !== deleteTarget));
       toast({ title: "Deleted", description: "Notification removed" });
     }
+    setDeleteTarget(null);
   };
 
   const timeAgo = (dateStr: string) => {
