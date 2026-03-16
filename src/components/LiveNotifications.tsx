@@ -185,7 +185,7 @@ const LiveNotifications = () => {
         </div>
       )}
 
-      <div className="max-h-[450px] overflow-y-auto">
+      <div className="max-h-[700px] overflow-y-auto">
         <AnimatePresence initial={false}>
           {notifications.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
