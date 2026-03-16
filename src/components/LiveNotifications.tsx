@@ -10,6 +10,7 @@ interface Notification {
   type: string;
   media_url: string | null;
   created_at: string;
+  task_id: string | null;
 }
 
 const LiveNotifications = () => {
