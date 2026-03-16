@@ -6,6 +6,16 @@ import { useProjectData } from "@/contexts/ProjectDataContext";
 import { toast } from "@/hooks/use-toast";
 import MediaLightbox from "./MediaLightbox";
 import CreateUpdateForm from "./CreateUpdateForm";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Notification {
   id: string;
@@ -23,6 +33,7 @@ const LiveNotifications = () => {
   const [tickerIndex, setTickerIndex] = useState(0);
   const [tickerText, setTickerText] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const { tasks, selectedProjectId } = useProjectData();
 
   const activeTasks = tasks.filter(t => t.status === "Processing" || t.status === "Initiating");
@@ -106,14 +117,16 @@ const LiveNotifications = () => {
     return () => { supabase.removeChannel(channel); };
   }, [selectedProjectId]);
 
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("notifications").delete().eq("id", id);
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase.from("notifications").delete().eq("id", deleteTarget);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      setNotifications(prev => prev.filter(n => n.id !== deleteTarget));
       toast({ title: "Deleted", description: "Notification removed" });
     }
+    setDeleteTarget(null);
   };
 
   const timeAgo = (dateStr: string) => {
@@ -251,7 +264,7 @@ const LiveNotifications = () => {
                   {/* Admin delete button */}
                   {isAdmin && (
                     <button
-                      onClick={() => handleDelete(n.id)}
+                      onClick={() => setDeleteTarget(n.id)}
                       className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover/card:opacity-100 flex-shrink-0"
                       title="Delete notification"
                     >
@@ -301,6 +314,24 @@ const LiveNotifications = () => {
         />
       )}
     </AnimatePresence>
+
+    {/* Delete confirmation dialog */}
+    <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Notification</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this notification? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 };
