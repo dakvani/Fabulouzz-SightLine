@@ -6,6 +6,16 @@ import { useProjectData } from "@/contexts/ProjectDataContext";
 import { toast } from "@/hooks/use-toast";
 import MediaLightbox from "./MediaLightbox";
 import CreateUpdateForm from "./CreateUpdateForm";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Notification {
   id: string;
