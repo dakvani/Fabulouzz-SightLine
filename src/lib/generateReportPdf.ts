@@ -502,17 +502,19 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
       doc.setFillColor(...cardBg);
       doc.roundedRect(margin, uy, pageWidth - margin * 2, cardHeight, 2.5, 2.5, "F");
 
-      const accentColor = n.type === "status_update" ? statusColors.Processing : brandGreen;
+      const isLiveUpdate = n.type === "live_update";
+      const accentColor = isLiveUpdate ? brandGreen : statusColors.Processing;
       doc.setFillColor(...accentColor);
       doc.rect(margin, uy, 2, cardHeight, "F");
 
       // Type badge
+      const badgeLabel = isLiveUpdate ? "LIVE UPDATE" : n.type.toUpperCase().replace("_", " ");
       doc.setFillColor(...accentColor);
-      doc.roundedRect(margin + 6, uy + 2.5, 18, 4, 1.2, 1.2, "F");
+      doc.roundedRect(margin + 6, uy + 2.5, 20, 4, 1.2, 1.2, "F");
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(4.5);
       doc.setFont("helvetica", "bold");
-      doc.text(n.type.toUpperCase().replace("_", " "), margin + 15, uy + 5.2, { align: "center" });
+      doc.text(badgeLabel, margin + 16, uy + 5.2, { align: "center" });
 
       // Timestamp
       const dateStr = new Date(n.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
