@@ -53,10 +53,10 @@ const KanbanBoard = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-      <div className="glass-card px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
+      <div className="glass-card px-3 py-3 sm:px-5 sm:py-4 md:px-6 md:py-5 border-b border-border/50 flex flex-wrap items-center gap-2 sm:gap-3">
         <LayoutGrid className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Kanban Board</h3>
-        {isAdmin && <span className="text-[10px] text-muted-foreground ml-2">Drag tasks to update status</span>}
+        <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground">Kanban Board</h3>
+        {isAdmin && <span className="text-[10px] text-muted-foreground ml-2 hidden sm:inline">Drag tasks to update status</span>}
         <span className="ml-auto text-[10px] font-mono bg-muted/50 text-muted-foreground px-2 py-0.5 rounded-full">{taskList.length} total</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
