@@ -636,9 +636,9 @@ const AdminPanel = ({ isOpen, onClose }: AdminPanelProps) => {
                   e.preventDefault();
                   if (!newSubEmail.trim()) return;
                   setAddingSubscriber(true);
-                  const { error } = await supabase
+                   const { error } = await supabase
                     .from("email_subscribers")
-                    .insert({ email: newSubEmail.trim().toLowerCase() });
+                    .insert({ email: newSubEmail.trim().toLowerCase(), project_id: projectId } as any);
                   setAddingSubscriber(false);
                   if (error) {
                     toast({ title: "Error", description: error.message.includes("duplicate") ? "This email is already subscribed" : error.message, variant: "destructive" });
