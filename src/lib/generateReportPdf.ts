@@ -469,11 +469,11 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     drawPageHeader(doc, "LIVE UPDATES & MEDIA", pageWidth);
 
     let uy = 28;
-    drawSectionTitle(doc, "RECENT STATUS UPDATES", uy, pageWidth);
+    drawSectionTitle(doc, "RECENT UPDATES & NOTIFICATIONS", uy, pageWidth);
     doc.setTextColor(...textSecondary);
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "normal");
-    doc.text(`${notifications.length} updates as of ${today}`, pageWidth - margin, uy, { align: "right" });
+    doc.text(`${notifications.length} updates (${liveUpdates.length} live, ${statusUpdates.length} status) as of ${today}`, pageWidth - margin, uy, { align: "right" });
     uy += 8;
 
     for (const n of notifications) {
