@@ -99,7 +99,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">
       {/* LEFT SIDE — Auth Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-24 py-12 lg:py-0 relative z-10">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-4 sm:px-8 md:px-12 lg:px-16 xl:px-24 py-8 sm:py-10 lg:py-0 relative z-10">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
