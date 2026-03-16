@@ -42,7 +42,7 @@ const TaskList = () => {
             const isProcessing = task.status === "Processing";
             return (
               <motion.div key={task.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 + i * 0.03 }}
-                className={`px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 transition-colors cursor-pointer group relative ${isProcessing ? "bg-processing/5 hover:bg-processing/10" : "hover:bg-secondary/30"}`}>
+                className={`px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 flex items-center gap-2 sm:gap-3 transition-colors cursor-pointer group relative ${isProcessing ? "bg-processing/5 hover:bg-processing/10" : "hover:bg-secondary/30"}`}>
                 {isProcessing && (
                   <motion.div className="absolute left-0 top-0 bottom-0 w-1 bg-processing rounded-r" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} />
                 )}
