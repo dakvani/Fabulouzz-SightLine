@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Image, Clock, X, ChevronLeft, ChevronRight, Loader2, Zap, Video, Play, FileText } from "lucide-react";
+import { Bell, Image, Clock, Loader2, Video, Play, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjectData } from "@/contexts/ProjectDataContext";
+import MediaLightbox from "./MediaLightbox";
+import CreateUpdateForm from "./CreateUpdateForm";
 
 interface Notification {
   id: string;
@@ -19,13 +21,12 @@ const LiveNotifications = () => {
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
   const [tickerIndex, setTickerIndex] = useState(0);
   const [tickerText, setTickerText] = useState("");
-  const [isTyping, setIsTyping] = useState(true);
   const { tasks, selectedProjectId } = useProjectData();
 
   const activeTasks = tasks.filter(t => t.status === "Processing" || t.status === "Initiating");
   const allTickerItems = activeTasks.map(t => t.name);
 
-  // Typewriter effect: type and erase active task names
+  // Typewriter effect
   useEffect(() => {
     if (allTickerItems.length === 0) {
       setTickerText("");
@@ -33,29 +34,22 @@ const LiveNotifications = () => {
     }
     const currentText = allTickerItems[tickerIndex % allTickerItems.length];
     let charIndex = 0;
-    let erasing = false;
-    setIsTyping(true);
 
     const interval = setInterval(() => {
-      if (!erasing) {
-        charIndex++;
-        setTickerText(currentText.slice(0, charIndex));
-        if (charIndex >= currentText.length) {
-          erasing = true;
-          // Pause before erasing
-          setTimeout(() => {
-            const eraseInterval = setInterval(() => {
-              charIndex--;
-              setTickerText(currentText.slice(0, charIndex));
-              if (charIndex <= 0) {
-                clearInterval(eraseInterval);
-                setIsTyping(false);
-                setTickerIndex(prev => (prev + 1) % allTickerItems.length);
-              }
-            }, 30);
-          }, 2000);
-          clearInterval(interval);
-        }
+      charIndex++;
+      setTickerText(currentText.slice(0, charIndex));
+      if (charIndex >= currentText.length) {
+        setTimeout(() => {
+          const eraseInterval = setInterval(() => {
+            charIndex--;
+            setTickerText(currentText.slice(0, charIndex));
+            if (charIndex <= 0) {
+              clearInterval(eraseInterval);
+              setTickerIndex(prev => (prev + 1) % allTickerItems.length);
+            }
+          }, 30);
+        }, 2000);
+        clearInterval(interval);
       }
     }, 50);
 
@@ -64,16 +58,6 @@ const LiveNotifications = () => {
 
   const openLightbox = useCallback((urls: string[], index: number) => {
     setLightbox({ urls, index });
-  }, []);
-
-  const closeLightbox = useCallback(() => setLightbox(null), []);
-
-  const navigateLightbox = useCallback((dir: 1 | -1) => {
-    setLightbox(prev => {
-      if (!prev) return null;
-      const next = (prev.index + dir + prev.urls.length) % prev.urls.length;
-      return { ...prev, index: next };
-    });
   }, []);
 
   useEffect(() => {
@@ -134,17 +118,6 @@ const LiveNotifications = () => {
     return videoExts.some(ext => lower.endsWith(ext));
   };
 
-  useEffect(() => {
-    if (!lightbox) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") navigateLightbox(-1);
-      else if (e.key === "ArrowRight") navigateLightbox(1);
-      else if (e.key === "Escape") closeLightbox();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [lightbox, navigateLightbox, closeLightbox]);
-
   return (
     <>
     <motion.div
@@ -153,7 +126,7 @@ const LiveNotifications = () => {
       transition={{ delay: 0.7 }}
       className="glass-card overflow-hidden relative"
     >
-      {/* Subtle fade-in glow for new updates */}
+      {/* Fade-in glow */}
       <AnimatePresence>
         {newFlash && (
           <motion.div
@@ -166,6 +139,7 @@ const LiveNotifications = () => {
         )}
       </AnimatePresence>
 
+      {/* Header with latest update on the right */}
       <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-border/50 flex items-center gap-3">
         <motion.div
           animate={newFlash ? { scale: [1, 1.15, 1] } : {}}
@@ -175,7 +149,6 @@ const LiveNotifications = () => {
         </motion.div>
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Live Updates</h3>
 
-        {/* Latest notification on the right side with accent color */}
         {notifications.length > 0 && (
           <div className="ml-auto flex items-center gap-2 max-w-[50%]">
             <span className="text-[10px] font-medium text-accent-foreground bg-accent/20 px-2.5 py-1 rounded-full truncate">
@@ -185,7 +158,7 @@ const LiveNotifications = () => {
         )}
       </div>
 
-      {/* Typewriter ticker for active tasks — inline, no separate section */}
+      {/* Typewriter ticker for active tasks */}
       {activeTasks.length > 0 && (
         <div className="px-5 py-3 sm:px-6 flex items-center gap-3 bg-processing/5">
           <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
@@ -207,8 +180,12 @@ const LiveNotifications = () => {
         </div>
       )}
 
-      {/* Updates Feed — Card-style like Active Tasks */}
+      {/* Compose + Feed */}
       <div className="max-h-[720px] sm:max-h-[820px] xl:max-h-[920px] overflow-y-auto px-5 py-4 sm:px-6 sm:py-5 space-y-3">
+        {/* Compose new update */}
+        <CreateUpdateForm />
+
+        {/* Updates Feed */}
         <AnimatePresence initial={false}>
           {notifications.map((n) => {
             const mediaUrls = getMediaUrls(n.media_url);
@@ -225,7 +202,6 @@ const LiveNotifications = () => {
                 transition={{ duration: 0.4, ease: "easeOut" }}
                 className="rounded-[0.625rem] border border-border/30 bg-secondary/10 hover:bg-secondary/20 transition-colors overflow-hidden"
               >
-                {/* Update header */}
                 <div className="px-4 py-3 sm:px-5 sm:py-4 flex items-start gap-3">
                   <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <FileText className="w-4 h-4 text-primary" />
@@ -252,7 +228,6 @@ const LiveNotifications = () => {
                   </div>
                 </div>
 
-                {/* Media grid — visually nested under this update */}
                 {hasMedia && (
                   <div className="px-4 pb-3 sm:px-5 sm:pb-4">
                     <div className={`grid gap-2 ${mediaUrls.length === 1 ? 'grid-cols-1 max-w-md' : 'grid-cols-2 sm:grid-cols-3'}`}>
@@ -284,82 +259,14 @@ const LiveNotifications = () => {
       </div>
     </motion.div>
 
-    {/* Lightbox with prev/next */}
+    {/* Lightbox */}
     <AnimatePresence>
       {lightbox && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-background/90 backdrop-blur-md"
-          onClick={closeLightbox}
-        >
-          <button onClick={closeLightbox} className="absolute top-4 right-4 p-2 rounded-full bg-secondary/50 text-foreground hover:bg-secondary transition-colors z-10">
-            <X className="w-5 h-5" />
-          </button>
-
-          {lightbox.urls.length > 1 && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 text-xs font-mono text-muted-foreground bg-secondary/60 px-3 py-1 rounded-full z-10">
-              {lightbox.index + 1} / {lightbox.urls.length}
-            </div>
-          )}
-
-          {lightbox.urls.length > 1 && (
-            <>
-              <button
-                onClick={e => { e.stopPropagation(); navigateLightbox(-1); }}
-                className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 p-3 rounded-full bg-secondary/70 text-foreground hover:bg-secondary transition-colors z-10"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                onClick={e => { e.stopPropagation(); navigateLightbox(1); }}
-                className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 p-3 rounded-full bg-secondary/70 text-foreground hover:bg-secondary transition-colors z-10"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            </>
-          )}
-
-          {isVideo(lightbox.urls[lightbox.index]) ? (
-            <motion.video
-              key={lightbox.index}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              src={lightbox.urls[lightbox.index]}
-              controls
-              autoPlay
-              className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl"
-              onClick={e => e.stopPropagation()}
-            />
-          ) : (
-            <motion.img
-              key={lightbox.index}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              src={lightbox.urls[lightbox.index]}
-              alt="Full size media"
-              className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
-              onClick={e => e.stopPropagation()}
-            />
-          )}
-
-          {lightbox.urls.length > 1 && (
-            <div className="absolute bottom-6 flex gap-2">
-              {lightbox.urls.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={e => { e.stopPropagation(); setLightbox(prev => prev ? { ...prev, index: i } : null); }}
-                  className={`w-2.5 h-2.5 rounded-full transition-colors ${i === lightbox.index ? 'bg-primary scale-125' : 'bg-muted-foreground/40 hover:bg-muted-foreground/60'}`}
-                />
-              ))}
-            </div>
-          )}
-        </motion.div>
+        <MediaLightbox
+          urls={lightbox.urls}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </AnimatePresence>
     </>
