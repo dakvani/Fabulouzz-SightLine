@@ -23,6 +23,44 @@ const LiveNotifications = () => {
   const { tasks, selectedProjectId } = useProjectData();
 
   const activeTasks = tasks.filter(t => t.status === "Processing" || t.status === "Initiating");
+  const allTickerItems = activeTasks.map(t => t.name);
+
+  // Typewriter effect: type and erase active task names
+  useEffect(() => {
+    if (allTickerItems.length === 0) {
+      setTickerText("");
+      return;
+    }
+    const currentText = allTickerItems[tickerIndex % allTickerItems.length];
+    let charIndex = 0;
+    let erasing = false;
+    setIsTyping(true);
+
+    const interval = setInterval(() => {
+      if (!erasing) {
+        charIndex++;
+        setTickerText(currentText.slice(0, charIndex));
+        if (charIndex >= currentText.length) {
+          erasing = true;
+          // Pause before erasing
+          setTimeout(() => {
+            const eraseInterval = setInterval(() => {
+              charIndex--;
+              setTickerText(currentText.slice(0, charIndex));
+              if (charIndex <= 0) {
+                clearInterval(eraseInterval);
+                setIsTyping(false);
+                setTickerIndex(prev => (prev + 1) % allTickerItems.length);
+              }
+            }, 30);
+          }, 2000);
+          clearInterval(interval);
+        }
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [tickerIndex, allTickerItems.length]);
 
   const openLightbox = useCallback((urls: string[], index: number) => {
     setLightbox({ urls, index });
