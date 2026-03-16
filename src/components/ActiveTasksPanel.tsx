@@ -40,7 +40,7 @@ const ActiveTasksPanel = () => {
                 <motion.div className="absolute left-0 top-0 bottom-0 w-0.5 bg-processing" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }} />
               )}
               <motion.div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isProcessing ? "bg-processing/15 text-processing" : "bg-initiating/15 text-initiating"}`}
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 ${isProcessing ? "bg-processing/15 text-processing" : "bg-initiating/15 text-initiating"}`}
                 animate={isProcessing ? { boxShadow: ["0 0 0px hsl(var(--processing) / 0)", "0 0 16px hsl(var(--processing) / 0.25)", "0 0 0px hsl(var(--processing) / 0)"] } : {}}
                 transition={{ duration: 2, repeat: Infinity }}>
                 {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}

@@ -64,7 +64,7 @@ const KanbanBoard = () => {
           const colTasks = getColumnTasks(col);
           const colors = columnColors[col];
           return (
-            <div key={col} className={`rounded-xl border ${colors.border} ${colors.bg} min-h-[400px] p-3 transition-all ${draggedTask !== null ? "ring-2 ring-primary/20" : ""}`}
+            <div key={col} className={`rounded-xl border ${colors.border} ${colors.bg} min-h-[200px] sm:min-h-[400px] p-2.5 sm:p-3 transition-all ${draggedTask !== null ? "ring-2 ring-primary/20" : ""}`}
               onDragOver={e => e.preventDefault()} onDrop={() => handleDrop(col)}>
               <div className="flex items-center gap-2 mb-4 px-1">
                 <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
