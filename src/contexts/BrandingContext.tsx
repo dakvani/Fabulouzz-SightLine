@@ -18,7 +18,7 @@ interface BrandingContextType {
   loading: boolean;
   subscriptionEnd: string | null;
   refresh: () => Promise<void>;
-  startCheckout: () => Promise<void>;
+  startCheckout: (interval?: "monthly" | "annual") => Promise<void>;
   openCustomerPortal: () => Promise<void>;
 }
 
@@ -108,8 +108,10 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
-  const startCheckout = useCallback(async () => {
-    const { data, error } = await supabase.functions.invoke("create-checkout");
+  const startCheckout = useCallback(async (interval: "monthly" | "annual" = "monthly") => {
+    const { data, error } = await supabase.functions.invoke("create-checkout", {
+      body: { interval },
+    });
     if (error || !data?.url) {
       console.error("Checkout error:", error || data);
       return;
