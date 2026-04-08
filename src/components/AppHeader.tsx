@@ -40,9 +40,11 @@ const useScrollDirection = () => {
 const AppHeader = ({ activeView, onViewChange, onBackToProjects }: AppHeaderProps) => {
   const [showAuth, setShowAuth] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showBranding, setShowBranding] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { branding, isPremium } = useBranding();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
