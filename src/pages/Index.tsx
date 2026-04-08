@@ -93,6 +93,10 @@ const Index = () => {
     ? Math.round((tasks.reduce((sum, t) => sum + (weights[t.status] || 0), 0) / tasks.length) * 100)
     : 0;
 
+  if (activeView === "pricing") {
+    return <PricingPage onBack={() => setActiveView("dashboard")} />;
+  }
+
   return (
     <div className="min-h-screen bg-background relative">
       <ChangePasswordModal
@@ -102,9 +106,10 @@ const Index = () => {
       <SubscribePromptModal userId={user.id} />
       <div className="relative z-10">
         <AppHeader
-          activeView={activeView}
+          activeView={activeView as "dashboard" | "timeline" | "tasks" | "kanban"}
           onViewChange={setActiveView}
           onBackToProjects={() => setSelectedProjectId(null)}
+          onShowPricing={() => setActiveView("pricing")}
         />
 
         <main className="max-w-[1600px] mx-auto px-2.5 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6 relative">
