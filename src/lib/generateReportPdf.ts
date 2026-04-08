@@ -41,11 +41,20 @@ interface NotificationData {
   created_at: string;
 }
 
+export interface BrandingData {
+  company_name: string;
+  logo_url: string | null;
+  accent_color: string;
+  tagline: string;
+  website_url: string;
+}
+
 export interface ReportOptions {
   tasks: ProjectTask[];
   projectInfo: ProjectInfo;
   isDark: boolean;
   notifications?: NotificationData[];
+  branding?: BrandingData | null;
 }
 
 export async function generateReportPdf({ tasks, projectInfo, isDark, notifications = [] }: ReportOptions): Promise<{ doc: any; base64: string }> {
