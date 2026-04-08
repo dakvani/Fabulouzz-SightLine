@@ -236,6 +236,7 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects }: AppHeaderProp
 
       <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onSuccess={() => setShowAuth(false)} />
       <AdminPanel isOpen={showAdmin} onClose={() => setShowAdmin(false)} />
+      <BrandingSettings isOpen={showBranding} onClose={() => setShowBranding(false)} />
     </>
   );
 };
