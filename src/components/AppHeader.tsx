@@ -174,6 +174,12 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects, onShowPricing }
                     <Shield className="w-3 h-3" /><span className="hidden md:inline">Admin</span>
                   </motion.button>
                 )}
+                {onShowPricing && (
+                  <motion.button onClick={onShowPricing} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium border border-primary/20 text-primary hover:bg-primary/10 transition-colors">
+                    <Crown className="w-3 h-3" /><span className="hidden md:inline">Plans</span>
+                  </motion.button>
+                )}
                 <motion.button onClick={() => setShowBranding(true)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                   className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium border border-border/20 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors">
                   <Building2 className="w-3 h-3" /><span className="hidden md:inline">Branding</span>
