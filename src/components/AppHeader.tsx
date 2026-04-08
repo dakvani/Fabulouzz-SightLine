@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon, ArrowLeft, Menu, X, Building2 } from "lucide-react";
+import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon, ArrowLeft, Menu, X, Building2, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
@@ -13,8 +13,9 @@ import ExportReport from "./ExportReport";
 
 interface AppHeaderProps {
   activeView: "dashboard" | "timeline" | "tasks" | "kanban";
-  onViewChange: (view: "dashboard" | "timeline" | "tasks" | "kanban") => void;
+  onViewChange: (view: any) => void;
   onBackToProjects?: () => void;
+  onShowPricing?: () => void;
 }
 
 const useScrollDirection = () => {
@@ -37,7 +38,7 @@ const useScrollDirection = () => {
   return { hidden, scrolled };
 };
 
-const AppHeader = ({ activeView, onViewChange, onBackToProjects }: AppHeaderProps) => {
+const AppHeader = ({ activeView, onViewChange, onBackToProjects, onShowPricing }: AppHeaderProps) => {
   const [showAuth, setShowAuth] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showBranding, setShowBranding] = useState(false);
