@@ -201,14 +201,14 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     doc.setTextColor(...brandGreen);
     doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
-    doc.text("FABULOUZZ TECHNOLOGIES", pageWidth / 2, 62, { align: "center" });
+    doc.text(brandLabel, pageWidth / 2, 62, { align: "center" });
   }
 
-  // SIGHTLINE Command Center — centered
+  // Sub-label — centered
   doc.setTextColor(...brandGreen);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("SIGHTLINE Command Center", pageWidth / 2, logoData ? 80 : 76, { align: "center" });
+  doc.text(subLabel, pageWidth / 2, logoData ? 80 : 76, { align: "center" });
 
   // Divider — centered
   const dividerY = logoData ? 86 : 82;
