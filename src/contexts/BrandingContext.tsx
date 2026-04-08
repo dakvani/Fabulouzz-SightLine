@@ -108,8 +108,10 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
-  const startCheckout = useCallback(async () => {
-    const { data, error } = await supabase.functions.invoke("create-checkout");
+  const startCheckout = useCallback(async (interval: "monthly" | "annual" = "monthly") => {
+    const { data, error } = await supabase.functions.invoke("create-checkout", {
+      body: { interval },
+    });
     if (error || !data?.url) {
       console.error("Checkout error:", error || data);
       return;
