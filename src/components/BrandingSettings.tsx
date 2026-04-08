@@ -112,11 +112,14 @@ const BrandingSettings = ({ isOpen, onClose }: BrandingSettingsProps) => {
               Premium Feature
             </DialogTitle>
             <DialogDescription>
-              Custom branding is available for Premium subscribers. Upgrade to customize your company logo, name, and colors across the app and PDF reports.
+              Custom branding is available for Premium subscribers ($29/mo). Upgrade to customize your company logo, name, and colors across the app and PDF reports.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end pt-4">
+          <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={onClose}>Close</Button>
+            <Button onClick={() => { startCheckout(); onClose(); }}>
+              <Sparkles className="w-4 h-4 mr-1.5" /> Upgrade to Premium
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
