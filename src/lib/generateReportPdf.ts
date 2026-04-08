@@ -148,7 +148,8 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     d.setTextColor(...textSecondary);
     d.setFontSize(5.5);
     d.setFont("helvetica", "normal");
-    d.text("Powered by Fabulouzz Technologies  •  SightLine Project Command Center", margin, ph - 4.5);
+    const footerText = hasCustomBranding ? `${branding!.company_name}  •  Powered by SightLine` : "Powered by Fabulouzz Technologies  •  SightLine Project Command Center";
+    d.text(footerText, margin, ph - 4.5);
     d.text(`Page ${pageNum} of ${totalPages}`, pw - margin, ph - 4.5, { align: "right" });
   };
 
