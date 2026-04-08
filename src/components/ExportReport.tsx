@@ -12,6 +12,7 @@ const ExportReport = () => {
   const [loading, setLoading] = useState(false);
   const { theme } = useTheme();
   const { tasks, projectInfo, projectId } = useProjectData();
+  const { branding, isPremium } = useBranding();
 
   const exportReport = async () => {
     setLoading(true);
