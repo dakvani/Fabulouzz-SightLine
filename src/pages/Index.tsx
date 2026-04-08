@@ -18,11 +18,12 @@ import ChangePasswordModal from "@/components/ChangePasswordModal";
 import SubscribePromptModal from "@/components/SubscribePromptModal";
 import ScrollToTop from "@/components/ScrollToTop";
 import LiveNotifications from "@/components/LiveNotifications";
+import PricingPage from "@/components/PricingPage";
 
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { motion } from "framer-motion";
 
-type ViewType = "dashboard" | "timeline" | "tasks" | "kanban";
+type ViewType = "dashboard" | "timeline" | "tasks" | "kanban" | "pricing";
 
 const Index = () => {
   const [user, setUser] = useState<any>(null);
