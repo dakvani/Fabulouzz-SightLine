@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { FileDown, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useProjectData } from "@/contexts/ProjectDataContext";
+import { useBranding } from "@/contexts/BrandingContext";
 import { useTheme } from "next-themes";
 import { generateReportPdf } from "@/lib/generateReportPdf";
 import { supabase } from "@/integrations/supabase/client";
