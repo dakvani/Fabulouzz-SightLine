@@ -109,7 +109,16 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
 
   /* ── Assets ── */
   let logoData: string | null = null;
-  try { logoData = await loadImageAsBase64(isDark ? fabulouzzLogo : fabulouzzLogoLight); } catch { /* fallback text */ }
+  // If premium branding with custom logo, use that; otherwise default
+  if (branding?.logo_url) {
+    try { logoData = await loadImageAsBase64(branding.logo_url); } catch { /* fallback */ }
+  }
+  if (!logoData) {
+    try { logoData = await loadImageAsBase64(isDark ? fabulouzzLogo : fabulouzzLogoLight); } catch { /* fallback text */ }
+  }
+  const hasCustomBranding = !!(branding?.company_name);
+  const brandLabel = hasCustomBranding ? branding!.company_name.toUpperCase() : "FABULOUZZ TECHNOLOGIES";
+  const subLabel = hasCustomBranding ? (branding!.tagline || "Project Command Center") : "SIGHTLINE Command Center";
 
   const videoExts = [".mp4", ".webm", ".mov", ".avi", ".mkv", ".ogg"];
   const isVideoUrl = (url: string) => videoExts.some(ext => url.toLowerCase().split("?")[0].endsWith(ext));
