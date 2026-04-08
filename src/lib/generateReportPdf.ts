@@ -140,6 +140,8 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
   /* ── Shared drawing helpers ── */
   const drawBg = (d: any, w: number, h: number) => { d.setFillColor(...bgColor); d.rect(0, 0, w, h, "F"); };
 
+  const isFreeUser = !branding;
+
   const drawPageFooter = (d: any, pageNum: number, pw: number, ph: number) => {
     d.setFillColor(...cardBg);
     d.rect(0, ph - 12, pw, 12, "F");
@@ -151,6 +153,23 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     const footerText = hasCustomBranding ? `${branding!.company_name}  •  Powered by SightLine` : "Powered by Fabulouzz Technologies  •  SightLine Project Command Center";
     d.text(footerText, margin, ph - 4.5);
     d.text(`Page ${pageNum} of ${totalPages}`, pw - margin, ph - 4.5, { align: "right" });
+
+    // Free-tier watermark
+    if (isFreeUser) {
+      d.saveGraphicsState();
+      d.setGState(new d.GState({ opacity: 0.06 }));
+      d.setTextColor(120, 120, 130);
+      d.setFontSize(48);
+      d.setFont("helvetica", "bold");
+      // Diagonal watermark across the page
+      const cx = pw / 2;
+      const cy = ph / 2;
+      d.text("Powered by SightLine", cx, cy, {
+        align: "center",
+        angle: 35,
+      });
+      d.restoreGraphicsState();
+    }
   };
 
   const drawPageHeader = (d: any, sectionTitle: string, pw: number) => {
