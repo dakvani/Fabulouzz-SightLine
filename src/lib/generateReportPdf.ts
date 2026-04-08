@@ -57,7 +57,7 @@ export interface ReportOptions {
   branding?: BrandingData | null;
 }
 
-export async function generateReportPdf({ tasks, projectInfo, isDark, notifications = [] }: ReportOptions): Promise<{ doc: any; base64: string }> {
+export async function generateReportPdf({ tasks, projectInfo, isDark, notifications = [], branding = null }: ReportOptions): Promise<{ doc: any; base64: string }> {
   const { default: jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
 
