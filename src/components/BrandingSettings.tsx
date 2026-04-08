@@ -248,12 +248,18 @@ const BrandingSettings = ({ isOpen, onClose }: BrandingSettingsProps) => {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4">
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
-            Save Branding
-          </Button>
+        <div className="flex items-center justify-between pt-4 border-t border-border/30">
+          <div className="text-xs text-muted-foreground">
+            Premium Plan {subscriptionEnd && `• Renews ${new Date(subscriptionEnd).toLocaleDateString()}`}
+            <button onClick={openCustomerPortal} className="ml-2 text-primary hover:underline">Manage</button>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
+              Save Branding
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
