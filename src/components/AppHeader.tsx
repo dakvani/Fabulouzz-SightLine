@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon, ArrowLeft, Menu, X } from "lucide-react";
+import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon, ArrowLeft, Menu, X, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
+import { useBranding } from "@/contexts/BrandingContext";
 import AuthModal from "./AuthModal";
 import AdminPanel from "./AdminPanel";
+import BrandingSettings from "./BrandingSettings";
 import ExportReport from "./ExportReport";
 
 interface AppHeaderProps {
