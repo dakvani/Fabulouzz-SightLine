@@ -21,7 +21,7 @@ interface BrandingSettingsProps {
 }
 
 const BrandingSettings = ({ isOpen, onClose }: BrandingSettingsProps) => {
-  const { branding, isPremium, refresh } = useBranding();
+  const { branding, isPremium, refresh, startCheckout, openCustomerPortal, subscriptionEnd } = useBranding();
   const [companyName, setCompanyName] = useState("");
   const [tagline, setTagline] = useState("");
   const [accentColor, setAccentColor] = useState("#4f46e5");
