@@ -36,6 +36,13 @@ const ExportReport = () => {
         projectInfo,
         isDark,
         notifications: notifications || [],
+        branding: isPremium && branding ? {
+          company_name: branding.company_name,
+          logo_url: branding.logo_url,
+          accent_color: branding.accent_color,
+          tagline: branding.tagline,
+          website_url: branding.website_url,
+        } : null,
       });
 
       doc.save(`SightLine_Report_${projectInfo.projectRef}_${today.replace(/\s/g, "-")}.pdf`);
