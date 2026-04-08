@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Check, X, Sparkles, ArrowLeft, Crown, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBranding } from "@/contexts/BrandingContext";
+import { cn } from "@/lib/utils";
 
 interface PricingPageProps {
   onBack: () => void;
@@ -22,6 +24,14 @@ const features = [
 
 const PricingPage = ({ onBack }: PricingPageProps) => {
   const { isPremium, startCheckout, openCustomerPortal, subscriptionEnd } = useBranding();
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+
+  const price = billing === "monthly" ? 29 : 290;
+  const perMonth = billing === "monthly" ? 29 : +(290 / 12).toFixed(2);
+
+  const handleCheckout = () => {
+    startCheckout(billing);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -45,9 +55,38 @@ const PricingPage = ({ onBack }: PricingPageProps) => {
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
             Choose Your Plan
           </h1>
-          <p className="text-muted-foreground text-sm sm:text-base max-w-lg mx-auto">
+          <p className="text-muted-foreground text-sm sm:text-base max-w-lg mx-auto mb-6">
             Upgrade to Premium for white-label branding, custom reports, and a fully personalised experience.
           </p>
+
+          {/* Billing toggle */}
+          <div className="inline-flex items-center gap-1 bg-muted/60 rounded-full p-1">
+            <button
+              onClick={() => setBilling("monthly")}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-all",
+                billing === "monthly"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBilling("annual")}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-all",
+                billing === "annual"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Annual
+              <span className="ml-1.5 text-[10px] font-bold text-green-600 dark:text-green-400">
+                Save 17%
+              </span>
+            </button>
+          </div>
         </motion.div>
 
         {/* Plans */}
@@ -111,10 +150,19 @@ const PricingPage = ({ onBack }: PricingPageProps) => {
               <Crown className="w-5 h-5 text-primary" />
               <h2 className="text-lg font-bold text-foreground">Premium</h2>
             </div>
-            <p className="text-muted-foreground text-xs mb-5">For teams and professional branding</p>
+            <p className="text-muted-foreground text-xs mb-5">
+              For teams and professional branding • 14-day free trial
+            </p>
             <div className="mb-6">
-              <span className="text-3xl font-bold text-foreground">$29</span>
-              <span className="text-muted-foreground text-sm"> /month</span>
+              <span className="text-3xl font-bold text-foreground">${price}</span>
+              <span className="text-muted-foreground text-sm">
+                {billing === "monthly" ? " /month" : " /year"}
+              </span>
+              {billing === "annual" && (
+                <span className="block text-xs text-muted-foreground mt-1">
+                  ${perMonth}/mo — billed annually
+                </span>
+              )}
             </div>
             <ul className="space-y-3 flex-1">
               {features.map((f) => (
@@ -140,8 +188,8 @@ const PricingPage = ({ onBack }: PricingPageProps) => {
                   </Button>
                 </div>
               ) : (
-                <Button className="w-full" onClick={startCheckout}>
-                  <Sparkles className="w-4 h-4 mr-1.5" /> Upgrade to Premium
+                <Button className="w-full" onClick={handleCheckout}>
+                  <Sparkles className="w-4 h-4 mr-1.5" /> Start 14-Day Free Trial
                 </Button>
               )}
             </div>
@@ -155,8 +203,8 @@ const PricingPage = ({ onBack }: PricingPageProps) => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
+          Start with a 14-day free trial — no charge until the trial ends.
           Cancel anytime. All plans include unlimited projects and team members.
-          Premium features activate instantly after checkout.
         </motion.p>
       </div>
     </div>

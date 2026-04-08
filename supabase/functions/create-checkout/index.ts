@@ -7,6 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const PRICES = {
+  monthly: "price_1TK52GGt2bnkDxF1HS8abUep",
+  annual: "price_1TK5b6Gt2bnkDxF1yffGLpV1",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -24,6 +29,10 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
+    const body = await req.json().catch(() => ({}));
+    const interval = body.interval === "annual" ? "annual" : "monthly";
+    const priceId = PRICES[interval];
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
@@ -34,11 +43,21 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
+    // Check if this customer already had a subscription (no trial for returning customers)
+    let trialDays: number | undefined = 14;
+    if (customerId) {
+      const subs = await stripe.subscriptions.list({ customer: customerId, limit: 1 });
+      if (subs.data.length > 0) {
+        trialDays = undefined;
+      }
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
-      line_items: [{ price: "price_1TK52GGt2bnkDxF1HS8abUep", quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
+      subscription_data: trialDays ? { trial_period_days: trialDays } : undefined,
       success_url: `${req.headers.get("origin")}/?subscription=success`,
       cancel_url: `${req.headers.get("origin")}/?subscription=canceled`,
     });

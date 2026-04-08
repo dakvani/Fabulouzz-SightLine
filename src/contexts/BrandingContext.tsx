@@ -18,7 +18,7 @@ interface BrandingContextType {
   loading: boolean;
   subscriptionEnd: string | null;
   refresh: () => Promise<void>;
-  startCheckout: () => Promise<void>;
+  startCheckout: (interval?: "monthly" | "annual") => Promise<void>;
   openCustomerPortal: () => Promise<void>;
 }
 
