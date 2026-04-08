@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ProjectDataProvider } from "@/contexts/ProjectDataContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
 import Index from "./pages/Index";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -16,6 +17,7 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ProjectDataProvider>
+          <BrandingProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -25,6 +27,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          </BrandingProvider>
         </ProjectDataProvider>
       </TooltipProvider>
     </QueryClientProvider>

@@ -41,14 +41,23 @@ interface NotificationData {
   created_at: string;
 }
 
+export interface BrandingData {
+  company_name: string;
+  logo_url: string | null;
+  accent_color: string;
+  tagline: string;
+  website_url: string;
+}
+
 export interface ReportOptions {
   tasks: ProjectTask[];
   projectInfo: ProjectInfo;
   isDark: boolean;
   notifications?: NotificationData[];
+  branding?: BrandingData | null;
 }
 
-export async function generateReportPdf({ tasks, projectInfo, isDark, notifications = [] }: ReportOptions): Promise<{ doc: any; base64: string }> {
+export async function generateReportPdf({ tasks, projectInfo, isDark, notifications = [], branding = null }: ReportOptions): Promise<{ doc: any; base64: string }> {
   const { default: jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
 
@@ -100,7 +109,16 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
 
   /* ── Assets ── */
   let logoData: string | null = null;
-  try { logoData = await loadImageAsBase64(isDark ? fabulouzzLogo : fabulouzzLogoLight); } catch { /* fallback text */ }
+  // If premium branding with custom logo, use that; otherwise default
+  if (branding?.logo_url) {
+    try { logoData = await loadImageAsBase64(branding.logo_url); } catch { /* fallback */ }
+  }
+  if (!logoData) {
+    try { logoData = await loadImageAsBase64(isDark ? fabulouzzLogo : fabulouzzLogoLight); } catch { /* fallback text */ }
+  }
+  const hasCustomBranding = !!(branding?.company_name);
+  const brandLabel = hasCustomBranding ? branding!.company_name.toUpperCase() : "FABULOUZZ TECHNOLOGIES";
+  const subLabel = hasCustomBranding ? (branding!.tagline || "Project Command Center") : "SIGHTLINE Command Center";
 
   const videoExts = [".mp4", ".webm", ".mov", ".avi", ".mkv", ".ogg"];
   const isVideoUrl = (url: string) => videoExts.some(ext => url.toLowerCase().split("?")[0].endsWith(ext));
@@ -130,7 +148,8 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     d.setTextColor(...textSecondary);
     d.setFontSize(5.5);
     d.setFont("helvetica", "normal");
-    d.text("Powered by Fabulouzz Technologies  •  SightLine Project Command Center", margin, ph - 4.5);
+    const footerText = hasCustomBranding ? `${branding!.company_name}  •  Powered by SightLine` : "Powered by Fabulouzz Technologies  •  SightLine Project Command Center";
+    d.text(footerText, margin, ph - 4.5);
     d.text(`Page ${pageNum} of ${totalPages}`, pw - margin, ph - 4.5, { align: "right" });
   };
 
@@ -182,14 +201,14 @@ export async function generateReportPdf({ tasks, projectInfo, isDark, notificati
     doc.setTextColor(...brandGreen);
     doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
-    doc.text("FABULOUZZ TECHNOLOGIES", pageWidth / 2, 62, { align: "center" });
+    doc.text(brandLabel, pageWidth / 2, 62, { align: "center" });
   }
 
-  // SIGHTLINE Command Center — centered
+  // Sub-label — centered
   doc.setTextColor(...brandGreen);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("SIGHTLINE Command Center", pageWidth / 2, logoData ? 80 : 76, { align: "center" });
+  doc.text(subLabel, pageWidth / 2, logoData ? 80 : 76, { align: "center" });
 
   // Divider — centered
   const dividerY = logoData ? 86 : 82;

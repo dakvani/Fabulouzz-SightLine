@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      company_branding: {
+        Row: {
+          accent_color: string | null
+          company_name: string
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          tagline: string | null
+          updated_at: string | null
+          user_id: string
+          website_url: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          company_name?: string
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          tagline?: string | null
+          updated_at?: string | null
+          user_id: string
+          website_url?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          company_name?: string
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          tagline?: string | null
+          updated_at?: string | null
+          user_id?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       email_subscribers: {
         Row: {
           email: string
@@ -100,6 +136,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          subscription_tier: string
           updated_at: string
         }
         Insert: {
@@ -107,6 +144,7 @@ export type Database = {
           email: string
           full_name?: string
           id: string
+          subscription_tier?: string
           updated_at?: string
         }
         Update: {
@@ -114,6 +152,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          subscription_tier?: string
           updated_at?: string
         }
         Relationships: []

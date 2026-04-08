@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon, ArrowLeft, Menu, X } from "lucide-react";
+import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon, ArrowLeft, Menu, X, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
+import { useBranding } from "@/contexts/BrandingContext";
 import AuthModal from "./AuthModal";
 import AdminPanel from "./AdminPanel";
+import BrandingSettings from "./BrandingSettings";
 import ExportReport from "./ExportReport";
 
 interface AppHeaderProps {
@@ -38,9 +40,11 @@ const useScrollDirection = () => {
 const AppHeader = ({ activeView, onViewChange, onBackToProjects }: AppHeaderProps) => {
   const [showAuth, setShowAuth] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showBranding, setShowBranding] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { branding, isPremium } = useBranding();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
@@ -106,10 +110,23 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects }: AppHeaderProp
               </motion.button>
             )}
             <motion.div className="flex items-center gap-2 cursor-pointer min-w-0" onClick={() => onViewChange("dashboard")} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-              <motion.img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz Technologies" className="h-6 sm:h-7 w-auto flex-shrink-0" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+              {isPremium && branding?.logo_url ? (
+                <motion.img src={branding.logo_url} alt={branding.company_name || "Company"} className="h-6 sm:h-7 w-auto flex-shrink-0 object-contain" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+              ) : (
+                <motion.img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz Technologies" className="h-6 sm:h-7 w-auto flex-shrink-0" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+              )}
               <div className="hidden md:flex flex-col border-l border-border/30 pl-2.5">
-                <span className="text-base font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: 'hsl(var(--primary))' }}>SIGHTLINE</span>
-                <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">Command Center</span>
+                {isPremium && branding?.company_name ? (
+                  <>
+                    <span className="text-base font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: branding.accent_color || 'hsl(var(--primary))' }}>{branding.company_name.toUpperCase()}</span>
+                    {branding.tagline && <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">{branding.tagline}</span>}
+                  </>
+                ) : (
+                  <>
+                    <span className="text-base font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: 'hsl(var(--primary))' }}>SIGHTLINE</span>
+                    <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">Command Center</span>
+                  </>
+                )}
               </div>
             </motion.div>
           </div>
@@ -156,6 +173,10 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects }: AppHeaderProp
                     <Shield className="w-3 h-3" /><span className="hidden md:inline">Admin</span>
                   </motion.button>
                 )}
+                <motion.button onClick={() => setShowBranding(true)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium border border-border/20 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors">
+                  <Building2 className="w-3 h-3" /><span className="hidden md:inline">Branding</span>
+                </motion.button>
                 <span className="text-[10px] text-muted-foreground hidden lg:inline">{user.email}</span>
                 <motion.button onClick={handleLogout} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                   className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium border border-border/20 text-muted-foreground hover:text-foreground hover:border-destructive/30 transition-colors">
@@ -215,6 +236,7 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects }: AppHeaderProp
 
       <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onSuccess={() => setShowAuth(false)} />
       <AdminPanel isOpen={showAdmin} onClose={() => setShowAdmin(false)} />
+      <BrandingSettings isOpen={showBranding} onClose={() => setShowBranding(false)} />
     </>
   );
 };
