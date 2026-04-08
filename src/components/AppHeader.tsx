@@ -110,10 +110,23 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects }: AppHeaderProp
               </motion.button>
             )}
             <motion.div className="flex items-center gap-2 cursor-pointer min-w-0" onClick={() => onViewChange("dashboard")} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-              <motion.img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz Technologies" className="h-6 sm:h-7 w-auto flex-shrink-0" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+              {isPremium && branding?.logo_url ? (
+                <motion.img src={branding.logo_url} alt={branding.company_name || "Company"} className="h-6 sm:h-7 w-auto flex-shrink-0 object-contain" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+              ) : (
+                <motion.img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz Technologies" className="h-6 sm:h-7 w-auto flex-shrink-0" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+              )}
               <div className="hidden md:flex flex-col border-l border-border/30 pl-2.5">
-                <span className="text-base font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: 'hsl(var(--primary))' }}>SIGHTLINE</span>
-                <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">Command Center</span>
+                {isPremium && branding?.company_name ? (
+                  <>
+                    <span className="text-base font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: branding.accent_color || 'hsl(var(--primary))' }}>{branding.company_name.toUpperCase()}</span>
+                    {branding.tagline && <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">{branding.tagline}</span>}
+                  </>
+                ) : (
+                  <>
+                    <span className="text-base font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: 'hsl(var(--primary))' }}>SIGHTLINE</span>
+                    <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">Command Center</span>
+                  </>
+                )}
               </div>
             </motion.div>
           </div>
