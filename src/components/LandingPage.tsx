@@ -453,7 +453,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ FEATURES ═══════ */}
-      <section id="features" className="py-20 sm:py-28">
+      <section id="features" className="py-20 scroll-mt-16 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-14">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
@@ -472,7 +472,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ HOW IT WORKS ═══════ */}
-      <section id="how-it-works" className="py-20 sm:py-28 bg-card/50 border-y border-border/30">
+      <section id="how-it-works" className="py-20 scroll-mt-16 sm:py-28 bg-card/50 border-y border-border/30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-16">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
@@ -578,7 +578,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ PRICING ═══════ */}
-      <section id="pricing" className="py-20 sm:py-28">
+      <section id="pricing" className="py-20 scroll-mt-16 sm:py-28">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-14">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
