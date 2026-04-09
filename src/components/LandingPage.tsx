@@ -242,9 +242,10 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <a href="#features" className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#how-it-works" className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
-            <a href="#pricing" className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#features" onClick={(e) => smoothScroll(e, "features")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
+            <a href="#how-it-works" onClick={(e) => smoothScroll(e, "how-it-works")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+            <a href="#testimonials" onClick={(e) => smoothScroll(e, "testimonials")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
+            <a href="#pricing" onClick={(e) => smoothScroll(e, "pricing")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
