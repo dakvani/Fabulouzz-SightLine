@@ -198,8 +198,32 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     { tier: "Premium", price: "$29", features: ["Unlimited projects", "White-label branding", "Custom PDF reports", "Priority support", "14-day free trial", "Annual billing save 17%"], highlight: true },
   ];
 
+  const smoothScroll = useCallback((e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    e.preventDefault();
+    const el = document.getElementById(targetId);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const testimonials = [
+    { name: "Sarah Chen", role: "Project Manager, Arcadia Build Co.", quote: "SightLine transformed how we report to clients. The branded PDFs alone saved us hours every week.", stars: 5, avatar: "SC" },
+    { name: "James Oduya", role: "Civil Engineer, Meridian Infrastructure", quote: "The Gantt charts and live notifications keep our entire team aligned. We've cut delays by 40% since adopting SightLine.", stars: 5, avatar: "JO" },
+    { name: "Lisa Fernandez", role: "Operations Director, Vertex Group", quote: "White-label branding makes it look like our own platform. Clients love the professionalism.", stars: 5, avatar: "LF" },
+    { name: "David Kim", role: "CTO, Horizon Developments", quote: "From Kanban to PDF exports, everything just works. The best project command center we've used.", stars: 5, avatar: "DK" },
+    { name: "Priya Sharma", role: "Senior PM, BuildRight Solutions", quote: "The real-time dashboard gives stakeholders instant visibility. No more 'where are we?' emails.", stars: 5, avatar: "PS" },
+  ];
+
+  const [testimonialIdx, setTestimonialIdx] = useState(0);
+  const nextTestimonial = () => setTestimonialIdx((i) => (i + 1) % testimonials.length);
+  const prevTestimonial = () => setTestimonialIdx((i) => (i - 1 + testimonials.length) % testimonials.length);
+
+  // Auto-advance testimonials
+  useEffect(() => {
+    const timer = setInterval(nextTestimonial, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden scroll-smooth">
       {/* ═══════ NAV ═══════ */}
       <motion.nav
         initial={{ y: -20, opacity: 0 }}
