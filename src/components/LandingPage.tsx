@@ -659,8 +659,8 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <a href="https://www.fabulouzz.com/get-quote" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Contact</a>
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+            <a href="#features" onClick={(e) => smoothScroll(e, "features")} className="hover:text-foreground transition-colors">Features</a>
+            <a href="#pricing" onClick={(e) => smoothScroll(e, "pricing")} className="hover:text-foreground transition-colors">Pricing</a>
           </div>
         </div>
       </footer>
