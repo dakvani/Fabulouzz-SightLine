@@ -502,6 +502,81 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
         </div>
       </section>
 
+      {/* ═══════ TESTIMONIALS ═══════ */}
+      <section id="testimonials" className="py-20 sm:py-28 scroll-mt-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AnimatedSection className="text-center mb-14">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
+              <Quote className="w-3 h-3" /> Testimonials
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">Trusted by Project Teams</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">See what project managers, engineers, and clients say about SightLine.</p>
+          </AnimatedSection>
+
+          <div className="relative max-w-3xl mx-auto">
+            {/* Navigation arrows */}
+            <button
+              onClick={prevTestimonial}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 sm:-translate-x-12 z-10 w-10 h-10 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={nextTestimonial}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 sm:translate-x-12 z-10 w-10 h-10 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+            >
+              <ChevronRightIcon className="w-5 h-5" />
+            </button>
+
+            {/* Card */}
+            <div className="overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={testimonialIdx}
+                  initial={{ opacity: 0, x: 60 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -60 }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="glass-card p-8 sm:p-10 rounded-2xl text-center"
+                >
+                  {/* Stars */}
+                  <div className="flex justify-center gap-1 mb-5">
+                    {Array.from({ length: testimonials[testimonialIdx].stars }).map((_, i) => (
+                      <Star key={i} className="w-5 h-5 text-primary fill-primary" />
+                    ))}
+                  </div>
+
+                  <p className="text-lg sm:text-xl text-foreground font-medium leading-relaxed mb-8 italic">
+                    "{testimonials[testimonialIdx].quote}"
+                  </p>
+
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+                      {testimonials[testimonialIdx].avatar}
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-foreground">{testimonials[testimonialIdx].name}</div>
+                      <div className="text-xs text-muted-foreground">{testimonials[testimonialIdx].role}</div>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Dots */}
+            <div className="flex justify-center gap-2 mt-6">
+              {testimonials.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setTestimonialIdx(i)}
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${i === testimonialIdx ? "bg-primary w-6" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ═══════ PRICING ═══════ */}
       <section id="pricing" className="py-20 sm:py-28">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
