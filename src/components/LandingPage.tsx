@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from "react";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, useInView, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
   LogIn, Mail, Lock, Eye, EyeOff, ChevronDown, ChevronRight,
   Shield, Briefcase, Users, ArrowLeft, Home,
   BarChart3, Kanban, CalendarRange, Bell, FileText, Palette,
   Zap, Clock, Globe, Crown, CheckCircle2, ArrowRight,
   LayoutDashboard, ListTodo, GanttChart, Activity,
-  Sparkles, TrendingUp, Lock as LockIcon
+  Sparkles, TrendingUp, Lock as LockIcon,
+  Quote, Star, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
@@ -197,8 +198,32 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     { tier: "Premium", price: "$29", features: ["Unlimited projects", "White-label branding", "Custom PDF reports", "Priority support", "14-day free trial", "Annual billing save 17%"], highlight: true },
   ];
 
+  const smoothScroll = useCallback((e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    e.preventDefault();
+    const el = document.getElementById(targetId);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const testimonials = [
+    { name: "Sarah Chen", role: "Project Manager, Arcadia Build Co.", quote: "SightLine transformed how we report to clients. The branded PDFs alone saved us hours every week.", stars: 5, avatar: "SC" },
+    { name: "James Oduya", role: "Civil Engineer, Meridian Infrastructure", quote: "The Gantt charts and live notifications keep our entire team aligned. We've cut delays by 40% since adopting SightLine.", stars: 5, avatar: "JO" },
+    { name: "Lisa Fernandez", role: "Operations Director, Vertex Group", quote: "White-label branding makes it look like our own platform. Clients love the professionalism.", stars: 5, avatar: "LF" },
+    { name: "David Kim", role: "CTO, Horizon Developments", quote: "From Kanban to PDF exports, everything just works. The best project command center we've used.", stars: 5, avatar: "DK" },
+    { name: "Priya Sharma", role: "Senior PM, BuildRight Solutions", quote: "The real-time dashboard gives stakeholders instant visibility. No more 'where are we?' emails.", stars: 5, avatar: "PS" },
+  ];
+
+  const [testimonialIdx, setTestimonialIdx] = useState(0);
+  const nextTestimonial = () => setTestimonialIdx((i) => (i + 1) % testimonials.length);
+  const prevTestimonial = () => setTestimonialIdx((i) => (i - 1 + testimonials.length) % testimonials.length);
+
+  // Auto-advance testimonials
+  useEffect(() => {
+    const timer = setInterval(nextTestimonial, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden scroll-smooth">
       {/* ═══════ NAV ═══════ */}
       <motion.nav
         initial={{ y: -20, opacity: 0 }}
@@ -217,9 +242,10 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <a href="#features" className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#how-it-works" className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
-            <a href="#pricing" className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#features" onClick={(e) => smoothScroll(e, "features")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
+            <a href="#how-it-works" onClick={(e) => smoothScroll(e, "how-it-works")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+            <a href="#testimonials" onClick={(e) => smoothScroll(e, "testimonials")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
+            <a href="#pricing" onClick={(e) => smoothScroll(e, "pricing")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
@@ -297,6 +323,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.97 }}
                   href="#features"
+                  onClick={(e: React.MouseEvent<HTMLAnchorElement>) => smoothScroll(e, "features")}
                   className="px-6 py-3 rounded-xl text-sm font-semibold border border-border/50 text-foreground hover:bg-secondary/50 transition-colors flex items-center gap-2"
                 >
                   Explore Features <ChevronDown className="w-4 h-4" />
@@ -426,7 +453,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ FEATURES ═══════ */}
-      <section id="features" className="py-20 sm:py-28">
+      <section id="features" className="py-20 scroll-mt-16 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-14">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
@@ -445,7 +472,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ HOW IT WORKS ═══════ */}
-      <section id="how-it-works" className="py-20 sm:py-28 bg-card/50 border-y border-border/30">
+      <section id="how-it-works" className="py-20 scroll-mt-16 sm:py-28 bg-card/50 border-y border-border/30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-16">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
@@ -475,8 +502,83 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
         </div>
       </section>
 
+      {/* ═══════ TESTIMONIALS ═══════ */}
+      <section id="testimonials" className="py-20 sm:py-28 scroll-mt-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AnimatedSection className="text-center mb-14">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
+              <Quote className="w-3 h-3" /> Testimonials
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">Trusted by Project Teams</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">See what project managers, engineers, and clients say about SightLine.</p>
+          </AnimatedSection>
+
+          <div className="relative max-w-3xl mx-auto">
+            {/* Navigation arrows */}
+            <button
+              onClick={prevTestimonial}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 sm:-translate-x-12 z-10 w-10 h-10 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={nextTestimonial}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 sm:translate-x-12 z-10 w-10 h-10 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+            >
+              <ChevronRightIcon className="w-5 h-5" />
+            </button>
+
+            {/* Card */}
+            <div className="overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={testimonialIdx}
+                  initial={{ opacity: 0, x: 60 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -60 }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="glass-card p-8 sm:p-10 rounded-2xl text-center"
+                >
+                  {/* Stars */}
+                  <div className="flex justify-center gap-1 mb-5">
+                    {Array.from({ length: testimonials[testimonialIdx].stars }).map((_, i) => (
+                      <Star key={i} className="w-5 h-5 text-primary fill-primary" />
+                    ))}
+                  </div>
+
+                  <p className="text-lg sm:text-xl text-foreground font-medium leading-relaxed mb-8 italic">
+                    "{testimonials[testimonialIdx].quote}"
+                  </p>
+
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+                      {testimonials[testimonialIdx].avatar}
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-foreground">{testimonials[testimonialIdx].name}</div>
+                      <div className="text-xs text-muted-foreground">{testimonials[testimonialIdx].role}</div>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Dots */}
+            <div className="flex justify-center gap-2 mt-6">
+              {testimonials.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setTestimonialIdx(i)}
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${i === testimonialIdx ? "bg-primary w-6" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ═══════ PRICING ═══════ */}
-      <section id="pricing" className="py-20 sm:py-28">
+      <section id="pricing" className="py-20 scroll-mt-16 sm:py-28">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-14">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
@@ -557,8 +659,8 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <a href="https://www.fabulouzz.com/get-quote" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Contact</a>
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+            <a href="#features" onClick={(e) => smoothScroll(e, "features")} className="hover:text-foreground transition-colors">Features</a>
+            <a href="#pricing" onClick={(e) => smoothScroll(e, "pricing")} className="hover:text-foreground transition-colors">Pricing</a>
           </div>
         </div>
       </footer>
