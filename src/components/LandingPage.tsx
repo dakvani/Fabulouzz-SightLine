@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from "react";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, useInView, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
   LogIn, Mail, Lock, Eye, EyeOff, ChevronDown, ChevronRight,
   Shield, Briefcase, Users, ArrowLeft, Home,
   BarChart3, Kanban, CalendarRange, Bell, FileText, Palette,
   Zap, Clock, Globe, Crown, CheckCircle2, ArrowRight,
   LayoutDashboard, ListTodo, GanttChart, Activity,
-  Sparkles, TrendingUp, Lock as LockIcon
+  Sparkles, TrendingUp, Lock as LockIcon,
+  Quote, Star, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
