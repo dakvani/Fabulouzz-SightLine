@@ -323,6 +323,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.97 }}
                   href="#features"
+                  onClick={(e: React.MouseEvent<HTMLAnchorElement>) => smoothScroll(e, "features")}
                   className="px-6 py-3 rounded-xl text-sm font-semibold border border-border/50 text-foreground hover:bg-secondary/50 transition-colors flex items-center gap-2"
                 >
                   Explore Features <ChevronDown className="w-4 h-4" />
