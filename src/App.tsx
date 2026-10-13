@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ProjectDataProvider } from "@/contexts/ProjectDataContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
+import { Analytics } from "@vercel/analytics/react";
 import Index from "./pages/Index";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          <Analytics />
           </BrandingProvider>
         </ProjectDataProvider>
       </TooltipProvider>
