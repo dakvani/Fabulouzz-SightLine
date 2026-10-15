@@ -263,6 +263,55 @@ export function buildBrandedEmailHtml(payload: SendEmailPayload): { subject: str
           </p>
         </div>
       `;
+    case "task_assignment":
+      title = "TASK ASSIGNMENT";
+      subject = payload.subject || `Task Assignment: #${d.taskNumber || 1} - ${d.taskName || "New Task"} (${d.projectName || "SightLine"})`;
+      contentHtml = `
+        <p style="color: #1f2937; font-size: 15px; margin: 0 0 12px; font-weight: 600;">Hello${name},</p>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
+          You have been assigned to lead/execute <strong>Task #${d.taskNumber || 1}: ${d.taskName || "Site Work"}</strong>${d.assignedBy ? ` by <strong>${d.assignedBy}</strong>` : ""}.
+        </p>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 0 0 24px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #64748b; width: 120px;">Task #</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #0f172a; font-weight: 700;">#${d.taskNumber || 1}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #64748b;">Task Scope</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #0f172a; font-weight: 600;">${d.taskName || "Execution Scope"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #64748b;">Status</td>
+              <td style="padding: 6px 0; font-size: 13px; color: ${accent}; font-weight: 700; text-transform: uppercase;">${d.taskStatus || "Planning"}</td>
+            </tr>
+            ${d.taskDuration ? `
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #64748b;">Duration</td>
+              <td style="padding: 6px 0; font-size: 13px; color: #0f172a; font-weight: 600;">${d.taskDuration} Days</td>
+            </tr>` : ""}
+            ${d.projectName ? `
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #64748b;">Project</td>
+              <td style="padding: 6px 0; font-size: 13px; color: #0f172a; font-weight: 600;">${d.projectName} ${d.projectRef ? `(${d.projectRef})` : ""}</td>
+            </tr>` : ""}
+          </table>
+        </div>
+
+        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 14px 18px; margin: 0 0 24px;">
+          <p style="color: #065f46; font-size: 13px; margin: 0; line-height: 1.5;">
+            <strong>Immediate Action:</strong> Access the live project task deck to review site scope, material clearances, and start date.
+          </p>
+        </div>
+
+        <div style="text-align: center; margin: 28px 0 16px;">
+          <a href="${d.loginUrl || `${APP_PORTAL_URL}/?view=tasks`}" 
+             style="display: inline-block; background: ${accent}; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; box-shadow: 0 4px 12px rgba(47, 191, 47, 0.25);">
+            View Task in Portal →
+          </a>
+        </div>
+      `;
       break;
 
     case "plan_change":
@@ -386,63 +435,85 @@ export function buildBrandedEmailHtml(payload: SendEmailPayload): { subject: str
 }
 
 /**
- * Dispatches a branded email via direct Resend API or Supabase Edge Function.
+ * Dispatches a branded email via Vercel Serverless Function (/api/send-email) or Supabase Edge Function.
  * Ensures all emails originate from info@fabulouzz.com with official Fabulouzz Technologies branding.
  */
 export async function sendBrandedEmail(payload: SendEmailPayload): Promise<{ success: boolean; message?: string }> {
   try {
     const { subject, html } = buildBrandedEmailHtml(payload);
     const recipients = Array.isArray(payload.to) ? payload.to : [payload.to];
-    const clientResendKey = import.meta.env.VITE_RESEND_API_KEY;
 
-    // 1. If VITE_RESEND_API_KEY is configured in client environment, dispatch directly
-    if (clientResendKey) {
-      try {
-        const res = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${clientResendKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: `SIGHTLINE Command Center <${BRAND_MAIN_EMAIL}>`,
-            reply_to: BRAND_MAIN_EMAIL,
-            to: recipients,
-            subject,
-            html,
-          }),
-        });
+    // Tier 1: Dispatch via Vercel Serverless Function (/api/send-email)
+    // Runs securely on the same domain without browser CORS blocks and accesses RESEND_API_KEY
+    try {
+      const serverlessRes = await fetch("/api/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: recipients,
+          subject,
+          html,
+          type: payload.type,
+          data: payload.data,
+        }),
+      });
 
-        const resData = await res.json();
-        if (res.ok) {
-          console.info(`[Email Service] Dispatched directly via Resend from ${BRAND_MAIN_EMAIL}:`, resData);
+      if (serverlessRes.ok) {
+        const serverlessData = await serverlessRes.json();
+        if (serverlessData.dispatched) {
+          console.info(`[Email Service] Dispatched via /api/send-email from ${BRAND_MAIN_EMAIL}:`, serverlessData);
           return { success: true, message: `Branded email dispatched from ${BRAND_MAIN_EMAIL} to ${recipients.join(", ")}` };
-        } else {
-          console.warn("[Email Service] Direct Resend dispatch responded with:", resData);
+        } else if (serverlessData.note) {
+          console.info(`[Email Service] /api/send-email handled with note:`, serverlessData.note);
+          return { success: true, message: serverlessData.note };
         }
-      } catch (directErr) {
-        console.warn("[Email Service] Direct Resend dispatch attempt error, falling back to edge function:", directErr);
+      }
+    } catch (serverlessErr) {
+      console.warn("[Email Service] /api/send-email unavailable, falling back to Supabase functions:", serverlessErr);
+    }
+
+    // Tier 2: Dispatch via Supabase Edge Function (send-email)
+    try {
+      const { data, error } = await supabase.functions.invoke("send-email", {
+        body: {
+          to: recipients,
+          subject,
+          html,
+          type: payload.type,
+          data: payload.data,
+        },
+      });
+
+      if (!error && data?.dispatched) {
+        return { success: true, message: `Email dispatched to ${recipients.join(", ")} from ${BRAND_MAIN_EMAIL}` };
+      }
+    } catch (edgeErr) {
+      console.warn("[Email Service] Edge function send-email error:", edgeErr);
+    }
+
+    // Tier 3: If invitation type, try deployed send-invitation function
+    if (payload.type === "invite" && payload.data.tempPassword) {
+      try {
+        const { data: invData, error: invErr } = await supabase.functions.invoke("send-invitation", {
+          body: {
+            email: recipients[0],
+            password: payload.data.tempPassword,
+            fullName: payload.data.fullName,
+            role: payload.data.role,
+            loginUrl: payload.data.loginUrl || `${APP_PORTAL_URL}/?auth=login`,
+          },
+        });
+        if (!invErr && invData?.success) {
+          return { success: true, message: `Invitation dispatched to ${recipients[0]}` };
+        }
+      } catch (invErr) {
+        console.warn("[Email Service] send-invitation fallback error:", invErr);
       }
     }
 
-    // 2. Dispatch via Supabase Edge Function
-    const { data, error } = await supabase.functions.invoke("send-email", {
-      body: {
-        to: recipients,
-        subject,
-        html,
-        type: payload.type,
-        data: payload.data,
-      },
-    });
-
-    if (error) {
-      console.warn("Edge function send-email returned error, using fallback handler:", error);
-    } else if (data?.success) {
-      return { success: true, message: `Email dispatched to ${recipients.join(", ")} from ${BRAND_MAIN_EMAIL}` };
-    }
-
-    // 3. Fallback audit logging for local / demo environment
+    // Tier 4: Audit notification log
     console.info(`[Email Service - ${BRAND_PROVIDER_TEXT}]`, {
       from: BRAND_MAIN_EMAIL,
       replyTo: BRAND_MAIN_EMAIL,
@@ -454,7 +525,7 @@ export async function sendBrandedEmail(payload: SendEmailPayload): Promise<{ suc
 
     return {
       success: true,
-      message: `Notification queued for ${recipients.length} recipient(s) from ${BRAND_MAIN_EMAIL}`,
+      message: `Notification processed for ${recipients.join(", ")} from ${BRAND_MAIN_EMAIL}`,
     };
   } catch (err: any) {
     console.error("Error in sendBrandedEmail:", err);

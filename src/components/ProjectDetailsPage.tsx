@@ -246,7 +246,7 @@ export const ProjectDetailsPage = ({
             projectName: projectInfo.title,
             projectRef: projectInfo.projectRef,
             clientName: projectInfo.client,
-            loginUrl: `${window.location.origin}/?view=details&tab=info`,
+            loginUrl: `${window.location.origin}/?project=${projectId || ""}&view=details&tab=info`,
           },
         });
       }

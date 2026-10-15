@@ -94,11 +94,16 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, [projectLoading]);
 
-  // Read URL search params (e.g. ?view=details&tab=info)
+  // Read URL search params (e.g. ?project=xxx&view=details&tab=info)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const viewParam = params.get("view");
     const tabParam = params.get("tab");
+    const projectParam = params.get("project") || params.get("projectId");
+
+    if (projectParam) {
+      setSelectedProjectId(projectParam);
+    }
     if (viewParam && ["dashboard", "timeline", "tasks", "kanban", "details", "pricing"].includes(viewParam)) {
       setActiveView(viewParam as ViewType);
     }
@@ -108,7 +113,7 @@ const Index = () => {
     ) {
       setDetailsTab(tabParam as any);
     }
-  }, []);
+  }, [setSelectedProjectId]);
 
   if (loading) {
     return (

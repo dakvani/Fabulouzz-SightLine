@@ -133,20 +133,54 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const emailParam = params.get("email");
+      const authParam = params.get("auth");
+      if (emailParam) {
+        setEmail(emailParam);
+      }
+      if (authParam === "login" || authParam === "signin" || emailParam) {
+        setShowLogin(true);
+      }
+    }
+  }, []);
 
   /* ── Auth handlers ── */
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
       if (error) {
         toast({ title: "Login failed", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Welcome back!" });
         onAuthSuccess();
+
+        // Dispatch Welcome email on successful login
+        const user = authData?.user;
+        const targetEmail = user?.email || email.trim();
+        const fullName = user?.user_metadata?.full_name || targetEmail.split("@")[0];
+        const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://sightline.fabulouzz.com";
+
+        sendBrandedEmail({
+          type: "welcome",
+          to: targetEmail,
+          data: {
+            fullName,
+            loginUrl: `${portalOrigin}/`,
+          },
+        }).then(res => {
+          if (res.success) {
+            console.info("[Auth] Welcome email dispatched to:", targetEmail);
+          }
+        }).catch(err => {
+          console.warn("[Auth] Welcome email dispatch error:", err);
+        });
       }
     } catch {
       setLoading(false);
@@ -162,10 +196,15 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     }
     setLoading(true);
     try {
-      const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/reset-password` : "/reset-password";
+      const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://sightline.fabulouzz.com";
+      const redirectUrl = `${portalOrigin}/reset-password`;
 
-      // Route exclusively through official Fabulouzz corporate mailer (info@fabulouzz.com)
-      // to completely prevent Lovable cloud emails from triggering.
+      // Trigger Supabase auth reset session preparation
+      supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: redirectUrl }).catch(err => {
+        console.warn("Supabase resetPasswordForEmail warning:", err);
+      });
+
+      // Route through official Fabulouzz corporate mailer (info@fabulouzz.com)
       await sendBrandedEmail({
         type: "reset_password",
         to: email.trim(),

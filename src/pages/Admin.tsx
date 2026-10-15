@@ -449,7 +449,7 @@ const Admin = () => {
             role: newRole,
             tempPassword: generatedPassword,
             invitedBy: currentUser?.email,
-            loginUrl: window.location.origin,
+            loginUrl: `${window.location.origin}/?auth=login&email=${encodeURIComponent(newEmail.trim())}`,
           },
         });
       } else {
@@ -465,7 +465,7 @@ const Admin = () => {
             fullName: newFullName.trim(),
             role: newRole,
             planTier: assignedPlan,
-            loginUrl: window.location.origin,
+            loginUrl: `${window.location.origin}/?auth=login&email=${encodeURIComponent(newEmail.trim())}`,
           },
         });
       }
@@ -764,7 +764,7 @@ const Admin = () => {
               projectRef: editingProject.project_ref,
               clientName: editingProject.client_name,
               assignedBy: currentUser?.email,
-              loginUrl: `${window.location.origin}/?view=details&tab=info`,
+              loginUrl: `${window.location.origin}/?project=${editingProject.id}&view=details&tab=info`,
             },
           });
         }

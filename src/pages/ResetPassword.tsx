@@ -15,23 +15,35 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     setMounted(true);
 
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+    }, 4000);
+
     // Listen for the PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setSessionReady(true);
+        clearTimeout(timer);
       }
     });
 
     // Also check if we already have a session (user clicked link and was auto-logged in)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setSessionReady(true);
+      if (session) {
+        setSessionReady(true);
+        clearTimeout(timer);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleReset = async (e: React.FormEvent) => {
@@ -85,7 +97,7 @@ const ResetPassword = () => {
             <h1 className="text-2xl font-bold text-foreground">Password Updated</h1>
             <p className="text-sm text-muted-foreground">Your password has been reset successfully.</p>
             <a
-              href="/"
+              href="/?auth=login"
               className="inline-block mt-4 px-6 py-2.5 rounded-lg text-sm font-semibold text-primary-foreground"
               style={{ background: "var(--gradient-primary)" }}
             >
@@ -94,9 +106,32 @@ const ResetPassword = () => {
           </div>
         ) : !sessionReady ? (
           <div className="text-center space-y-4">
-            <h1 className="text-2xl font-bold text-foreground">Verifying Link...</h1>
-            <p className="text-sm text-muted-foreground">Please wait while we verify your reset link.</p>
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+            {timedOut ? (
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto text-xl font-bold">
+                  ⚠️
+                </div>
+                <h1 className="text-xl font-bold text-foreground">Reset Link Verification</h1>
+                <p className="text-sm text-muted-foreground">
+                  No active password recovery session detected. Your link may have expired or already been used.
+                </p>
+                <div className="pt-2">
+                  <a
+                    href="/?auth=login"
+                    className="inline-block px-6 py-2.5 rounded-lg text-sm font-semibold text-primary-foreground"
+                    style={{ background: "var(--gradient-primary)" }}
+                  >
+                    Request New Link or Login →
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold text-foreground">Verifying Secure Link...</h1>
+                <p className="text-sm text-muted-foreground">Validating single-use recovery token...</p>
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+              </>
+            )}
           </div>
         ) : (
           <>

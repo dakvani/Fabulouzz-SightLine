@@ -16,6 +16,8 @@ import {
   Table as TableIcon,
   Layers,
   Sparkles,
+  Mail,
+  UserCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -31,6 +33,7 @@ import {
   parseProjectDate,
   startOfDay,
 } from "@/lib/projectTimeline";
+import { sendBrandedEmail } from "@/lib/emailService";
 
 const statusOptions: TaskStatus[] = ["Planning", "Initiating", "Processing", "Completed"];
 
@@ -49,6 +52,9 @@ interface EditingTask {
   startDate: Date;
   duration: number;
   dependencies: number[];
+  assigneeEmail?: string;
+  assigneeName?: string;
+  notifyAssignee?: boolean;
 }
 
 interface NewTaskForm {
@@ -58,6 +64,9 @@ interface NewTaskForm {
   startDate?: Date;
   duration: number;
   dependencies: number[];
+  assigneeEmail?: string;
+  assigneeName?: string;
+  notifyAssignee?: boolean;
 }
 
 /* ── Dependency multi-select dropdown ── */
@@ -271,6 +280,33 @@ export const TaskManagement = () => {
       }
 
       toast({ title: "Scope updated", description: `Scope #${editData.task_number} saved successfully.` });
+
+      // Dispatch Task Assignment email notification if assignee email specified
+      if (editData.assigneeEmail && editData.notifyAssignee !== false) {
+        sendBrandedEmail({
+          type: "task_assignment",
+          to: editData.assigneeEmail.trim(),
+          data: {
+            fullName: editData.assigneeName || editData.assigneeEmail.split("@")[0],
+            projectName: projectInfo.title,
+            projectRef: projectInfo.projectRef,
+            taskNumber: editData.task_number,
+            taskName: editData.name,
+            taskStatus: editData.status,
+            taskDuration: editData.duration,
+            assignedBy: projectInfo.projectManager || "SightLine PM",
+            loginUrl: `${window.location.origin}/?project=${projectId}&view=tasks`,
+          },
+        }).then(res => {
+          if (res.success) {
+            toast({
+              title: "Assignee Notified",
+              description: `Task assignment notice dispatched to ${editData.assigneeEmail}.`,
+            });
+          }
+        }).catch(() => {});
+      }
+
       cancelEdit();
       await refresh();
     } catch (err: any) {
@@ -348,6 +384,33 @@ export const TaskManagement = () => {
       }
 
       toast({ title: "Scope added", description: `Scope item #${nextNumber} created successfully.` });
+
+      // Dispatch Task Assignment email notification if assignee email specified
+      if (newTask.assigneeEmail && newTask.notifyAssignee !== false) {
+        sendBrandedEmail({
+          type: "task_assignment",
+          to: newTask.assigneeEmail.trim(),
+          data: {
+            fullName: newTask.assigneeName || newTask.assigneeEmail.split("@")[0],
+            projectName: projectInfo.title,
+            projectRef: projectInfo.projectRef,
+            taskNumber: nextNumber,
+            taskName: newTask.name,
+            taskStatus: newTask.status,
+            taskDuration: newTask.duration,
+            assignedBy: projectInfo.projectManager || "SightLine PM",
+            loginUrl: `${window.location.origin}/?project=${projectId}&view=tasks`,
+          },
+        }).then(res => {
+          if (res.success) {
+            toast({
+              title: "Assignee Notified",
+              description: `Task assignment notice dispatched to ${newTask.assigneeEmail}.`,
+            });
+          }
+        }).catch(() => {});
+      }
+
       setAddingNew(false);
       setNewTask({
         name: "",
@@ -492,6 +555,53 @@ export const TaskManagement = () => {
           availableTasks={taskListForDeps}
           excludeTaskNumber={excludeTask}
         />
+      </div>
+
+      {/* Assignee & Email Notification */}
+      <div className="rounded-[0.625rem] border border-border/50 bg-secondary/30 p-3.5 space-y-3 mt-2">
+        <div className="flex items-center gap-2">
+          <UserCheck className="w-4 h-4 text-primary" />
+          <span className="text-xs font-semibold text-foreground">Task Assignee & Field Notification</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1 block">
+              Assignee Full Name
+            </label>
+            <input
+              value={(data as any).assigneeName || ""}
+              onChange={(e) => setData((p: any) => ({ ...p, assigneeName: e.target.value }))}
+              placeholder="e.g. Lead Engineer..."
+              className={`${inputClass} w-full text-xs`}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1 block">
+              Assignee Email
+            </label>
+            <input
+              type="email"
+              value={(data as any).assigneeEmail || ""}
+              onChange={(e) => setData((p: any) => ({ ...p, assigneeEmail: e.target.value }))}
+              placeholder="engineer@fabulouzz.com"
+              className={`${inputClass} w-full text-xs font-mono`}
+            />
+          </div>
+        </div>
+        {(data as any).assigneeEmail && (
+          <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer pt-1">
+            <input
+              type="checkbox"
+              checked={(data as any).notifyAssignee !== false}
+              onChange={(e) => setData((p: any) => ({ ...p, notifyAssignee: e.target.checked }))}
+              className="rounded border-border text-primary focus:ring-primary/40 h-4 w-4"
+            />
+            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <Mail className="w-3.5 h-3.5 text-primary" />
+              Dispatch branded task assignment notice from <strong className="text-foreground">info@fabulouzz.com</strong> with direct portal deep-link
+            </span>
+          </label>
+        )}
       </div>
     </div>
   );

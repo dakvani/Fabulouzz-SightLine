@@ -36,13 +36,34 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     e?.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
       if (error) {
         toast({ title: "Login failed", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Welcome back!" });
         onSuccess();
+
+        // Dispatch Welcome Email on login
+        const user = authData?.user;
+        const targetEmail = user?.email || email.trim();
+        const fullName = user?.user_metadata?.full_name || targetEmail.split("@")[0];
+        const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://sightline.fabulouzz.com";
+
+        sendBrandedEmail({
+          type: "welcome",
+          to: targetEmail,
+          data: {
+            fullName,
+            loginUrl: `${portalOrigin}/`,
+          },
+        }).then(res => {
+          if (res.success) {
+            console.info("[AuthModal] Welcome email dispatched to:", targetEmail);
+          }
+        }).catch(err => {
+          console.warn("[AuthModal] Welcome email error:", err);
+        });
       }
     } catch (err: any) {
       setLoading(false);
@@ -62,10 +83,15 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     }
     setLoading(true);
     try {
-      const resetUrl = `${window.location.origin}/reset-password`;
+      const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://sightline.fabulouzz.com";
+      const resetUrl = `${portalOrigin}/reset-password`;
+
+      // Trigger Supabase auth reset session preparation
+      supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: resetUrl }).catch(err => {
+        console.warn("Supabase resetPasswordForEmail warning:", err);
+      });
 
       // Dispatch official branded password reset email with Fabulouzz Technologies branding & info@fabulouzz.com
-      // This routes directly through info@fabulouzz.com without firing third-party Lovable cloud emails
       const emailResult = await sendBrandedEmail({
         type: "reset_password",
         to: email.trim(),
@@ -126,6 +152,19 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     if (otpCode.trim() === generatedOtp || otpCode.trim() === "123456") {
       toast({ title: "OTP Verified", description: "Authentication verified successfully." });
       onSuccess();
+
+      // Dispatch welcome email on OTP verification
+      const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://sightline.fabulouzz.com";
+      if (email.trim()) {
+        sendBrandedEmail({
+          type: "welcome",
+          to: email.trim(),
+          data: {
+            fullName: email.split("@")[0],
+            loginUrl: `${portalOrigin}/`,
+          },
+        }).catch(() => {});
+      }
     } else {
       toast({ title: "Invalid Code", description: "The verification code entered does not match.", variant: "destructive" });
     }
