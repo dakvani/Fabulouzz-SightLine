@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, fullName, role, generatePassword, sendInvite } = await req.json();
+    const { email, password, fullName, role, generatePassword, sendInvite, subscriptionTier } = await req.json();
 
     if (!email || !role) {
       return new Response(JSON.stringify({ error: "email and role are required" }), {
@@ -89,6 +89,13 @@ Deno.serve(async (req) => {
     if (role !== "client") {
       await adminClient.from("user_roles").update({ role }).eq("user_id", newUser.user.id);
     }
+
+    // Set subscription tier in profiles (defaults to 'enterprise' for admin, or passed tier, or 'free')
+    const initialTier = (role === "admin")
+      ? "enterprise"
+      : (["free", "premium", "enterprise"].includes(subscriptionTier) ? subscriptionTier : "free");
+
+    await adminClient.from("profiles").update({ subscription_tier: initialTier }).eq("id", newUser.user.id);
 
     // Send invitation email if requested
     let emailSent = false;

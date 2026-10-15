@@ -11,10 +11,14 @@ export interface CompanyBranding {
   website_url: string;
 }
 
+export type SubscriptionTier = "free" | "premium" | "enterprise";
+
 interface BrandingContextType {
   branding: CompanyBranding | null;
-  subscriptionTier: "free" | "premium";
+  subscriptionTier: SubscriptionTier;
   isPremium: boolean;
+  isEnterprise: boolean;
+  isAdmin: boolean;
   loading: boolean;
   subscriptionEnd: string | null;
   refresh: () => Promise<void>;
@@ -26,6 +30,8 @@ const BrandingContext = createContext<BrandingContextType>({
   branding: null,
   subscriptionTier: "free",
   isPremium: false,
+  isEnterprise: false,
+  isAdmin: false,
   loading: true,
   subscriptionEnd: null,
   refresh: async () => {},
@@ -37,14 +43,18 @@ export const useBranding = () => useContext(BrandingContext);
 
 export const BrandingProvider = ({ children }: { children: ReactNode }) => {
   const [branding, setBranding] = useState<CompanyBranding | null>(null);
-  const [subscriptionTier, setSubscriptionTier] = useState<"free" | "premium">("free");
+  const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>("free");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Apply premium accent color as CSS variable on the root element
+  const isPremiumEffective = isAdmin || subscriptionTier === "enterprise" || subscriptionTier === "premium";
+  const isEnterpriseEffective = isAdmin || subscriptionTier === "enterprise";
+
+  // Apply accent color as CSS variable on the root element
   useEffect(() => {
     const root = document.documentElement;
-    if (branding?.accent_color && subscriptionTier === "premium") {
+    if (branding?.accent_color && isPremiumEffective) {
       const hex = branding.accent_color.replace("#", "");
       const r = parseInt(hex.substring(0, 2), 16) / 255;
       const g = parseInt(hex.substring(2, 4), 16) / 255;
@@ -70,13 +80,14 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
       root.style.removeProperty("--primary");
       root.style.removeProperty("--primary-foreground");
     };
-  }, [branding?.accent_color, subscriptionTier]);
+  }, [branding?.accent_color, isPremiumEffective]);
 
   const fetchBranding = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       setBranding(null);
       setSubscriptionTier("free");
+      setIsAdmin(false);
       setSubscriptionEnd(null);
       setLoading(false);
       return;
@@ -84,28 +95,51 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
 
     const userId = session.user.id;
 
-    // Fetch branding and check subscription in parallel
-    const [brandingRes, subRes] = await Promise.all([
-      supabase.from("company_branding").select("*").eq("user_id", userId).maybeSingle(),
-      supabase.functions.invoke("check-subscription"),
-    ]);
+    try {
+      // Parallel fetch: Branding, User Roles, Profile Tier, and Stripe subscription
+      const [brandingRes, roleRes, profileRes, subRes] = await Promise.all([
+        supabase.from("company_branding").select("*").eq("user_id", userId).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+        supabase.from("profiles").select("subscription_tier").eq("id", userId).maybeSingle(),
+        supabase.functions.invoke("check-subscription").catch(() => ({ data: null, error: null })),
+      ]);
 
-    if (brandingRes.data) {
-      setBranding(brandingRes.data as CompanyBranding);
-    } else {
-      setBranding(null);
+      if (brandingRes.data) {
+        setBranding(brandingRes.data as CompanyBranding);
+      } else {
+        setBranding(null);
+      }
+
+      const roles = (roleRes.data || []).map((r: any) => r.role);
+      const adminRole = roles.includes("admin");
+      setIsAdmin(adminRole);
+
+      // Admin user is automatically granted Enterprise Tier with all premium options
+      if (adminRole) {
+        setSubscriptionTier("enterprise");
+        setSubscriptionEnd(null);
+        // Ensure profile has 'enterprise' stored in database
+        if (profileRes.data?.subscription_tier !== "enterprise") {
+          supabase.from("profiles").update({ subscription_tier: "enterprise" }).eq("id", userId).then();
+        }
+      } else {
+        const dbTier = profileRes.data?.subscription_tier;
+        if (dbTier === "enterprise" || dbTier === "premium") {
+          setSubscriptionTier(dbTier as SubscriptionTier);
+          setSubscriptionEnd(null);
+        } else if (subRes.data && !subRes.error && (subRes.data as any).subscription_tier === "premium") {
+          setSubscriptionTier("premium");
+          setSubscriptionEnd((subRes.data as any).subscription_end || null);
+        } else {
+          setSubscriptionTier("free");
+          setSubscriptionEnd(null);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch branding or subscription:", err);
+    } finally {
+      setLoading(false);
     }
-
-    if (subRes.data && !subRes.error) {
-      const sub = subRes.data as any;
-      setSubscriptionTier(sub.subscription_tier === "premium" ? "premium" : "free");
-      setSubscriptionEnd(sub.subscription_end || null);
-    } else {
-      setSubscriptionTier("free");
-      setSubscriptionEnd(null);
-    }
-
-    setLoading(false);
   }, []);
 
   const startCheckout = useCallback(async (interval: "monthly" | "annual" = "monthly") => {
@@ -149,7 +183,9 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
       value={{
         branding,
         subscriptionTier,
-        isPremium: subscriptionTier === "premium",
+        isPremium: isPremiumEffective,
+        isEnterprise: isEnterpriseEffective,
+        isAdmin,
         loading,
         subscriptionEnd,
         refresh: fetchBranding,

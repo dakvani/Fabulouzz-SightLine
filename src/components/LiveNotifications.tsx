@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, Image, Clock, Loader2, Video, Play, FileText, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,8 +36,15 @@ const LiveNotifications = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const { tasks, selectedProjectId } = useProjectData();
 
-  const activeTasks = tasks.filter(t => t.status === "Processing" || t.status === "Initiating");
-  const allTickerItems = activeTasks.map(t => t.name);
+  const activeTasks = useMemo(
+    () => tasks.filter(t => t.status === "Processing" || t.status === "Initiating"),
+    [tasks]
+  );
+
+  const allTickerItems = useMemo(
+    () => activeTasks.map(t => t.name),
+    [activeTasks]
+  );
 
   // Check admin role
   useEffect(() => {
@@ -78,7 +85,7 @@ const LiveNotifications = () => {
     }, 50);
 
     return () => clearInterval(interval);
-  }, [tickerIndex, allTickerItems.length]);
+  }, [tickerIndex, allTickerItems]);
 
   const openLightbox = useCallback((urls: string[], index: number) => {
     setLightbox({ urls, index });
@@ -144,7 +151,9 @@ const LiveNotifications = () => {
     try {
       const parsed = JSON.parse(url);
       if (Array.isArray(parsed)) return parsed;
-    } catch {}
+    } catch {
+      // url is a single URL string, not JSON array
+    }
     return [url];
   };
 

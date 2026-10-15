@@ -209,9 +209,10 @@ Deno.serve(async (req) => {
     </div>
 
     <!-- Footer -->
-    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 0 0 16px 16px; padding: 20px 32px; text-align: center;">
+    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 0 0 16px 16px; padding: 24px 32px; text-align: center;">
       <div style="width: 60px; height: 2px; background: #2fbf2f; margin: 0 auto 12px;"></div>
-      <p style="color: #6b7280; font-size: 11px; margin: 0 0 4px;">Powered by Fabulouzz Technologies • SightLine Command Center</p>
+      <p style="color: #9ca3af; font-size: 12px; margin: 0 0 4px; font-weight: 600;">Provided by Fabulouzz Technologies • SightLine Command Center</p>
+      <p style="color: #6b7280; font-size: 11px; margin: 0 0 8px;">Official Support: <a href="mailto:info@fabulouzz.com" style="color: #2fbf2f; text-decoration: none; font-weight: 600;">info@fabulouzz.com</a></p>
       <p style="color: #4b5563; font-size: 10px; margin: 0 0 8px;">You're receiving this because you subscribed to project updates.</p>
       ${pdfBase64 ? '<p style="color: #9ca3af; font-size: 10px; margin: 0 0 8px;">📎 Full PDF report attached</p>' : ''}
       <a href="${unsubscribeUrl}" style="color: #6b7280; font-size: 10px; text-decoration: underline;">Unsubscribe from updates</a>
@@ -228,7 +229,8 @@ Deno.serve(async (req) => {
 
     for (const recipientEmail of emails) {
       const resendPayload: any = {
-        from: "SIGHTLINE Updates <support@fabulouzz.com>",
+        from: "SIGHTLINE Command Center <info@fabulouzz.com>",
+        reply_to: "info@fabulouzz.com",
         to: [recipientEmail],
         subject: `Project Update: ${subject}`,
         html: buildHtml(recipientEmail),

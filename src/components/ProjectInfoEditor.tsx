@@ -1,23 +1,32 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, Building2 } from "lucide-react";
+import { Save, Loader2, Building2, Lock, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useProjectData } from "@/contexts/ProjectDataContext";
+import { SAUDI_CITIES } from "@/data/saudiCities";
 
 const ProjectInfoEditor = () => {
-  const { projectInfo, projectId, refresh } = useProjectData();
+  const { projectInfo, projectId, canEditProject, userRole, refresh } = useProjectData();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(projectInfo);
 
   const startEdit = () => {
+    if (!canEditProject) {
+      toast({
+        title: "Access Denied",
+        description: "Only Super Admins and assigned Project Managers can edit project data.",
+        variant: "destructive",
+      });
+      return;
+    }
     setForm(projectInfo);
     setEditing(true);
   };
 
   const save = async () => {
-    if (!projectId) return;
+    if (!projectId || !canEditProject) return;
     setSaving(true);
     try {
       const { error } = await supabase
@@ -37,7 +46,7 @@ const ProjectInfoEditor = () => {
         .eq("id", projectId);
 
       if (error) throw error;
-      toast({ title: "Project updated", description: "Project information saved" });
+      toast({ title: "Project updated", description: "Project information saved successfully." });
       setEditing(false);
       await refresh();
     } catch (err: any) {
@@ -53,18 +62,31 @@ const ProjectInfoEditor = () => {
     return (
       <div className="space-y-3 p-4 rounded-xl border border-border/50 bg-secondary/20">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-primary" />
-            Project Information
-          </h3>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={startEdit}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-          >
-            Edit
-          </motion.button>
+            <h3 className="text-sm font-semibold text-foreground">Project Information</h3>
+            {canEditProject ? (
+              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+                <ShieldCheck className="w-2.5 h-2.5" />
+                {userRole === "admin" ? "Admin Control" : "PM Access"}
+              </span>
+            ) : (
+              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border/30 flex items-center gap-1">
+                <Lock className="w-2.5 h-2.5" />
+                Stakeholder Read-Only
+              </span>
+            )}
+          </div>
+          {canEditProject && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={startEdit}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+            >
+              Edit Project
+            </motion.button>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
           {[
@@ -103,16 +125,27 @@ const ProjectInfoEditor = () => {
           ["projectManager", "Project Manager"],
           ["reportingTo", "Reporting To"],
           ["projectEngineer", "Project Engineer"],
-          ["location", "Location"],
+          ["location", "Location (KSA City / Zone)"],
           ["company", "Company"],
         ] as const).map(([key, label]) => (
           <div key={key}>
             <label className={labelClass}>{label}</label>
             <input
+              list={key === "location" ? "editor-saudi-cities" : undefined}
               value={form[key]}
               onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
               className={`${inputClass} mt-1`}
+              placeholder={key === "location" ? "Select Saudi city or type..." : undefined}
             />
+            {key === "location" && (
+              <datalist id="editor-saudi-cities">
+                {SAUDI_CITIES.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.arabicName} - {c.region}
+                  </option>
+                ))}
+              </datalist>
+            )}
           </div>
         ))}
         <div>

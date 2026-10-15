@@ -40,7 +40,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, fullName, role } = await req.json();
+    const { email, password, fullName, role, loginUrl } = await req.json();
+    const portalUrl = loginUrl || ((Deno.env.get("APP_URL") || "https://sightline.fabulouzz.com").replace(/\/+$/, "") + "/");
 
     const roleLabel: Record<string, string> = {
       admin: "Admin",
@@ -98,14 +99,15 @@ Deno.serve(async (req) => {
         </p>
       </div>
 
-      <a href="https://fabulouzzsightline.vercel.app/" 
+      <a href="${portalUrl}" 
          style="display: block; text-align: center; background: linear-gradient(135deg, #2fbf2f, #22a722); color: #fff; padding: 14px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;">
         Login to SightLine →
       </a>
     </div>
 
     <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 0 0 16px 16px; padding: 20px 32px; text-align: center;">
-      <p style="color: #6b7280; font-size: 11px; margin: 0;">Powered by Fabulouzz Technologies • SightLine Command Center</p>
+      <p style="color: #9ca3af; font-size: 12px; margin: 0 0 6px; font-weight: 600;">Provided by Fabulouzz Technologies • SightLine Command Center</p>
+      <p style="color: #6b7280; font-size: 11px; margin: 0;">Official Communications & Support: <a href="mailto:info@fabulouzz.com" style="color: #2fbf2f; text-decoration: none; font-weight: 600;">info@fabulouzz.com</a></p>
     </div>
   </div>
 </body>
@@ -118,7 +120,8 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "SIGHTLINE <support@fabulouzz.com>",
+        from: "SIGHTLINE Command Center <info@fabulouzz.com>",
+        reply_to: "info@fabulouzz.com",
         to: [email],
         subject: "You're Invited to SightLine Command Center",
         html,

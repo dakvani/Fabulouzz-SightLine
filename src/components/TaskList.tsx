@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { getStatusColor, type TaskStatus } from "@/data/projectData";
-import { ChevronRight, Link2, Activity, Edit3 } from "lucide-react";
+import { ChevronRight, Link2, Activity, Edit3, Sliders, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import StatusUpdateModal from "./StatusUpdateModal";
@@ -13,8 +13,12 @@ const statusBadgeClasses: Record<string, string> = {
   planning: "bg-planning/15 text-planning border-planning/30",
 };
 
-const TaskList = () => {
-  const { tasks } = useProjectData();
+interface TaskListProps {
+  onOpenDetails?: () => void;
+}
+
+const TaskList = ({ onOpenDetails }: TaskListProps) => {
+  const { tasks, canEditProject } = useProjectData();
   const [selectedTask, setSelectedTask] = useState<{ id: number; name: string; status: TaskStatus } | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -27,15 +31,27 @@ const TaskList = () => {
     });
   }, []);
 
-  const canUpdate = userRole === "admin" || userRole === "pm" || userRole === "engineer";
+  const canUpdate = canEditProject || userRole === "admin" || userRole === "pm" || userRole === "engineer";
 
   return (
     <>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="glass-card overflow-hidden">
-        <div className="px-3 py-3 sm:px-5 sm:py-4 md:px-6 md:py-5 border-b border-border/50 flex items-center gap-2 sm:gap-3">
-          <Activity className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">All Tasks</h3>
-          <span className="ml-auto text-[10px] font-mono bg-muted/50 text-muted-foreground px-2 py-0.5 rounded-full">{tasks.length} total</span>
+        <div className="px-3 py-3 sm:px-5 sm:py-4 md:px-6 md:py-5 border-b border-border/50 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Activity className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">All Tasks</h3>
+            <span className="text-[10px] font-mono bg-muted/50 text-muted-foreground px-2 py-0.5 rounded-full">{tasks.length} total</span>
+          </div>
+          {onOpenDetails && canUpdate && (
+            <button
+              onClick={onOpenDetails}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+              title="Add or edit tasks in Project Details"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Manage & Add Tasks</span>
+            </button>
+          )}
         </div>
         <div className="divide-y divide-border/30">
           {tasks.map((task, i) => {

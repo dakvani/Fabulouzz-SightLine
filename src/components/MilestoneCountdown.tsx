@@ -2,7 +2,11 @@ import { motion } from "framer-motion";
 import { Target, Calendar, CheckCircle2, Clock, ArrowRight } from "lucide-react";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 
-const MilestoneCountdown = () => {
+interface MilestoneCountdownProps {
+  onManageTimeline?: () => void;
+}
+
+const MilestoneCountdown = ({ onManageTimeline }: MilestoneCountdownProps) => {
   const { tasks, projectInfo } = useProjectData();
   const today = new Date();
   
@@ -15,9 +19,19 @@ const MilestoneCountdown = () => {
     return (
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
         className="glass-card h-full flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-border/30 flex items-center gap-2">
-          <Target className="w-4 h-4 text-primary" />
-          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Milestones</h3>
+        <div className="p-4 border-b border-border/30 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className="w-4 h-4 text-primary" />
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Milestones</h3>
+          </div>
+          {onManageTimeline && (
+            <button
+              onClick={onManageTimeline}
+              className="text-[10px] font-semibold text-primary hover:underline"
+            >
+              Configure Tasks
+            </button>
+          )}
         </div>
         <div className="flex-1 flex items-center justify-center p-4">
           <p className="text-xs text-muted-foreground">No tasks available</p>
@@ -39,10 +53,23 @@ const MilestoneCountdown = () => {
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
       className="glass-card h-full flex flex-col overflow-hidden">
-      <div className="p-4 border-b border-border/30 flex items-center gap-2">
-        <Target className="w-4 h-4 text-primary" />
-        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Milestones</h3>
-        <span className="ml-auto text-[9px] font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full">{uniqueMilestones.length} phases</span>
+      <div className="p-4 border-b border-border/30 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Target className="w-4 h-4 text-primary" />
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Key Milestones</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full">{uniqueMilestones.length} phases</span>
+          {onManageTimeline && (
+            <button
+              onClick={onManageTimeline}
+              className="text-[10px] font-semibold text-primary hover:underline ml-1"
+              title="Edit milestone dates in project details"
+            >
+              Manage
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex-1 divide-y divide-border/20">
         {uniqueMilestones.map((task, i) => {

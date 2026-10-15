@@ -1,21 +1,41 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Eye, BarChart3, List, LayoutGrid, LogIn, LogOut, Shield, Sun, Moon, ArrowLeft, Menu, X, Building2, Crown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  Eye,
+  BarChart3,
+  List,
+  LayoutGrid,
+  LogIn,
+  LogOut,
+  Shield,
+  Sun,
+  Moon,
+  ArrowLeft,
+  Menu,
+  X,
+  Building2,
+  Crown,
+  Sliders,
+  SlidersHorizontal,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 import { useBranding } from "@/contexts/BrandingContext";
+import { useProjectData } from "@/contexts/ProjectDataContext";
 import AuthModal from "./AuthModal";
-import AdminPanel from "./AdminPanel";
-import BrandingSettings from "./BrandingSettings";
 import ExportReport from "./ExportReport";
+import ThemeSelector from "./ThemeSelector";
 
 interface AppHeaderProps {
-  activeView: "dashboard" | "timeline" | "tasks" | "kanban";
+  activeView: "dashboard" | "timeline" | "tasks" | "kanban" | "details" | "pricing";
   onViewChange: (view: any) => void;
   onBackToProjects?: () => void;
   onShowPricing?: () => void;
+  onToggleSideTab?: () => void;
+  isSideTabOpen?: boolean;
 }
 
 const useScrollDirection = () => {
@@ -38,14 +58,21 @@ const useScrollDirection = () => {
   return { hidden, scrolled };
 };
 
-const AppHeader = ({ activeView, onViewChange, onBackToProjects, onShowPricing }: AppHeaderProps) => {
+const AppHeader = ({
+  activeView,
+  onViewChange,
+  onBackToProjects,
+  onShowPricing,
+  onToggleSideTab,
+  isSideTabOpen,
+}: AppHeaderProps) => {
   const [showAuth, setShowAuth] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [showBranding, setShowBranding] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { branding, isPremium } = useBranding();
+  const { canEditProject } = useProjectData();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
@@ -75,6 +102,7 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects, onShowPricing }
     { id: "timeline" as const, label: "Timeline", icon: Eye },
     { id: "tasks" as const, label: "Tasks", icon: List },
     { id: "kanban" as const, label: "Kanban", icon: LayoutGrid },
+    { id: "details" as const, label: "Project Details", icon: Sliders },
   ];
 
   return (
@@ -110,22 +138,62 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects, onShowPricing }
                 <span className="hidden sm:inline">Projects</span>
               </motion.button>
             )}
-            <motion.div className="flex items-center gap-2 cursor-pointer min-w-0" onClick={() => onViewChange("dashboard")} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+            <motion.div
+              className="flex items-center gap-2 cursor-pointer min-w-0"
+              onClick={() => onViewChange("dashboard")}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
               {isPremium && branding?.logo_url ? (
-                <motion.img src={branding.logo_url} alt={branding.company_name || "Company"} className="h-6 sm:h-7 w-auto flex-shrink-0 object-contain" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+                <motion.img
+                  src={branding.logo_url}
+                  alt={branding.company_name || "Company"}
+                  className="h-6 sm:h-7 w-auto flex-shrink-0 object-contain"
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ type: "spring", stiffness: 400 }}
+                />
               ) : (
-                <motion.img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz Technologies" className="h-6 sm:h-7 w-auto flex-shrink-0" whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }} />
+                <motion.img
+                  src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
+                  alt="Fabulouzz Technologies"
+                  className="h-6 sm:h-7 w-auto flex-shrink-0"
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ type: "spring", stiffness: 400 }}
+                />
               )}
               <div className="hidden md:flex flex-col border-l border-border/30 pl-2.5">
                 {isPremium && branding?.company_name ? (
                   <>
-                    <span className="text-base font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: branding.accent_color || 'hsl(var(--primary))' }}>{branding.company_name.toUpperCase()}</span>
-                    {branding.tagline && <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">{branding.tagline}</span>}
+                    <span
+                      className="text-base font-bold tracking-wide"
+                      style={{
+                        fontFamily: "'Neuropol X Free', sans-serif",
+                        color: branding.accent_color || "hsl(var(--primary))",
+                      }}
+                    >
+                      {branding.company_name.toUpperCase()}
+                    </span>
+                    {branding.tagline && (
+                      <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
+                        {branding.tagline}
+                      </span>
+                    )}
                   </>
                 ) : (
                   <>
-                    <span className="text-base font-bold tracking-wide" style={{ fontFamily: "'Neuropol X Free', sans-serif", color: 'hsl(var(--primary))' }}>SIGHTLINE</span>
-                    <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">Command Center</span>
+                    <span
+                      className="text-base font-bold tracking-wide"
+                      style={{
+                        fontFamily: "'Neuropol X Free', sans-serif",
+                        color: "hsl(var(--primary))",
+                      }}
+                    >
+                      SIGHTLINE
+                    </span>
+                    <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
+                      Command Center
+                    </span>
                   </>
                 )}
               </div>
@@ -133,17 +201,37 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects, onShowPricing }
           </div>
 
           {/* Center: Nav tabs — hidden on mobile, shown on sm+ */}
-          <motion.nav className="hidden sm:flex items-center bg-background/20 backdrop-blur-sm rounded-full p-0.5 border border-border/20" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
+          <motion.nav
+            className="hidden sm:flex items-center bg-background/20 backdrop-blur-sm rounded-full p-0.5 border border-border/20"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
             {views.map((v, i) => (
               <motion.button
                 key={v.id}
                 onClick={() => onViewChange(v.id)}
-                className={`relative flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium transition-colors ${activeView === v.id ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 + i * 0.05 }}
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                className={`relative flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium transition-colors ${
+                  activeView === v.id
+                    ? "text-primary-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 + i * 0.05 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
                 {activeView === v.id && (
-                  <motion.div layoutId="activeTab" className="absolute inset-0 rounded-full" style={{ background: "var(--gradient-primary)", boxShadow: "0 2px 12px -2px hsl(var(--primary) / 0.4)" }} transition={{ type: "spring", stiffness: 400, damping: 30 }} />
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background: "var(--gradient-primary)",
+                      boxShadow: "0 2px 12px -2px hsl(var(--primary) / 0.4)",
+                    }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
                 )}
                 <span className="relative z-10 flex items-center gap-1">
                   <v.icon className="w-3.5 h-3.5" />
@@ -154,48 +242,40 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects, onShowPricing }
           </motion.nav>
 
           {/* Right actions */}
-          <motion.div className="flex items-center gap-1 sm:gap-1.5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
-            <motion.button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="flex items-center justify-center w-7 h-7 rounded-full border border-border/20 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
-            </motion.button>
-            <div className="hidden sm:block">
-              <ExportReport />
-            </div>
+          <motion.div
+            className="flex items-center gap-1.5 sm:gap-2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
             {user ? (
-              <div className="flex items-center gap-1 sm:gap-1.5">
-                {isAdmin && (
-                  <motion.button onClick={() => setShowAdmin(true)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium border border-primary/20 text-primary hover:bg-primary/10 transition-colors">
-                    <Shield className="w-3 h-3" /><span className="hidden md:inline">Admin</span>
-                  </motion.button>
-                )}
-                {onShowPricing && (
-                  <motion.button onClick={onShowPricing} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium border border-primary/20 text-primary hover:bg-primary/10 transition-colors">
-                    <Crown className="w-3 h-3" /><span className="hidden md:inline">Plans</span>
-                  </motion.button>
-                )}
-                <motion.button onClick={() => setShowBranding(true)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium border border-border/20 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors">
-                  <Building2 className="w-3 h-3" /><span className="hidden md:inline">Branding</span>
-                </motion.button>
-                <span className="text-[10px] text-muted-foreground hidden lg:inline">{user.email}</span>
-                <motion.button onClick={handleLogout} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium border border-border/20 text-muted-foreground hover:text-foreground hover:border-destructive/30 transition-colors">
-                  <LogOut className="w-3 h-3" />
-                </motion.button>
-              </div>
+              <motion.button
+                onClick={onToggleSideTab}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full text-[11px] font-semibold border transition-all shadow-sm ${
+                  isSideTabOpen
+                    ? "border-primary bg-primary text-primary-foreground shadow-md"
+                    : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/60"
+                }`}
+                title="Open Control Suite (Themes, Export Reports, Manage Project, Admin Suite, Plan Status)"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Operations Menu</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              </motion.button>
             ) : (
-              <motion.button onClick={() => setShowAuth(true)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-[11px] font-semibold border border-primary/20 text-primary hover:bg-primary/10 transition-colors">
-                <LogIn className="w-3 h-3" /><span className="hidden sm:inline">Login</span>
+              <motion.button
+                onClick={() => setShowAuth(true)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Login</span>
               </motion.button>
             )}
+
             {/* Mobile hamburger menu */}
             <motion.button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -215,22 +295,28 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects, onShowPricing }
             exit={{ opacity: 0, height: 0 }}
             className="sm:hidden relative z-10 px-3 pb-3"
           >
-            <div className="grid grid-cols-4 gap-1.5 mt-1">
+            <div className="grid grid-cols-5 gap-1.5 mt-1">
               {views.map((v) => (
                 <button
                   key={v.id}
-                  onClick={() => { onViewChange(v.id); setMobileMenuOpen(false); }}
-                  className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl text-[10px] font-medium transition-all ${
+                  onClick={() => {
+                    onViewChange(v.id);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl text-[9px] font-medium transition-all ${
                     activeView === v.id
-                      ? "text-primary-foreground"
+                      ? "text-primary-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
                   } relative`}
                 >
                   {activeView === v.id && (
-                    <div className="absolute inset-0 rounded-xl" style={{ background: "var(--gradient-primary)" }} />
+                    <div
+                      className="absolute inset-0 rounded-xl"
+                      style={{ background: "var(--gradient-primary)" }}
+                    />
                   )}
-                  <v.icon className="w-4 h-4 relative z-10" />
-                  <span className="relative z-10">{v.label}</span>
+                  <v.icon className="w-3.5 h-3.5 relative z-10" />
+                  <span className="relative z-10 truncate w-full text-center">{v.label}</span>
                 </button>
               ))}
             </div>
@@ -242,8 +328,6 @@ const AppHeader = ({ activeView, onViewChange, onBackToProjects, onShowPricing }
       </motion.header>
 
       <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onSuccess={() => setShowAuth(false)} />
-      <AdminPanel isOpen={showAdmin} onClose={() => setShowAdmin(false)} />
-      <BrandingSettings isOpen={showBranding} onClose={() => setShowBranding(false)} />
     </>
   );
 };

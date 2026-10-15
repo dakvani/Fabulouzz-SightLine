@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Loader2, UserPlus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { SAUDI_CITIES } from "@/data/saudiCities";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -23,6 +24,12 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }: CreateProjectModalPr
     company: "",
     start_date: "",
     end_date: "",
+  });
+  const [contacts, setContacts] = useState({
+    client_contact_person: "",
+    client_contact_phone: "",
+    contractor_contact_person: "",
+    contractor_contact_phone: "",
   });
 
   // Member assignment
@@ -51,13 +58,33 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }: CreateProjectModalPr
       const { data: session } = await supabase.auth.getSession();
       const userId = session.session?.user?.id;
 
+      // Use client contact person as fallback for reporting_to if empty
+      const payload = {
+        ...form,
+        reporting_to: form.reporting_to.trim() || contacts.client_contact_person.trim(),
+        created_by: userId || null,
+      };
+
       const { data: project, error } = await supabase
         .from("projects")
-        .insert({ ...form, created_by: userId || null })
+        .insert(payload)
         .select()
         .single();
 
       if (error) throw error;
+
+      // Save client and contractor contact persons and direct numbers
+      if (project && typeof window !== "undefined") {
+        localStorage.setItem(
+          `sightline_project_contacts_${project.id}`,
+          JSON.stringify({
+            clientContactPerson: contacts.client_contact_person.trim() || form.reporting_to.trim(),
+            clientContactPhone: contacts.client_contact_phone.trim(),
+            contractorContactPerson: contacts.contractor_contact_person.trim() || form.project_manager.trim(),
+            contractorContactPhone: contacts.contractor_contact_phone.trim(),
+          })
+        );
+      }
 
       // Add selected members
       if (selectedMembers.length > 0 && project) {
@@ -76,8 +103,9 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }: CreateProjectModalPr
         }).select(); // ignore duplicate error
       }
 
-      toast({ title: "Project created successfully!" });
+      toast({ title: "Project created successfully with contact directory!" });
       setForm({ title: "", client_name: "", project_ref: "", project_manager: "", reporting_to: "", project_engineer: "", location: "", company: "", start_date: "", end_date: "" });
+      setContacts({ client_contact_person: "", client_contact_phone: "", contractor_contact_person: "", contractor_contact_phone: "" });
       setSelectedMembers([]);
       onCreated();
       onClose();
@@ -142,14 +170,88 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }: CreateProjectModalPr
                   </label>
                   <input
                     type={f.type || "text"}
+                    list={f.key === "location" ? "create-saudi-cities" : undefined}
                     value={(form as any)[f.key]}
                     onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
                     required={f.required}
                     className="w-full px-3 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                     placeholder={f.label}
                   />
+                  {f.key === "location" && (
+                    <datalist id="create-saudi-cities">
+                      {SAUDI_CITIES.map((c) => (
+                        <option key={c.id} value={c.name}>
+                          {c.arabicName} — {c.region}
+                        </option>
+                      ))}
+                    </datalist>
+                  )}
                 </div>
               ))}
+            </div>
+
+            {/* Key Contact Persons & Direct Numbers */}
+            <div className="p-3.5 rounded-xl bg-secondary/30 border border-border/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Key Contact Persons & Direct Phone Numbers
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">Synced to Dashboard & Executive PDF</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                    Client Contact Person
+                  </label>
+                  <input
+                    type="text"
+                    value={contacts.client_contact_person}
+                    onChange={(e) => setContacts((prev) => ({ ...prev, client_contact_person: e.target.value }))}
+                    className="w-full px-3 py-2 bg-secondary/60 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    placeholder="e.g. Mohammed Burhan"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                    Client Contact Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={contacts.client_contact_phone}
+                    onChange={(e) => setContacts((prev) => ({ ...prev, client_contact_phone: e.target.value }))}
+                    className="w-full px-3 py-2 bg-secondary/60 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    placeholder="e.g. +966 50 123 4567"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                    Contractor Contact Person (Company doing the job)
+                  </label>
+                  <input
+                    type="text"
+                    value={contacts.contractor_contact_person}
+                    onChange={(e) => setContacts((prev) => ({ ...prev, contractor_contact_person: e.target.value }))}
+                    className="w-full px-3 py-2 bg-secondary/60 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    placeholder="e.g. Riyaz Siraj"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                    Contractor Contact Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={contacts.contractor_contact_phone}
+                    onChange={(e) => setContacts((prev) => ({ ...prev, contractor_contact_phone: e.target.value }))}
+                    className="w-full px-3 py-2 bg-secondary/60 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    placeholder="e.g. +966 54 987 6543"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Assign Members */}

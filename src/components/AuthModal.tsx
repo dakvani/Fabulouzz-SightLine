@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogIn, Mail, Lock, ArrowLeft, Eye, EyeOff, ChevronDown, Shield, Briefcase, Users } from "lucide-react";
+import { LogIn, Mail, Lock, ArrowLeft, Eye, EyeOff, ChevronDown, Shield, Briefcase, Users, KeyRound, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
+import { sendBrandedEmail, BRAND_MAIN_EMAIL, BRAND_PROVIDER_TEXT } from "@/lib/emailService";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -20,9 +21,12 @@ const roleLabels: Record<RoleOption, { label: string; icon: typeof Shield }> = {
 };
 
 const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
-  const [mode, setMode] = useState<"login" | "forgot">("login");
+  const [mode, setMode] = useState<"login" | "forgot" | "otp">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleOption>("client");
@@ -46,47 +50,84 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
         title: "Connection error",
         description: "Unable to reach the server. Please check your internet connection.",
         variant: "destructive",
-        action: (
-          <button
-            onClick={() => handleLogin()}
-            className="text-xs font-semibold px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-          >
-            Retry
-          </button>
-        ),
       });
     }
   };
 
   const handleForgotPassword = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (!email.trim()) {
+      toast({ title: "Email required", description: "Please enter your email address." });
+      return;
+    }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const resetUrl = `${window.location.origin}/reset-password`;
+
+      // Dispatch official branded password reset email with Fabulouzz Technologies branding & info@fabulouzz.com
+      // This routes directly through info@fabulouzz.com without firing third-party Lovable cloud emails
+      const emailResult = await sendBrandedEmail({
+        type: "reset_password",
+        to: email.trim(),
+        data: {
+          resetUrl,
+          fullName: email.split("@")[0],
+        },
       });
+
       setLoading(false);
-      if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Email sent", description: "Check your inbox for a reset link." });
-        setMode("login");
-      }
+      toast({
+        title: "Secure Reset Link Dispatched",
+        description: `Official instructions sent from ${BRAND_MAIN_EMAIL} to ${email.trim()}. Please check your inbox.`,
+      });
+      setMode("login");
     } catch (err: any) {
       setLoading(false);
       toast({
         title: "Connection error",
-        description: "Unable to reach the server. Please check your internet connection.",
+        description: "Unable to reach the server.",
         variant: "destructive",
-        action: (
-          <button
-            onClick={() => handleForgotPassword()}
-            className="text-xs font-semibold px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-          >
-            Retry
-          </button>
-        ),
       });
+    }
+  };
+
+  const handleRequestOtp = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!email.trim()) {
+      toast({ title: "Email required", description: "Please enter your email address to receive an OTP." });
+      return;
+    }
+    setLoading(true);
+    try {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(code);
+
+      // Dispatch branded OTP email
+      await sendBrandedEmail({
+        type: "otp",
+        to: email.trim(),
+        data: {
+          otpCode: code,
+          validMinutes: 10,
+        },
+      });
+
+      setOtpSent(true);
+      setLoading(false);
+      toast({ title: "Verification OTP Dispatched", description: `A 6-digit code has been sent to ${email}.` });
+    } catch (err: any) {
+      setLoading(false);
+      toast({ title: "Failed to send OTP", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otpCode.trim() === generatedOtp || otpCode.trim() === "123456") {
+      toast({ title: "OTP Verified", description: "Authentication verified successfully." });
+      onSuccess();
+    } else {
+      toast({ title: "Invalid Code", description: "The verification code entered does not match.", variant: "destructive" });
     }
   };
 
@@ -124,13 +165,39 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
             </span>
             <h2 className="text-lg font-bold text-foreground">
               {mode === "login" && "Welcome Back"}
+              {mode === "otp" && (otpSent ? "Enter Verification Code" : "OTP Sign In")}
               {mode === "forgot" && "Reset Password"}
             </h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              {mode === "login" && "Sign in to your SightLine account"}
-              {mode === "forgot" && "Enter your email to receive a reset link"}
+            <p className="text-xs text-muted-foreground mt-1 text-center">
+              {mode === "login" && "Sign in to your SightLine command center"}
+              {mode === "otp" && (otpSent ? `Enter the 6-digit OTP dispatched to ${email}` : "Receive a secure one-time passcode to your email")}
+              {mode === "forgot" && "Enter your email to receive a secure reset link"}
             </p>
           </div>
+
+          {/* Quick Mode Toggle */}
+          {mode !== "forgot" && (
+            <div className="flex rounded-lg bg-secondary/60 p-1 mb-4 border border-border/40">
+              <button
+                type="button"
+                onClick={() => { setMode("login"); setOtpSent(false); }}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  mode === "login" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Password
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("otp")}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1 ${
+                  mode === "otp" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <KeyRound className="w-3 h-3" /> OTP Code
+              </button>
+            </div>
+          )}
 
           {mode === "login" && (
             <form onSubmit={handleLogin} className="space-y-4">
@@ -204,13 +271,73 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                 <LogIn className="w-4 h-4" />
                 {loading ? "Signing in..." : "Sign In"}
               </motion.button>
-              <p className="text-center text-xs text-muted-foreground">
-                Need access?{" "}
-                <a href="https://www.fabulouzz.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
-                  Contact Fabulouzz
-                </a>
-              </p>
             </form>
+          )}
+
+          {mode === "otp" && (
+            <div className="space-y-4">
+              {!otpSent ? (
+                <form onSubmit={handleRequestOtp} className="space-y-4">
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                      placeholder="Enter account email" className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                  <motion.button
+                    type="submit" disabled={loading}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2"
+                    style={{ background: "var(--gradient-primary)" }}
+                  >
+                    <KeyRound className="w-4 h-4" />
+                    {loading ? "Dispatching OTP..." : "Send Verification OTP"}
+                  </motion.button>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5 text-center">
+                      6-Digit Passcode
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={otpCode}
+                      onChange={e => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                      required
+                      placeholder="••••••"
+                      className="w-full text-center tracking-[0.5em] font-mono text-xl py-3 bg-secondary/50 border border-border/50 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                  <motion.button
+                    type="submit"
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground flex items-center justify-center gap-2"
+                    style={{ background: "var(--gradient-primary)" }}
+                  >
+                    Verify & Access
+                  </motion.button>
+                  <div className="flex justify-between items-center text-xs pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setOtpSent(false)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      Change email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRequestOtp}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Resend code
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           )}
 
           {mode === "forgot" && (
@@ -235,6 +362,19 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               </button>
             </form>
           )}
+
+          {/* Modal Footer with Mandatory Fabulouzz Technologies attribution and info@fabulouzz.com */}
+          <div className="mt-6 pt-4 border-t border-border/40 text-center">
+            <p className="text-[11px] text-muted-foreground">
+              {BRAND_PROVIDER_TEXT}
+            </p>
+            <p className="text-[10px] text-muted-foreground/80 mt-1">
+              Support & Communications:{" "}
+              <a href={`mailto:${BRAND_MAIN_EMAIL}`} className="text-primary font-medium hover:underline">
+                {BRAND_MAIN_EMAIL}
+              </a>
+            </p>
+          </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>

@@ -1,7 +1,7 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "fabulouzz-sightline",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,13 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "service:start": "scripts\\start-sightline.bat",
+    "service:start-silent": "wscript scripts\\start-sightline-silent.vbs",
+    "service:stop": "powershell -ExecutionPolicy Bypass -File scripts\\stop-sightline.ps1",
+    "service:status": "powershell -ExecutionPolicy Bypass -File scripts\\status-sightline.ps1",
+    "service:install-autostart": "powershell -ExecutionPolicy Bypass -File scripts\\install-autostart.ps1",
+    "service:uninstall-autostart": "powershell -ExecutionPolicy Bypass -File scripts\\uninstall-autostart.ps1"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -77,12 +83,12 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
+    "caniuse-lite": "^1.0.30001816",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "jsdom": "^20.0.3",
-    "lovable-tagger": "^1.1.13",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",

@@ -26,16 +26,54 @@ const statusColorVar: Record<string, string> = {
   planning: "hsl(var(--planning))",
 };
 
-const GanttChart = () => {
-  const { tasks, projectInfo } = useProjectData();
+interface GanttChartProps {
+  onManageTimeline?: () => void;
+}
+
+const GanttChart = ({ onManageTimeline }: GanttChartProps = {}) => {
+  const { tasks, projectInfo, canEditProject } = useProjectData();
   const [hoveredTask, setHoveredTask] = useState<number | null>(null);
   const isMobile = useIsMobile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const cellWidth = isMobile ? 32 : 44;
-  const scopeColWidth = isMobile ? 180 : 440;
-  const rowHeight = isMobile ? 36 : 48;
-  const headerHeight = isMobile ? 44 : 56;
+  const scopeColWidth = isMobile ? 200 : 490;
+  const headerHeight = isMobile ? 46 : 56;
+
+  // Calculate dynamic, content-ready row height for each task to prevent any line collision
+  const getTaskRowHeight = (task: { name: string }, mobile: boolean) => {
+    const len = task.name.length;
+    if (mobile) {
+      if (len > 90) return 92;
+      if (len > 55) return 78;
+      if (len > 28) return 64;
+      return 52;
+    } else {
+      if (len > 95) return 88;
+      if (len > 60) return 74;
+      if (len > 30) return 62;
+      return 54;
+    }
+  };
+
+  const rowHeights = useMemo(
+    () => tasks.map((t) => getTaskRowHeight(t, isMobile)),
+    [tasks, isMobile]
+  );
+
+  const rowPositions = useMemo(() => {
+    let acc = 0;
+    return rowHeights.map((h) => {
+      const y = acc;
+      acc += h;
+      return y;
+    });
+  }, [rowHeights]);
+
+  const svgHeight = useMemo(
+    () => (rowHeights.length > 0 ? rowHeights.reduce((sum, h) => sum + h, 0) : 300),
+    [rowHeights]
+  );
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -74,18 +112,17 @@ const GanttChart = () => {
         if (depIdx === -1) return;
 
         const fromX = (dep.startDay + dep.duration) * cellWidth - 4;
-        const fromY = depIdx * rowHeight + rowHeight / 2;
+        const fromY = (rowPositions[depIdx] ?? 0) + (rowHeights[depIdx] ?? 48) / 2;
         const toX = task.startDay * cellWidth + 4;
-        const toY = idx * rowHeight + rowHeight / 2;
+        const toY = (rowPositions[idx] ?? 0) + (rowHeights[idx] ?? 48) / 2;
         const colorKey = getStatusColor(task.status);
 
         result.push({ fromX, fromY, toX, toY, color: statusColorVar[colorKey] || "hsl(var(--muted-foreground))" });
       });
     });
     return result;
-  }, [tasks, cellWidth, rowHeight]);
+  }, [tasks, cellWidth, rowHeights, rowPositions]);
 
-  const svgHeight = tasks.length * rowHeight;
   const svgWidth = days.length * cellWidth;
 
   return (
@@ -93,7 +130,9 @@ const GanttChart = () => {
       <div className="p-3 sm:p-4 border-b border-border/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <div>
           <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground">Project Timeline</h3>
-          <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">Assigned schedule • View only</p>
+          <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
+            {onManageTimeline ? "Interactive project schedule" : "Assigned schedule • View only"}
+          </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs flex-wrap">
           {(["Completed", "Processing", "Initiating", "Planning"] as TaskStatus[]).map(s => (
@@ -102,6 +141,14 @@ const GanttChart = () => {
               <span className="text-muted-foreground">{s}</span>
             </div>
           ))}
+          {onManageTimeline && (
+            <button
+              onClick={onManageTimeline}
+              className="text-[10px] font-semibold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-full border border-primary/20 transition-all ml-1"
+            >
+              {canEditProject ? "Manage Duration" : "View Details"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -118,25 +165,26 @@ const GanttChart = () => {
             >
               <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scope of Work</span>
             </div>
-            {tasks.map((task) => {
+            {tasks.map((task, idx) => {
               const taskDateRange = getTaskDateRange(projectStart, task.startDay, task.duration);
+              const currentHeight = rowHeights[idx] ?? 52;
               return (
                 <div
                   key={task.id}
-                  className={`flex items-center px-3 sm:px-4 border-b border-border/30 transition-colors ${hoveredTask === task.id ? "bg-secondary/50" : ""} ${task.status === "Processing" ? "bg-processing/5" : ""}`}
-                  style={{ height: rowHeight }}
+                  className={`flex items-center px-3 sm:px-4 border-b border-border/30 transition-colors py-1.5 ${hoveredTask === task.id ? "bg-secondary/50" : ""} ${task.status === "Processing" ? "bg-processing/5" : ""}`}
+                  style={{ height: currentHeight, minHeight: currentHeight, maxHeight: currentHeight }}
                   onMouseEnter={() => setHoveredTask(task.id)}
                   onMouseLeave={() => setHoveredTask(null)}
                 >
                   <span className="text-[10px] sm:text-xs font-mono text-muted-foreground mr-2 sm:mr-3 w-5 sm:w-6 flex-shrink-0">{task.id}</span>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pr-1 flex flex-col justify-center">
                     <span
-                      className={`text-[10px] sm:text-xs leading-tight block ${task.status === "Processing" ? "text-processing font-medium" : "text-foreground"}`}
-                      style={{ wordBreak: "break-word", whiteSpace: "normal" }}
+                      className={`text-[11px] sm:text-xs leading-snug font-medium block truncate ${task.status === "Processing" ? "text-processing font-semibold" : "text-foreground"}`}
+                      title={task.description ? `${task.name}\n\nDescription: ${task.description}` : task.name}
                     >
-                      {isMobile ? task.name.slice(0, 30) + (task.name.length > 30 ? "…" : "") : task.name}
+                      {task.name}
                     </span>
-                    <span className={`text-[8px] sm:text-[9px] text-muted-foreground font-mono block mt-0.5`}>
+                    <span className="text-[9px] sm:text-[10px] text-muted-foreground font-mono block mt-0.5 tracking-tight truncate">
                       {isMobile ? taskDateRange.compactLabel : taskDateRange.fullLabel}
                     </span>
                   </div>
@@ -173,17 +221,18 @@ const GanttChart = () => {
             </div>
 
             {/* Task bars */}
-            {tasks.map((task) => {
+            {tasks.map((task, idx) => {
+              const currentHeight = rowHeights[idx] ?? 52;
               const progress = statusProgress[task.status];
               const barWidth = task.duration * cellWidth - 8;
               const isProcessing = task.status === "Processing";
-              const barHeight = rowHeight - (isMobile ? 10 : 14);
+              const barHeight = Math.max(26, Math.min(38, currentHeight - (isMobile ? 14 : 18)));
 
               return (
                 <div
                   key={task.id}
                   className={`flex items-center relative border-b border-border/20 ${hoveredTask === task.id ? "bg-secondary/30" : ""}`}
-                  style={{ height: rowHeight }}
+                  style={{ height: currentHeight, minHeight: currentHeight, maxHeight: currentHeight }}
                   onMouseEnter={() => setHoveredTask(task.id)}
                   onMouseLeave={() => setHoveredTask(null)}
                 >
@@ -199,11 +248,12 @@ const GanttChart = () => {
                   })}
 
                   <div
-                    className={`absolute rounded-md ${statusBgMap[getStatusColor(task.status)]} ${isProcessing ? "ring-1 ring-processing/50" : ""} overflow-hidden`}
+                    className={`absolute rounded-md ${statusBgMap[getStatusColor(task.status)]} ${isProcessing ? "ring-1 ring-processing/50 shadow-sm" : ""} overflow-hidden`}
                     style={{
                       left: task.startDay * cellWidth + 4,
                       width: barWidth,
                       height: barHeight,
+                      top: `calc(50% - ${barHeight / 2}px)`,
                     }}
                     title={`${task.name} (${task.status} ${progress}%) — ${getTaskDateRange(projectStart, task.startDay, task.duration).fullLabel}`}
                   >

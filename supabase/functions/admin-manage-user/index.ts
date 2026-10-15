@@ -35,15 +35,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, userId, newRole } = await req.json();
+    const { action, userId, newRole, newTier } = await req.json();
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Prevent admin from deleting/demoting themselves
-    if (userId === caller.id) {
-      return new Response(JSON.stringify({ error: "Cannot modify your own account" }), {
+    // Prevent admin from deleting/demoting their own account (allow plan updates)
+    if (userId === caller.id && action !== "update_plan") {
+      return new Response(JSON.stringify({ error: "Cannot delete or change role on your own account" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -57,6 +57,22 @@ Deno.serve(async (req) => {
       }
 
       const { error } = await adminClient.from("user_roles").update({ role: newRole }).eq("user_id", userId);
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "update_plan") {
+      const validTiers = ["free", "premium", "enterprise"];
+      if (!validTiers.includes(newTier)) {
+        return new Response(JSON.stringify({ error: "Invalid subscription tier" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error } = await adminClient.from("profiles").update({ subscription_tier: newTier }).eq("id", userId);
       if (error) throw error;
 
       return new Response(JSON.stringify({ success: true }), {

@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FolderOpen, Plus, MapPin, Calendar, User, LogOut, Sun, Moon, Users, Search, X, BarChart3, Mail } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { FolderOpen, Plus, MapPin, Calendar, User, LogOut, Sun, Moon, Users, Search, X, BarChart3, Mail, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
@@ -43,21 +44,21 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => setMounted(true), []);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     setLoading(true);
 
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId)
-      .single();
+      .eq("user_id", userId);
 
-    const role = roleData?.role;
-    const admin = role === "admin";
-    const isPm = role === "pm";
+    const roles = (roleData || []).map((r: any) => r.role);
+    const admin = roles.includes("admin");
+    const isPm = roles.includes("pm");
     setIsAdmin(admin);
 
     let projectList: ProjectRow[] = [];
@@ -82,10 +83,28 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
           .in("id", projectIds)
           .order("created_at", { ascending: false });
         projectList = data || [];
+      } else {
+        // Fallback: If no specific restrictive project assignments exist yet,
+        // display all available company projects so the user can open their dashboard.
+        const { data } = await supabase
+          .from("projects")
+          .select("id, title, client_name, location, start_date, end_date, project_manager, company, project_ref")
+          .order("created_at", { ascending: false });
+        projectList = data || [];
       }
     }
 
     setProjects(projectList);
+
+    // Auto-select cached or single project
+    const cachedId = typeof window !== "undefined" ? localStorage.getItem("sightline_selected_project_id") : null;
+    if (cachedId && projectList.some(p => p.id === cachedId)) {
+      onSelectProject(cachedId);
+      return;
+    } else if (projectList.length === 1 && !admin) {
+      onSelectProject(projectList[0].id);
+      return;
+    }
 
     // Fetch task progress for all projects
     if (projectList.length > 0) {
@@ -132,11 +151,11 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
     }
 
     setLoading(false);
-  };
+  }, [userId, onSelectProject]);
 
   useEffect(() => {
     fetchProjects();
-  }, [userId]);
+  }, [fetchProjects]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -188,6 +207,18 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {isAdmin && (
+              <motion.button
+                onClick={() => navigate("/admin")}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 shadow-sm transition-all"
+                title="Open Enterprise Admin Center"
+              >
+                <Shield className="w-3.5 h-3.5 text-primary" />
+                <span className="hidden sm:inline">Admin Center</span>
+              </motion.button>
+            )}
             <motion.button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               whileHover={{ scale: 1.05 }}
@@ -286,6 +317,29 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
                   ? "Create your first project to get started."
                   : "You haven't been assigned to any projects yet. Contact your admin."}
             </p>
+            {isAdmin && !searchQuery && (
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <motion.button
+                  onClick={() => setShowCreate(true)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-primary-foreground shadow-lg shadow-primary/20"
+                  style={{ background: "var(--gradient-primary)" }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Create First Project
+                </motion.button>
+                <motion.button
+                  onClick={() => navigate("/admin")}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+                >
+                  <Shield className="w-4 h-4" />
+                  Open Admin Center
+                </motion.button>
+              </div>
+            )}
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

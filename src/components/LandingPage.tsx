@@ -14,6 +14,7 @@ import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { sendBrandedEmail, BRAND_MAIN_EMAIL, BRAND_PROVIDER_TEXT } from "@/lib/emailService";
 
 interface LandingPageProps {
   onAuthSuccess: () => void;
@@ -155,18 +156,31 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
 
   const handleForgotPassword = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (!email.trim()) {
+      toast({ title: "Email required", description: "Please enter your email address." });
+      return;
+    }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `https://fabulouzzsightline.lovable.app/reset-password`,
+      const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/reset-password` : "/reset-password";
+
+      // Route exclusively through official Fabulouzz corporate mailer (info@fabulouzz.com)
+      // to completely prevent Lovable cloud emails from triggering.
+      await sendBrandedEmail({
+        type: "reset_password",
+        to: email.trim(),
+        data: {
+          resetUrl: redirectUrl,
+          fullName: email.split("@")[0],
+        },
       });
+
       setLoading(false);
-      if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Check your inbox", description: "If registered, you'll receive a reset link." });
-        setMode("login");
-      }
+      toast({
+        title: "Secure Reset Link Dispatched",
+        description: `Official instructions sent from ${BRAND_MAIN_EMAIL} to ${email.trim()}. Please check your inbox.`,
+      });
+      setMode("login");
     } catch {
       setLoading(false);
       toast({ title: "Connection error", description: "Unable to reach the server.", variant: "destructive" });
@@ -194,8 +208,57 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
   ];
 
   const plans = [
-    { tier: "Free", price: "$0", features: ["Up to 3 projects", "Dashboard & Gantt charts", "Kanban board", "Task management", "Email notifications"], highlight: false },
-    { tier: "Premium", price: "$29", features: ["Unlimited projects", "White-label branding", "Custom PDF reports", "Priority support", "14-day free trial", "Annual billing save 17%"], highlight: true },
+    {
+      tier: "Free",
+      price: "$0",
+      description: "Essential project oversight for individual PMs and small site teams.",
+      features: [
+        "1 Active Project",
+        "Interactive Gantt Timeline & Saudi Weekend Grid",
+        "Real-Time Dashboard & KPI Rings",
+        "Kanban Workflow & Task Management",
+        "Milestone Gate Tracking & Weather Feeds",
+        "Standard PDF Report Export (Watermarked)",
+        "Email Notifications & Status Alerts",
+      ],
+      highlight: false,
+      badge: "Starter",
+      actionText: "Get Started Free",
+    },
+    {
+      tier: "Premium",
+      price: "$29",
+      description: "Full white-label branding and unlimited projects for high-performing contractors.",
+      features: [
+        "Unlimited Active Projects",
+        "Full Custom White-Label Branding (Logo & Colors)",
+        "Watermark-Free Publication-Grade PDF Reports",
+        "Automated Stakeholder Email Broadcasts",
+        "Detailed WBS Engineering Breakdown",
+        "Priority Email & Chat Support",
+        "14-Day Free Trial (Save 17% on Annual)",
+      ],
+      highlight: true,
+      badge: "Most Popular",
+      actionText: "Start 14-Day Free Trial",
+    },
+    {
+      tier: "Enterprise",
+      price: "$99",
+      description: "Multi-project fleet governance, user provisioning, and dedicated infrastructure.",
+      features: [
+        "Multi-Project Fleet Command Deck (/admin)",
+        "Role-Based Access Control (Admin, PM, Client)",
+        "User Provisioning & Subscription Management",
+        "Branded Email Notification & Invitation Suite",
+        "Audit Trail Logging & Multi-Tenant Isolation",
+        "99.9% High-Availability Uptime SLA",
+        "Dedicated Account Manager & Direct Support",
+      ],
+      highlight: false,
+      badge: "Full Fleet Power",
+      actionText: "Deploy Enterprise",
+    },
   ];
 
   const smoothScroll = useCallback((e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
@@ -218,9 +281,11 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
 
   // Auto-advance testimonials
   useEffect(() => {
-    const timer = setInterval(nextTestimonial, 5000);
+    const timer = setInterval(() => {
+      setTestimonialIdx((i) => (i + 1) % testimonials.length);
+    }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [testimonials.length]);
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden scroll-smooth">
@@ -579,54 +644,98 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
 
       {/* ═══════ PRICING ═══════ */}
       <section id="pricing" className="py-20 scroll-mt-16 sm:py-28">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection className="text-center mb-14">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
-              <Crown className="w-3 h-3" /> Pricing
+              <Crown className="w-3.5 h-3.5" /> Transparent Pricing Plans
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">Simple, Transparent Pricing</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">Start free, upgrade when you need premium branding and unlimited projects.</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">Plans Built for Modern Engineering & EPC</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base">
+              Start free, upgrade for full corporate white-label branding, or scale across your entire portfolio with our Enterprise Command Deck.
+            </p>
+            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <span>Provided by <strong className="text-foreground">Fabulouzz Technologies</strong></span>
+              <span>•</span>
+              <a href="mailto:info@fabulouzz.com" className="text-primary hover:underline font-semibold flex items-center gap-1">
+                <Mail className="w-3 h-3" /> info@fabulouzz.com
+              </a>
+            </div>
           </AnimatedSection>
 
-          <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {plans.map((plan, i) => (
-              <AnimatedSection key={plan.tier} delay={0.1 * i}>
+              <AnimatedSection key={plan.tier} delay={0.1 * i} className="h-full">
                 <motion.div
-                  whileHover={{ y: -4 }}
-                  className={`glass-card p-8 rounded-2xl relative overflow-hidden ${plan.highlight ? "border-primary/40 ring-1 ring-primary/20" : ""}`}
+                  whileHover={{ y: -6 }}
+                  className={`glass-card p-6 sm:p-8 rounded-2xl relative overflow-hidden flex flex-col justify-between h-full transition-shadow duration-300 ${
+                    plan.highlight
+                      ? "border-primary/50 ring-1 ring-primary/30 shadow-xl shadow-primary/5"
+                      : "border-border/60 hover:border-primary/30"
+                  }`}
                 >
                   {plan.highlight && (
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-[hsl(var(--processing))]" />
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-emerald-400 to-[hsl(var(--processing))]" />
                   )}
-                  <div className="mb-6">
-                    <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
-                      {plan.highlight && <Crown className="w-5 h-5 text-primary" />}
-                      {plan.tier}
-                    </h3>
-                    <div className="mt-2">
-                      <span className="text-4xl font-extrabold text-foreground">{plan.price}</span>
-                      <span className="text-muted-foreground text-sm">/month</span>
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                        plan.highlight
+                          ? "bg-primary/20 text-primary border-primary/30"
+                          : "bg-secondary text-muted-foreground border-border/50"
+                      }`}>
+                        {plan.badge}
+                      </span>
+                      {plan.highlight && <Crown className="w-4 h-4 text-primary" />}
                     </div>
+                    <h3 className="text-2xl font-bold text-foreground">{plan.tier}</h3>
+                    <p className="text-xs text-muted-foreground mt-1 mb-5 min-h-[34px] leading-relaxed">{plan.description}</p>
+                    <div className="mb-6 pb-6 border-b border-border/40">
+                      <span className="text-4xl sm:text-5xl font-black text-foreground">{plan.price}</span>
+                      <span className="text-muted-foreground text-sm font-medium">/month</span>
+                    </div>
+                    <ul className="space-y-3 mb-8">
+                      {plan.features.map(f => (
+                        <li key={f} className="flex items-start gap-2.5 text-xs text-muted-foreground">
+                          <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                          <span className="leading-snug">{f}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map(f => (
-                      <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" /> {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => setShowLogin(true)}
-                    className={`w-full py-3 rounded-xl text-sm font-bold ${plan.highlight ? "text-primary-foreground" : "text-foreground border border-border/50 hover:bg-secondary/50"}`}
-                    style={plan.highlight ? { background: "var(--gradient-primary)" } : {}}
-                  >
-                    {plan.highlight ? "Start 14-Day Free Trial" : "Get Started"}
-                  </motion.button>
+                  <div>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setShowLogin(true)}
+                      className={`w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md ${
+                        plan.highlight
+                          ? "text-primary-foreground shadow-primary/20"
+                          : "text-foreground bg-secondary/80 border border-border/60 hover:bg-secondary"
+                      }`}
+                      style={plan.highlight ? { background: "var(--gradient-primary)" } : {}}
+                    >
+                      {plan.actionText}
+                    </motion.button>
+                  </div>
                 </motion.div>
               </AnimatedSection>
             ))}
+          </div>
+
+          {/* Custom Enterprise Banner */}
+          <div className="mt-12 p-6 sm:p-8 rounded-2xl glass-card border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h4 className="text-base sm:text-lg font-bold text-foreground">Need Custom Integrations or Multi-Site Licensing?</h4>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-xl">
+                Provided by Fabulouzz Technologies — our team delivers dedicated database instances, custom ERP bridges, and private corporate deployments.
+              </p>
+            </div>
+            <a
+              href="mailto:info@fabulouzz.com?subject=SightLine%20Enterprise%20Custom%20Deployment"
+              className="whitespace-nowrap px-6 py-3 rounded-xl text-xs sm:text-sm font-bold text-primary-foreground bg-primary hover:opacity-90 transition-opacity shadow-md flex items-center gap-2"
+            >
+              <Mail className="w-4 h-4" /> Contact info@fabulouzz.com
+            </a>
           </div>
         </div>
       </section>
@@ -635,7 +744,9 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       <section className="py-20 sm:py-28 bg-card/50 border-t border-border/30">
         <AnimatedSection className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">Ready to Take Command?</h2>
-          <p className="text-muted-foreground mb-8 max-w-lg mx-auto">Join teams already using SightLine to deliver projects faster, with full visibility and professional reporting.</p>
+          <p className="text-muted-foreground mb-8 max-w-lg mx-auto text-sm sm:text-base">
+            Join teams already using SightLine to deliver projects faster, with full visibility and professional reporting.
+          </p>
           <motion.button
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.97 }}
@@ -649,18 +760,31 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ FOOTER ═══════ */}
-      <footer className="py-8 border-t border-border/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            {mounted && <img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz" className="h-6 w-auto" />}
-            <span className="text-xs text-muted-foreground">
-              Powered by <a href="https://www.fabulouzz.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Fabulouzz Technologies</a>
-            </span>
+      <footer className="py-10 border-t border-border/30 bg-card/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+            {mounted && <img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz" className="h-7 w-auto" />}
+            <div className="text-xs text-muted-foreground">
+              <span>Provided by </span>
+              <a href="https://www.fabulouzz.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">
+                Fabulouzz Technologies
+              </a>
+              <span className="block sm:inline sm:ml-2 text-muted-foreground/80">• SightLine Command Center</span>
+            </div>
           </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <a href="https://www.fabulouzz.com/get-quote" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Contact</a>
-            <a href="#features" onClick={(e) => smoothScroll(e, "features")} className="hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" onClick={(e) => smoothScroll(e, "pricing")} className="hover:text-foreground transition-colors">Pricing</a>
+          <div className="flex items-center gap-5 text-xs text-muted-foreground flex-wrap justify-center">
+            <a href="mailto:info@fabulouzz.com" className="text-primary font-medium hover:underline flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5" /> info@fabulouzz.com
+            </a>
+            <a href="https://www.fabulouzz.com/get-quote" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
+              Contact Sales
+            </a>
+            <a href="#features" onClick={(e) => smoothScroll(e, "features")} className="hover:text-foreground transition-colors">
+              Features
+            </a>
+            <a href="#pricing" onClick={(e) => smoothScroll(e, "pricing")} className="hover:text-foreground transition-colors">
+              Plans & Pricing
+            </a>
           </div>
         </div>
       </footer>
@@ -762,6 +886,19 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                 </button>
               </form>
             )}
+
+            {/* Modal Footer with Mandatory Fabulouzz Technologies attribution and info@fabulouzz.com */}
+            <div className="mt-6 pt-4 border-t border-border/40 text-center">
+              <p className="text-[11px] text-muted-foreground">
+                {BRAND_PROVIDER_TEXT}
+              </p>
+              <p className="text-[10px] text-muted-foreground/80 mt-1">
+                Support & Communications:{" "}
+                <a href={`mailto:${BRAND_MAIN_EMAIL}`} className="text-primary font-medium hover:underline">
+                  {BRAND_MAIN_EMAIL}
+                </a>
+              </p>
+            </div>
           </motion.div>
         </motion.div>
       )}
