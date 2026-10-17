@@ -74,7 +74,7 @@ const SubscribePromptModal = ({ userId }: SubscribePromptModalProps) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="relative w-full max-w-md glass-card p-6 sm:p-8 glow-border"
+            className="relative w-full max-w-md glass-card p-5 sm:p-8 glow-border max-h-[90dvh] overflow-y-auto"
           >
             <button
               onClick={handleClose}

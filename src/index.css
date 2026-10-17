@@ -186,12 +186,15 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html {
-    font-size: 16.5px;
+    font-size: 16px;
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+    height: 100%;
   }
 
   body {
@@ -199,7 +202,20 @@
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
     font-size: 0.9375rem;
     line-height: 1.5;
+    min-height: 100%;
+    min-height: 100dvh;
+    width: 100%;
+    overflow-x: hidden;
     transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  #root {
+    min-height: 100%;
+    min-height: 100dvh;
+    width: 100%;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .font-mono {
@@ -221,9 +237,17 @@
     font-size: 0.785rem !important; /* 12.5px */
   }
 
-  /* Form and input readability boost */
-  input, select, textarea {
-    font-size: 0.85rem !important;
+  /* Form and input readability boost + prevent iOS auto-zoom */
+  @media (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  @media (min-width: 769px) {
+    input, select, textarea {
+      font-size: 0.85rem !important;
+    }
   }
 }
 
@@ -281,5 +305,38 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground) / 0.45);
+  }
+
+  /* Safe Area Inset Helpers */
+  .safe-top {
+    padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
+  }
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
+  }
+  .safe-x {
+    padding-left: max(env(safe-area-inset-left, 0px), 0.5rem);
+    padding-right: max(env(safe-area-inset-right, 0px), 0.5rem);
+  }
+
+  /* Touch Momentum & Safe Layout Utilities */
+  .touch-scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+  }
+  .touch-scroll-y {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

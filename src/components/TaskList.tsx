@@ -85,11 +85,12 @@ const TaskList = ({ onOpenDetails }: TaskListProps) => {
                 {canUpdate && (
                   <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                     onClick={() => setSelectedTask({ id: task.id, name: task.name, status: task.status })}
-                    className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+                    className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 min-h-[32px] min-w-[32px] flex items-center justify-center"
+                    title="Update Task Status">
                     <Edit3 className="w-3.5 h-3.5" />
                   </motion.button>
                 )}
-                <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity" />
               </motion.div>
             );
           })}

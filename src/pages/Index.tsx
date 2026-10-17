@@ -196,13 +196,13 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-[100dvh] bg-background relative flex flex-col justify-between w-full overflow-x-hidden">
       <ChangePasswordModal
         isOpen={mustChangePassword}
         onSuccess={() => setMustChangePassword(false)}
       />
       <SubscribePromptModal userId={user.id} />
-      <div className="relative z-10">
+      <div className="relative z-10 flex-1">
         <AppHeader
           activeView={activeView as "dashboard" | "timeline" | "tasks" | "kanban" | "details"}
           onViewChange={setActiveView}
@@ -213,7 +213,7 @@ const Index = () => {
         />
 
         <ErrorBoundary fallbackTitle="SightLine Project Dashboard Encountered an Error">
-          <main className="max-w-[1600px] mx-auto px-2.5 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6 relative">
+          <main className="max-w-[1600px] w-full mx-auto px-2.5 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6 relative safe-x">
             {isClient ? (
               <ClientPortal />
             ) : (
@@ -393,7 +393,7 @@ const Index = () => {
           </main>
         </ErrorBoundary>
 
-        <motion.footer initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="text-center text-xs text-muted-foreground py-5 sm:py-6 px-3 border-t border-border/30">
+        <motion.footer initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="text-center text-xs text-muted-foreground py-5 sm:py-6 px-3 border-t border-border/30 safe-bottom">
           <p>Powered by <a href="https://www.fabulouzz.com" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Fabulouzz Technologies</a> • SightLine Project Command Center</p>
         </motion.footer>
       </div>

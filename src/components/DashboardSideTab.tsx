@@ -84,7 +84,7 @@ export const DashboardSideTab = ({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 280 }}
-            className="fixed top-0 right-0 bottom-0 w-full max-w-sm sm:max-w-md bg-card/95 backdrop-blur-xl border-l border-border/60 z-50 flex flex-col justify-between shadow-2xl overflow-hidden"
+            className="fixed top-0 right-0 bottom-0 w-full max-w-sm sm:max-w-md bg-card/95 backdrop-blur-xl border-l border-border/60 z-50 flex flex-col justify-between shadow-2xl overflow-hidden pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pr-[env(safe-area-inset-right,0px)]"
           >
             {/* ── TOP HEADER OF SIDE TAB ── */}
             <div className="p-4 sm:p-5 border-b border-border/40 flex items-center justify-between bg-secondary/30">
@@ -104,15 +104,16 @@ export const DashboardSideTab = ({
 
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-lg border border-border/40 bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                className="w-9 h-9 min-h-[36px] min-w-[36px] rounded-lg border border-border/40 bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                 title="Close side tab"
+                aria-label="Close Operations Panel"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* ── MIDDLE SCROLLABLE CONTENT (Arrowed items from screenshot) ── */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+            <div className="flex-1 touch-scroll-y p-4 sm:p-5 space-y-5">
               {/* SECTION 1: THEME SELECTOR (3 Distinct Themes) */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">

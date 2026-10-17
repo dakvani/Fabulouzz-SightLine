@@ -37,7 +37,7 @@ const GanttChart = ({ onManageTimeline }: GanttChartProps = {}) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const cellWidth = isMobile ? 32 : 44;
-  const scopeColWidth = isMobile ? 200 : 490;
+  const scopeColWidth = isMobile ? 155 : 490;
   const headerHeight = isMobile ? 46 : 56;
 
   // Calculate dynamic, content-ready row height for each task to prevent any line collision
@@ -152,7 +152,7 @@ const GanttChart = ({ onManageTimeline }: GanttChartProps = {}) => {
         </div>
       </div>
 
-      <div className="relative overflow-auto max-h-[400px] sm:max-h-[600px]" ref={scrollContainerRef}>
+      <div className="relative touch-scroll-x overflow-y-auto max-h-[400px] sm:max-h-[600px]" ref={scrollContainerRef}>
         <div className="flex min-w-max">
           {/* Sticky Scope Column */}
           <div

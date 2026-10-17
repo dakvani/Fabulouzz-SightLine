@@ -1319,7 +1319,7 @@ const Admin = () => {
         <motion.div
           initial={{ opacity: 0, y: 15, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          className="max-w-md w-full glass-card p-6 sm:p-8 rounded-2xl border border-border/40 relative shadow-2xl overflow-hidden"
+          className="max-w-md w-full glass-card p-5 sm:p-8 rounded-2xl border border-border/40 relative shadow-2xl overflow-y-auto max-h-[90dvh]"
         >
           {/* Top Logo & Title */}
           <div className="flex flex-col items-center text-center mb-6">
@@ -1542,13 +1542,14 @@ const Admin = () => {
             </button>
 
             {/* Role Badge */}
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold shrink-0 ${
               isSuperAdminUser
                 ? "bg-amber-500/15 border-amber-500/30 text-amber-500"
                 : "bg-primary/15 border-primary/30 text-primary"
             }`}>
-              <Shield className="w-3 h-3" />
-              <span>{isSuperAdminUser ? "SUPER ADMIN (Tier 1)" : "ADMIN (Tier 2)"}</span>
+              <Shield className="w-3 h-3 shrink-0" />
+              <span className="hidden sm:inline">{isSuperAdminUser ? "SUPER ADMIN (Tier 1)" : "ADMIN (Tier 2)"}</span>
+              <span className="sm:hidden font-mono text-[10px]">{isSuperAdminUser ? "SUPER" : "ADMIN"}</span>
             </div>
 
             {/* Sign Out */}
@@ -2451,12 +2452,12 @@ const Admin = () => {
       {/* ═══════ PROVISION USER MODAL ═══════ */}
       <AnimatePresence>
         {showProvisionModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card p-6 rounded-2xl border border-border/40 max-w-md w-full shadow-2xl relative"
+              className="glass-card p-5 sm:p-6 rounded-2xl border border-border/40 max-w-md w-full shadow-2xl relative max-h-[90dvh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-foreground flex items-center gap-2">
@@ -2594,7 +2595,7 @@ const Admin = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card rounded-2xl border border-border/40 max-w-2xl w-full shadow-2xl relative my-8 overflow-hidden flex flex-col max-h-[90vh]"
+              className="glass-card rounded-2xl border border-border/40 max-w-2xl w-full shadow-2xl relative my-auto sm:my-8 overflow-hidden flex flex-col max-h-[90dvh]"
             >
               {/* Modal Header */}
               <div className="p-5 border-b border-border/30 bg-secondary/30 flex items-center justify-between">

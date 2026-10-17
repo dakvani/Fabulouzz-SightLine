@@ -58,7 +58,7 @@ const ChangePasswordModal = ({ isOpen, onSuccess }: ChangePasswordModalProps) =>
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-md glass-card p-8"
+          className="relative w-full max-w-md glass-card p-5 sm:p-8 max-h-[90dvh] overflow-y-auto"
         >
           <div className="text-center mb-6">
             <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">

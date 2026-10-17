@@ -111,7 +111,7 @@ const AppHeader = ({
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: hidden ? -80 : 0 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className={`sticky top-2 z-50 mx-2 sm:mx-3 md:mx-5 transition-all duration-300 ${scrolled ? "top-1" : ""}`}
+        className={`sticky top-[max(0.5rem,env(safe-area-inset-top,0px))] z-50 mx-2 sm:mx-3 md:mx-5 transition-all duration-300 ${scrolled ? "top-[max(0.25rem,env(safe-area-inset-top,0px))]" : ""}`}
       >
         <div
           className={`absolute inset-0 backdrop-blur-xl border border-border/20 transition-all duration-300 ${scrolled ? "bg-background/30" : "bg-background/10"}`}
@@ -253,7 +253,7 @@ const AppHeader = ({
                 onClick={onToggleSideTab}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full text-[11px] font-semibold border transition-all shadow-sm ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 min-h-[36px] rounded-full text-[11px] font-semibold border transition-all shadow-sm ${
                   isSideTabOpen
                     ? "border-primary bg-primary text-primary-foreground shadow-md"
                     : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/60"
@@ -269,7 +269,7 @@ const AppHeader = ({
                 onClick={() => setShowAuth(true)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full text-[11px] font-semibold border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span>Login</span>
@@ -280,9 +280,10 @@ const AppHeader = ({
             <motion.button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               whileTap={{ scale: 0.9 }}
-              className="flex sm:hidden items-center justify-center w-7 h-7 rounded-full border border-border/20 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Toggle Navigation Menu"
+              className="flex sm:hidden items-center justify-center w-8 h-8 min-h-[36px] min-w-[36px] rounded-xl border border-border/20 text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
             >
-              {mobileMenuOpen ? <X className="w-3.5 h-3.5" /> : <Menu className="w-3.5 h-3.5" />}
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </motion.button>
           </motion.div>
         </div>
@@ -303,7 +304,7 @@ const AppHeader = ({
                     onViewChange(v.id);
                     setMobileMenuOpen(false);
                   }}
-                  className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl text-[9px] font-medium transition-all ${
+                  className={`flex flex-col items-center justify-center gap-1 py-2 px-1 min-h-[44px] rounded-xl text-[9px] font-medium transition-all ${
                     activeView === v.id
                       ? "text-primary-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
@@ -316,7 +317,9 @@ const AppHeader = ({
                     />
                   )}
                   <v.icon className="w-3.5 h-3.5 relative z-10" />
-                  <span className="relative z-10 truncate w-full text-center">{v.label}</span>
+                  <span className="relative z-10 truncate w-full text-center">
+                    {v.id === "details" ? "Details" : v.label}
+                  </span>
                 </button>
               ))}
             </div>

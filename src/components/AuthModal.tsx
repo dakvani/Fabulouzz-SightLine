@@ -342,7 +342,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           onClick={e => e.stopPropagation()}
-          className="glass-card glow-border w-full max-w-md mx-4 p-8 relative"
+          className="glass-card glow-border w-full max-w-md mx-3 sm:mx-4 p-5 sm:p-8 relative max-h-[90dvh] overflow-y-auto"
         >
           {/* Logo & App Name */}
           <div className="flex flex-col items-center mb-6">

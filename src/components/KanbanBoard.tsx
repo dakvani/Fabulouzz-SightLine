@@ -193,7 +193,7 @@ const KanbanBoard = ({ onOpenDetails }: KanbanBoardProps) => {
                                         status: task.status,
                                       })
                                     }
-                                    className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
+                                    className="p-1 sm:p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 min-h-[30px] min-w-[30px] flex items-center justify-center"
                                     title="Update status note"
                                   >
                                     <Edit3 className="w-3.5 h-3.5" />
