@@ -34,15 +34,15 @@ Deno.serve(async (req) => {
     }
 
     const { data: roleData } = await anonClient.from("user_roles").select("role").eq("user_id", caller.id).single();
-    if (!roleData || roleData.role !== "admin") {
+    if (!roleData || (roleData.role !== "admin" && roleData.role !== "super_admin")) {
       return new Response(JSON.stringify({ error: "Admin access required" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const { email, password, fullName, role, loginUrl } = await req.json();
-    const appBase = (Deno.env.get("APP_URL") || "https://sightline.fabulouzz.com").replace(/\/+$/, "");
-    const portalUrl = loginUrl || `${appBase}/onboarding?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role || "client")}&name=${encodeURIComponent(fullName || "")}`;
+    let portalUrl = loginUrl || `https://sightline.fabulouzz.com/onboarding?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role || "client")}&name=${encodeURIComponent(fullName || "")}`;
+    portalUrl = portalUrl.replace(/https?:\/\/[a-zA-Z0-9-]+\.vercel\.app/g, "https://sightline.fabulouzz.com");
 
     const roleLabel: Record<string, string> = {
       super_admin: "Super Admin",

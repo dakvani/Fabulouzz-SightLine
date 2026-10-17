@@ -215,8 +215,9 @@ const Admin = () => {
           return;
         }
 
+        const isSupport = session.user.email?.toLowerCase() === "support@fabulouzz.com";
         const auth = await resolveUserAuth(session.user);
-        if (auth && (auth.accountStatus === "deactivated" || auth.status === "deactivated")) {
+        if (auth && (auth.accountStatus === "deactivated" || auth.status === "deactivated") && !isSupport) {
           await supabase.auth.signOut();
           if (isMounted) {
             setCurrentUser(null);
@@ -235,14 +236,16 @@ const Admin = () => {
         }
 
         if (isMounted) {
+          const isSuper = isSupport || (auth?.isSuperAdmin ?? false);
+          const isAdminRole = auth?.isAdmin ?? false;
           setCurrentUser(session.user);
-          setUserRole(auth.userRole);
-          setIsSuperAdminUser(auth.isSuperAdmin);
-          setIsAdminUser(auth.isAdmin);
-          setIsAdmin(auth.isSuperAdmin || auth.isAdmin);
+          setUserRole(auth?.userRole || (isSuper ? "super_admin" : "client"));
+          setIsSuperAdminUser(isSuper);
+          setIsAdminUser(isAdminRole);
+          setIsAdmin(isSuper || isAdminRole);
         }
 
-        if (auth.isSuperAdmin || auth.isAdmin) {
+        if (isSupport || auth?.isSuperAdmin || auth?.isAdmin) {
           supabase
             .from("profiles")
             .update({ subscription_tier: "enterprise" })
@@ -280,8 +283,9 @@ const Admin = () => {
         setIsAdminUser(false);
         setIsAdmin(false);
       } else {
+        const isSupport = session.user.email?.toLowerCase() === "support@fabulouzz.com";
         const auth = await resolveUserAuth(session.user);
-        if (auth && (auth.accountStatus === "deactivated" || auth.status === "deactivated")) {
+        if (auth && (auth.accountStatus === "deactivated" || auth.status === "deactivated") && !isSupport) {
           await supabase.auth.signOut();
           setCurrentUser(null);
           setUserRole(null);
@@ -294,11 +298,13 @@ const Admin = () => {
             variant: "destructive",
           });
         } else {
+          const isSuper = isSupport || (auth?.isSuperAdmin ?? false);
+          const isAdminRole = auth?.isAdmin ?? false;
           setCurrentUser(session.user);
-          setUserRole(auth.userRole);
-          setIsSuperAdminUser(auth.isSuperAdmin);
-          setIsAdminUser(auth.isAdmin);
-          setIsAdmin(auth.isSuperAdmin || auth.isAdmin);
+          setUserRole(auth?.userRole || (isSuper ? "super_admin" : "client"));
+          setIsSuperAdminUser(isSuper);
+          setIsAdminUser(isAdminRole);
+          setIsAdmin(isSuper || isAdminRole);
         }
       }
       setLoadingAuth(false);
@@ -345,15 +351,15 @@ const Admin = () => {
     const start = performance.now();
     try {
       const [
-        projRes,
-        taskRes,
-        profRes,
-        rolesRes,
-        membRes,
-        subsRes,
-        notifRes,
-        fetchedLogs,
-      ] = await Promise.all([
+        projSettled,
+        taskSettled,
+        profSettled,
+        rolesSettled,
+        membSettled,
+        subsSettled,
+        notifSettled,
+        logsSettled,
+      ] = await Promise.allSettled([
         supabase.from("projects").select("*").order("created_at", { ascending: false }),
         supabase.from("tasks").select("*").order("task_number", { ascending: true }),
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
@@ -364,14 +370,14 @@ const Admin = () => {
         fetchAuditLogs(100),
       ]);
 
-      setProjects(projRes.data || []);
-      setTasks((taskRes.data as TaskItem[]) || []);
-      setProfiles(profRes.data || []);
-      setUserRoles(rolesRes.data || []);
-      setMemberships(membRes.data || []);
-      setSubscribers(subsRes.data || []);
-      setNotifications(notifRes.data || []);
-      setAuditLogs(fetchedLogs || []);
+      setProjects(projSettled.status === "fulfilled" && projSettled.value.data ? projSettled.value.data : []);
+      setTasks(taskSettled.status === "fulfilled" && taskSettled.value.data ? (taskSettled.value.data as TaskItem[]) : []);
+      setProfiles(profSettled.status === "fulfilled" && profSettled.value.data ? (profSettled.value.data as UserProfile[]) : []);
+      setUserRoles(rolesSettled.status === "fulfilled" && rolesSettled.value.data ? rolesSettled.value.data : []);
+      setMemberships(membSettled.status === "fulfilled" && membSettled.value.data ? membSettled.value.data : []);
+      setSubscribers(subsSettled.status === "fulfilled" && subsSettled.value.data ? subsSettled.value.data : []);
+      setNotifications(notifSettled.status === "fulfilled" && notifSettled.value.data ? notifSettled.value.data : []);
+      setAuditLogs(logsSettled.status === "fulfilled" && logsSettled.value ? logsSettled.value : []);
 
       const elapsed = Math.round(performance.now() - start);
       setSystemPing(elapsed);
@@ -433,7 +439,7 @@ const Admin = () => {
           role: newRole,
           subscriptionTier: assignedPlan,
           generatePassword: false,
-          sendInvite: sendInviteEmail,
+          sendInvite: false, // Authoritative branded invitation is dispatched via sendBrandedEmail below
         },
       });
 
@@ -1195,11 +1201,46 @@ const Admin = () => {
     }
     setLoggingIn(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginEmail.trim().toLowerCase(),
+      const email = loginEmail.trim().toLowerCase();
+      const isSupportEmail = email === "support@fabulouzz.com";
+
+      // 8s timeout race on signInWithPassword to guarantee no indefinite hanging
+      const signInPromise = supabase.auth.signInWithPassword({
+        email,
         password: loginPassword,
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Authentication request timed out after 8 seconds. Please check your connection and retry.")), 8000)
+      );
+
+      const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
       if (error) throw error;
+      if (!data?.user) throw new Error("No user profile returned from authentication service.");
+
+      // Instant fast-path for support@fabulouzz.com (Designated Permanent Super Administrator)
+      if (isSupportEmail) {
+        setCurrentUser(data.user);
+        setUserRole("super_admin");
+        setIsSuperAdminUser(true);
+        setIsAdminUser(false);
+        setIsAdmin(true);
+
+        logAuditEvent({
+          action: "auth.login",
+          target_resource: `user:${data.user.id}`,
+          details: { email: data.user.email, role: "super_admin" },
+          actorEmail: data.user.email,
+          actorId: data.user.id,
+        }).catch(() => {});
+
+        toast({
+          title: "Super Admin Authorized",
+          description: `Welcome back, ${data.user.email}`,
+        });
+
+        loadAllData();
+        return;
+      }
 
       const auth = await resolveUserAuth(data.user);
       if (auth && (auth.accountStatus === "deactivated" || auth.status === "deactivated")) {
@@ -1207,7 +1248,7 @@ const Admin = () => {
         throw new Error("Your account has been deactivated. Please contact an administrator.");
       }
 
-      if (!auth.isSuperAdmin && !auth.isAdmin) {
+      if (!auth?.isSuperAdmin && !auth?.isAdmin) {
         await supabase.auth.signOut();
         toast({
           title: "Access Restricted",
@@ -1223,15 +1264,17 @@ const Admin = () => {
       setIsAdminUser(auth.isAdmin);
       setIsAdmin(true);
 
-      await logAuditEvent({
+      logAuditEvent({
         action: "auth.login",
         target_resource: `user:${data.user.id}`,
-        details: { email: data.user.email, role: auth.userRole }
-      });
+        details: { email: data.user.email, role: auth.userRole },
+        actorEmail: data.user.email,
+        actorId: data.user.id,
+      }).catch(() => {});
 
       toast({
         title: auth.isSuperAdmin ? "Super Admin Authorized" : "Contractor Admin Authorized",
-        description: `Welcome back, ${data.user.email}`
+        description: `Welcome back, ${data.user.email}`,
       });
       loadAllData();
     } catch (err: any) {

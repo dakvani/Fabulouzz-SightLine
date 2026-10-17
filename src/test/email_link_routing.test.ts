@@ -148,5 +148,34 @@ describe("URL Hash and Parameter Routing Detection", () => {
     expect(portalUrl).not.toContain(".vercel.app");
     expect(portalUrl).toMatch(/https?:\/\/|localhost/);
   });
+
+  it("TC-E12: buildBrandedEmailHtml automatically sanitizes any vercel.app domains from loginUrl", () => {
+    const emailPayload = {
+      type: "invite" as const,
+      to: "invited.contractor@partner.sa",
+      data: {
+        fullName: "Contractor Eng",
+        role: "pm",
+        loginUrl: "https://fabulouzzsightline.vercel.app/onboarding?email=invited.contractor@partner.sa&role=pm",
+      },
+    };
+    const { html } = buildBrandedEmailHtml(emailPayload);
+    expect(html).not.toContain("vercel.app");
+    expect(html).toContain("https://sightline.fabulouzz.com/onboarding");
+  });
+
+  it("TC-E13: buildBrandedEmailHtml guarantees all CTA links point strictly to sightline.fabulouzz.com", () => {
+    const invite = buildBrandedEmailHtml({ type: "invite", to: "test@domain.com", data: {} });
+    expect(invite.html).not.toContain("vercel.app");
+    expect(invite.html).toContain("/onboarding");
+
+    const welcome = buildBrandedEmailHtml({ type: "welcome", to: "test@domain.com", data: {} });
+    expect(welcome.html).not.toContain("vercel.app");
+    expect(welcome.html).toContain("/welcome");
+
+    const reset = buildBrandedEmailHtml({ type: "reset_password", to: "test@domain.com", data: {} });
+    expect(reset.html).not.toContain("vercel.app");
+    expect(reset.html).toContain("/reset-password");
+  });
 });
 

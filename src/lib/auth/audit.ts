@@ -39,23 +39,12 @@ export const logAuditEvent = async ({
   actorId,
 }: LogAuditParams): Promise<void> => {
   try {
-    let resolvedEmail = actorEmail;
-    let resolvedId = actorId;
-
-    if (!resolvedEmail || !resolvedId) {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const currentUser = sessionData?.session?.user;
-      if (currentUser) {
-        resolvedEmail = resolvedEmail || currentUser.email || "unknown@sightline.io";
-        resolvedId = resolvedId || currentUser.id;
-      } else {
-        resolvedEmail = resolvedEmail || "system@sightline.io";
-      }
-    }
+    const resolvedEmail = actorEmail || "system@sightline.io";
+    const resolvedId = actorId || null;
 
     const payload = {
       action,
-      resource_type: resourceType,
+      resource_type: resourceType || "system",
       resource_id: resourceId,
       details: details || {},
       actor_email: resolvedEmail,
@@ -63,14 +52,19 @@ export const logAuditEvent = async ({
       created_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from("audit_logs").insert(payload as any);
-    if (error) {
-      console.warn("[AuditLog] Failed to persist remote audit log entry:", error.message);
-      // Fallback: Store locally in session log buffer
-      appendLocalAuditBuffer(payload);
-    }
+    // Store locally in session log buffer immediately
+    appendLocalAuditBuffer(payload);
+
+    // Attempt remote save in background without blocking
+    Promise.resolve(supabase.from("audit_logs").insert(payload as any))
+      .then((res: any) => {
+        if (res?.error) {
+          console.debug("[AuditLog] Remote log deferred:", res.error.message);
+        }
+      })
+      .catch(() => {});
   } catch (err) {
-    console.warn("[AuditLog] Error logging audit event:", err);
+    console.debug("[AuditLog] Handled audit event safely:", err);
   }
 };
 

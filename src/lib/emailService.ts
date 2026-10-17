@@ -29,6 +29,10 @@ export const getProductionPortalUrl = (): string => {
 
   if (typeof window !== "undefined" && window.location?.origin) {
     const origin = window.location.origin;
+    // Strictly forbid vercel.app preview domains from ever being returned
+    if (origin.includes(".vercel.app")) {
+      return "https://sightline.fabulouzz.com";
+    }
     // Keep local testing origins intact
     const isLocal =
       origin.includes("localhost") ||
@@ -454,7 +458,10 @@ export function buildBrandedEmailHtml(payload: SendEmailPayload): { subject: str
 </html>
   `.trim();
 
-  return { subject, html };
+  // Strict domain sanitation: Guarantee NO vercel preview URL survives in email HTML
+  const sanitizedHtml = html.replace(/https?:\/\/[a-zA-Z0-9-]+\.vercel\.app/g, "https://sightline.fabulouzz.com");
+
+  return { subject, html: sanitizedHtml };
 }
 
 /**
@@ -478,7 +485,7 @@ export async function sendBrandedEmail(payload: SendEmailPayload): Promise<{ suc
           to: recipients,
           subject,
           html,
-          type: payload.type,
+          type: "branded_notification",
           data: payload.data,
         }),
       });
@@ -504,7 +511,7 @@ export async function sendBrandedEmail(payload: SendEmailPayload): Promise<{ suc
           to: recipients,
           subject,
           html,
-          type: payload.type,
+          type: "branded_notification",
           data: payload.data,
         },
       });
@@ -516,16 +523,21 @@ export async function sendBrandedEmail(payload: SendEmailPayload): Promise<{ suc
       console.warn("[Email Service] Edge function send-email error:", edgeErr);
     }
 
-    // Tier 3: If invitation type, try deployed send-invitation function
+    // Tier 3: If invitation type, try deployed send-invitation function with authoritative production domain
     if (payload.type === "invite" && payload.data.tempPassword) {
       try {
+        const targetLoginUrl = (
+          payload.data.loginUrl ||
+          `${getProductionPortalUrl()}/onboarding?email=${encodeURIComponent(recipients[0])}&role=${encodeURIComponent(payload.data.role || "client")}&name=${encodeURIComponent(payload.data.fullName || "")}`
+        ).replace(/https?:\/\/[a-zA-Z0-9-]+\.vercel\.app/g, "https://sightline.fabulouzz.com");
+
         const { data: invData, error: invErr } = await supabase.functions.invoke("send-invitation", {
           body: {
             email: recipients[0],
             password: payload.data.tempPassword,
             fullName: payload.data.fullName,
             role: payload.data.role,
-            loginUrl: payload.data.loginUrl || `${APP_PORTAL_URL}/?auth=login`,
+            loginUrl: targetLoginUrl,
           },
         });
         if (!invErr && invData?.success) {

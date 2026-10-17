@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: roleData } = await anonClient.from("user_roles").select("role").eq("user_id", caller.id).single();
-    if (!roleData || roleData.role !== "admin") {
+    if (!roleData || (roleData.role !== "admin" && roleData.role !== "super_admin")) {
       return new Response(JSON.stringify({ error: "Admin access required" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -65,14 +65,15 @@ Deno.serve(async (req) => {
       throw new Error(updateError.message);
     }
 
-    // Send invitation email via send-invitation function
+    // Send invitation email via send-invitation function with authoritative production domain
+    const loginUrl = `https://sightline.fabulouzz.com/onboarding?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role || "client")}&name=${encodeURIComponent(fullName || "")}`;
     const inviteRes = await fetch(`${supabaseUrl}/functions/v1/send-invitation`, {
       method: "POST",
       headers: {
         Authorization: authHeader,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password: newPassword, fullName, role }),
+      body: JSON.stringify({ email, password: newPassword, fullName, role, loginUrl }),
     });
 
     const inviteData = await inviteRes.json();

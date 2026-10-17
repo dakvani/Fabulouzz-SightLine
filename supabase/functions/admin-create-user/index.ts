@@ -124,13 +124,14 @@ Deno.serve(async (req) => {
     let emailSent = false;
     if (sendInvite) {
       try {
+        const loginUrl = `https://sightline.fabulouzz.com/onboarding?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role || "client")}&name=${encodeURIComponent(fullName || "")}`;
         const inviteRes = await fetch(`${supabaseUrl}/functions/v1/send-invitation`, {
           method: "POST",
           headers: {
             Authorization: authHeader,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ email, password: finalPassword, fullName, role }),
+          body: JSON.stringify({ email, password: finalPassword, fullName, role, loginUrl }),
         });
         const inviteData = await inviteRes.json();
         if (inviteRes.ok && inviteData.success) {

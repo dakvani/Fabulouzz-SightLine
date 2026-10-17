@@ -41,7 +41,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const recipients = Array.isArray(to) ? to : [to];
-    let finalHtml = rawHtml;
+    let finalHtml = (rawHtml || "").replace(/https?:\/\/[a-zA-Z0-9-]+\.vercel\.app/g, "https://sightline.fabulouzz.com");
 
     // Optional: Resend API Key from Vercel environment variables
     const resendApiKey =
