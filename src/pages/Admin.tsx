@@ -50,8 +50,6 @@ import {
   PlusCircle,
   Eye,
   EyeOff,
-  Briefcase as BriefcaseIcon,
-  Terminal as TerminalIcon,
   UserX,
   UserCheck,
   Ban,
@@ -491,6 +489,7 @@ const Admin = () => {
           action: "User Provisioned",
           details: `${newEmail} assigned role ${newRole.toUpperCase()} on ${assignedPlan.toUpperCase()} tier`,
           time: new Date().toLocaleTimeString(),
+          created_at: new Date().toISOString(),
         },
         ...prev,
       ]);
@@ -570,6 +569,7 @@ const Admin = () => {
           action: "Plan Tier Updated",
           details: `${userEmail} assigned ${targetTier.toUpperCase()} plan`,
           time: new Date().toLocaleTimeString(),
+          created_at: new Date().toISOString(),
         },
         ...prev,
       ]);
@@ -815,6 +815,7 @@ const Admin = () => {
           action: "Project Edited",
           details: `Updated details for ${editProjectForm.title}`,
           time: new Date().toLocaleTimeString(),
+          created_at: new Date().toISOString(),
         },
         ...prev,
       ]);
@@ -951,6 +952,7 @@ const Admin = () => {
           action: "Data Assigned",
           details: `Standard EPC milestone package assigned to project`,
           time: new Date().toLocaleTimeString(),
+          created_at: new Date().toISOString(),
         },
         ...prev,
       ]);

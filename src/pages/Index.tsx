@@ -132,7 +132,11 @@ const Index = () => {
   }
 
   if (!user) {
-    return <LandingPage onAuthSuccess={() => {}} />;
+    return (
+      <ErrorBoundary fallbackTitle="SightLine Portal">
+        <LandingPage onAuthSuccess={() => {}} />
+      </ErrorBoundary>
+    );
   }
 
   // Show project selector if no project is selected

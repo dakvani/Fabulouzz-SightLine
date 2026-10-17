@@ -220,8 +220,6 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     }
   };
 
-  const CurrentRoleIcon = roleLabels[selectedRole].icon;
-
   const features = [
     { icon: LayoutDashboard, title: "Real-Time Dashboard", desc: "Live progress rings, status tickers, and milestone countdowns — all updating in real time.", gradient: "bg-gradient-to-r from-primary to-primary/50" },
     { icon: GanttChart, title: "Interactive Gantt Charts", desc: "Visualize project timelines with drag-friendly Gantt charts. Track dependencies and critical paths.", gradient: "bg-gradient-to-r from-[hsl(var(--processing))] to-[hsl(var(--processing)/0.5)]" },

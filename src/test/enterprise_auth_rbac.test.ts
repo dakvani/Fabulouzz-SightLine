@@ -167,7 +167,7 @@ describe("Privilege Escalation & Account Security Protections", () => {
       isAdmin: false,
       isProjectManager: true,
       isClient: false,
-      accountStatus: "inactive" as const,
+      accountStatus: "inactive" as "active" | "inactive" | "deactivated",
       assignedProjectIds: ["proj-001"],
     };
 

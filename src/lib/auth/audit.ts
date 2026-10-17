@@ -2,20 +2,25 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface AuditLogEntry {
   id: string;
-  actor_id: string | null;
-  actor_email: string;
+  actor_id?: string | null;
+  actor_email?: string;
+  actor_role?: string;
   action: string;
-  resource_type: string;
-  resource_id: string | null;
-  details: Record<string, any> | null;
-  ip_address: string | null;
+  resource_type?: string;
+  resource_id?: string | null;
+  target_resource?: string;
+  details?: any;
+  ip_address?: string | null;
+  status?: string;
+  time?: string;
   created_at: string;
 }
 
 export interface LogAuditParams {
   action: string;
-  resourceType: string;
+  resourceType?: string;
   resourceId?: string | null;
+  target_resource?: string;
   details?: Record<string, any>;
   actorEmail?: string;
   actorId?: string | null;
@@ -28,6 +33,7 @@ export const logAuditEvent = async ({
   action,
   resourceType,
   resourceId = null,
+  target_resource,
   details = {},
   actorEmail,
   actorId,
@@ -87,11 +93,12 @@ const appendLocalAuditBuffer = (entry: any) => {
 /**
  * Fetches audit logs from Supabase with fallback to local buffer
  */
-export const fetchAuditLogs = async (options?: {
+export const fetchAuditLogs = async (options?: number | {
   limit?: number;
   operationalOnly?: boolean;
 }): Promise<AuditLogEntry[]> => {
-  const limit = options?.limit ?? 50;
+  const limit = typeof options === "number" ? options : (options?.limit ?? 50);
+  const operationalOnly = typeof options === "object" ? options?.operationalOnly : false;
 
   try {
     let query = supabase
@@ -100,7 +107,7 @@ export const fetchAuditLogs = async (options?: {
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    if (options?.operationalOnly) {
+    if (operationalOnly) {
       query = query.neq("resource_type", "security");
     }
 
@@ -117,7 +124,7 @@ export const fetchAuditLogs = async (options?: {
   if (typeof window !== "undefined") {
     try {
       const local = JSON.parse(localStorage.getItem(LOCAL_AUDIT_KEY) || "[]");
-      if (options?.operationalOnly) {
+      if (operationalOnly) {
         return local.filter((l: any) => l.resource_type !== "security").slice(0, limit);
       }
       return local.slice(0, limit);

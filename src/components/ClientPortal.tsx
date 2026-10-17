@@ -391,7 +391,7 @@ export const ClientPortal = () => {
             </div>
 
             <div className="space-y-4">
-              <WeatherWidget location={projectInfo.location} />
+              <WeatherWidget />
             </div>
           </div>
         </div>

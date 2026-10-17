@@ -13,3 +13,12 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+Object.defineProperty(window, "IntersectionObserver", {
+  writable: true,
+  value: class IntersectionObserver {
+    observe = () => {};
+    unobserve = () => {};
+    disconnect = () => {};
+  },
+});

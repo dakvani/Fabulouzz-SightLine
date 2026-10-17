@@ -31,3 +31,4 @@ scratch/
 *_ui_*.jpg
 command_deck_*.jpg
 supabase/.temp/
+*.tsbuildinfo

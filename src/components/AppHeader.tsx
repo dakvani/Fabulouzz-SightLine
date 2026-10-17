@@ -93,14 +93,14 @@ const AppHeader = ({
   const { theme, setTheme } = useTheme();
 
   const views = useMemo(() => {
-    const base = [
-      { id: "dashboard" as const, label: "Dashboard", icon: BarChart3 },
-      { id: "timeline" as const, label: "Timeline", icon: Eye },
-      { id: "tasks" as const, label: "Tasks", icon: List },
-      { id: "kanban" as const, label: "Kanban", icon: LayoutGrid },
+    const base: { id: "dashboard" | "timeline" | "tasks" | "kanban" | "details"; label: string; icon: any }[] = [
+      { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+      { id: "timeline", label: "Timeline", icon: Eye },
+      { id: "tasks", label: "Tasks", icon: List },
+      { id: "kanban", label: "Kanban", icon: LayoutGrid },
     ];
     if (canEditProject) {
-      base.push({ id: "details" as const, label: "Project Details", icon: Sliders });
+      base.push({ id: "details", label: "Project Details", icon: Sliders });
     }
     return base;
   }, [canEditProject]);
