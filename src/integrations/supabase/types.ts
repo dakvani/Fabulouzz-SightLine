@@ -130,12 +130,50 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_email: string
+          actor_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          resource_id: string | null
+          resource_type: string
+        }
+        Insert: {
+          action: string
+          actor_email: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
           email: string
           full_name: string
           id: string
+          last_login_at: string | null
+          status: string
           subscription_tier: string
           updated_at: string
         }
@@ -144,6 +182,8 @@ export type Database = {
           email: string
           full_name?: string
           id: string
+          last_login_at?: string | null
+          status?: string
           subscription_tier?: string
           updated_at?: string
         }
@@ -152,6 +192,8 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          last_login_at?: string | null
+          status?: string
           subscription_tier?: string
           updated_at?: string
         }
@@ -159,21 +201,36 @@ export type Database = {
       }
       project_members: {
         Row: {
+          assigned_at: string
+          assigned_by: string | null
+          assigned_role: string
+          assignment_status: string
           created_at: string
           id: string
           project_id: string
+          revoked_at: string | null
           user_id: string
         }
         Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          assigned_role?: string
+          assignment_status?: string
           created_at?: string
           id?: string
           project_id: string
+          revoked_at?: string | null
           user_id: string
         }
         Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          assigned_role?: string
+          assignment_status?: string
           created_at?: string
           id?: string
           project_id?: string
+          revoked_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -323,7 +380,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "pm" | "engineer" | "client" | "admin"
+      app_role: "super_admin" | "admin" | "pm" | "engineer" | "client"
       task_status: "Completed" | "Processing" | "Initiating" | "Planning"
     }
     CompositeTypes: {
@@ -452,7 +509,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["pm", "engineer", "client", "admin"],
+      app_role: ["super_admin", "admin", "pm", "engineer", "client"],
       task_status: ["Completed", "Processing", "Initiating", "Planning"],
     },
   },

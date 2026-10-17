@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { FolderOpen, Plus, MapPin, Calendar, User, LogOut, Sun, Moon, Users, Search, X, BarChart3, Mail, Shield } from "lucide-react";
+import { FolderOpen, Plus, MapPin, Calendar, User, LogOut, Sun, Moon, Users, Search, X, BarChart3, Mail, Shield, Crown, Briefcase, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
@@ -34,12 +34,17 @@ interface TaskProgress {
   percent: number;
 }
 
+import { UserRole, ROLE_DEFINITIONS } from "@/lib/auth/roles";
+import { resolveUserAuth } from "@/lib/auth/session";
+
 const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [taskProgress, setTaskProgress] = useState<Record<string, TaskProgress>>({});
   const [subscriberCounts, setSubscriberCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<UserRole>("client");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { theme, setTheme } = useTheme();
@@ -51,46 +56,38 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
   const fetchProjects = useCallback(async () => {
     setLoading(true);
 
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
+    const authDetails = await resolveUserAuth(userId);
+    const role: UserRole = authDetails?.role || "client";
+    setUserRole(role);
 
-    const roles = (roleData || []).map((r: any) => r.role);
-    const admin = roles.includes("admin");
-    const isPm = roles.includes("pm");
+    const superAdmin = role === "super_admin";
+    const admin = role === "admin" || superAdmin;
+    setIsSuperAdmin(superAdmin);
     setIsAdmin(admin);
 
     let projectList: ProjectRow[] = [];
 
-    if (admin || isPm) {
+    // Tier 1 & Tier 2: Super Admin and Admin can access all projects
+    if (admin) {
       const { data } = await supabase
         .from("projects")
         .select("id, title, client_name, location, start_date, end_date, project_manager, company, project_ref")
         .order("created_at", { ascending: false });
       projectList = data || [];
     } else {
-      const { data: memberships } = await supabase
-        .from("project_members")
-        .select("project_id")
-        .eq("user_id", userId);
+      // Tier 3: Project Manager and Client can ONLY access explicitly assigned projects
+      const activeAssignedIds = authDetails?.assignedProjectIds || [];
 
-      if (memberships && memberships.length > 0) {
-        const projectIds = memberships.map((m) => m.project_id);
+      if (activeAssignedIds.length > 0) {
         const { data } = await supabase
           .from("projects")
           .select("id, title, client_name, location, start_date, end_date, project_manager, company, project_ref")
-          .in("id", projectIds)
+          .in("id", activeAssignedIds)
           .order("created_at", { ascending: false });
         projectList = data || [];
       } else {
-        // Fallback: If no specific restrictive project assignments exist yet,
-        // display all available company projects so the user can open their dashboard.
-        const { data } = await supabase
-          .from("projects")
-          .select("id, title, client_name, location, start_date, end_date, project_manager, company, project_ref")
-          .order("created_at", { ascending: false });
-        projectList = data || [];
+        // Strict Isolation: Do NOT leak or fallback to all projects!
+        projectList = [];
       }
     }
 
@@ -207,6 +204,15 @@ const ProjectSelector = ({ onSelectProject, userId }: ProjectSelectorProps) => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Role Badge */}
+            <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${ROLE_DEFINITIONS[userRole]?.badgeColor || "bg-secondary text-foreground"}`}>
+              {userRole === "super_admin" && <Crown className="w-3.5 h-3.5 text-amber-400" />}
+              {userRole === "admin" && <Shield className="w-3.5 h-3.5 text-primary" />}
+              {userRole === "pm" && <Briefcase className="w-3.5 h-3.5 text-emerald-400" />}
+              {userRole === "client" && <Eye className="w-3.5 h-3.5 text-blue-400" />}
+              <span>{ROLE_DEFINITIONS[userRole]?.title || "Client"}</span>
+            </div>
+
             {isAdmin && (
               <motion.button
                 onClick={() => navigate("/admin")}

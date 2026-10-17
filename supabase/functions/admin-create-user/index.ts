@@ -36,8 +36,9 @@ Deno.serve(async (req) => {
     }
 
     const { data: roleData } = await anonClient.from("user_roles").select("role").eq("user_id", caller.id).single();
-    if (!roleData || roleData.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Admin access required" }), {
+    const callerRole = roleData?.role;
+    if (!callerRole || (callerRole !== "admin" && callerRole !== "super_admin")) {
+      return new Response(JSON.stringify({ error: "Administrator privileges required" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -50,11 +51,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    const validRoles = ["admin", "pm", "client"];
-    if (!validRoles.includes(role)) {
-      return new Response(JSON.stringify({ error: "Invalid role" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Role Hierarchy enforcement:
+    // Admin can ONLY provision PM or Client
+    // Super Admin can provision Super Admin, Admin, PM, or Client
+    if (callerRole === "admin") {
+      if (role !== "pm" && role !== "client") {
+        return new Response(JSON.stringify({ error: "Contractor Admins can only provision Project Manager and Client accounts." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else if (callerRole === "super_admin") {
+      const validRoles = ["super_admin", "admin", "pm", "client"];
+      if (!validRoles.includes(role)) {
+        return new Response(JSON.stringify({ error: "Invalid role specified" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const finalPassword = generatePassword ? generateRandomPassword() : password;
@@ -90,12 +102,23 @@ Deno.serve(async (req) => {
       await adminClient.from("user_roles").update({ role }).eq("user_id", newUser.user.id);
     }
 
-    // Set subscription tier in profiles (defaults to 'enterprise' for admin, or passed tier, or 'free')
-    const initialTier = (role === "admin")
+    // Set subscription tier in profiles (defaults to 'enterprise' for super_admin/admin, or passed tier, or 'free')
+    const initialTier = (role === "admin" || role === "super_admin")
       ? "enterprise"
       : (["free", "premium", "enterprise"].includes(subscriptionTier) ? subscriptionTier : "free");
 
-    await adminClient.from("profiles").update({ subscription_tier: initialTier }).eq("id", newUser.user.id);
+    await adminClient.from("profiles").update({ subscription_tier: initialTier, status: "active" }).eq("id", newUser.user.id);
+
+    // Audit Logging
+    await adminClient.from("audit_logs").insert({
+      actor_id: caller.id,
+      actor_email: caller.email,
+      actor_role: callerRole,
+      action: "user.create",
+      target_resource: `user:${email}`,
+      details: { role, subscriptionTier: initialTier, fullName },
+      status: "success",
+    });
 
     // Send invitation email if requested
     let emailSent = false;

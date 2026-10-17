@@ -37,7 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { useBranding } from "@/contexts/BrandingContext";
-import { sendBrandedEmail } from "@/lib/emailService";
+import { sendBrandedEmail, getProductionPortalUrl } from "@/lib/emailService";
 import { useTheme } from "next-themes";
 import { generateReportPdf } from "@/lib/generateReportPdf";
 import TaskManagement from "./TaskManagement";
@@ -246,7 +246,7 @@ export const ProjectDetailsPage = ({
             projectName: projectInfo.title,
             projectRef: projectInfo.projectRef,
             clientName: projectInfo.client,
-            loginUrl: `${window.location.origin}/?project=${projectId || ""}&view=details&tab=info`,
+            loginUrl: `${getProductionPortalUrl()}/?project=${projectId || ""}&view=details&tab=info`,
           },
         });
       }

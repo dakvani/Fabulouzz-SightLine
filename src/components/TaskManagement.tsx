@@ -33,7 +33,7 @@ import {
   parseProjectDate,
   startOfDay,
 } from "@/lib/projectTimeline";
-import { sendBrandedEmail } from "@/lib/emailService";
+import { sendBrandedEmail, getProductionPortalUrl } from "@/lib/emailService";
 
 const statusOptions: TaskStatus[] = ["Planning", "Initiating", "Processing", "Completed"];
 
@@ -295,7 +295,7 @@ export const TaskManagement = () => {
             taskStatus: editData.status,
             taskDuration: editData.duration,
             assignedBy: projectInfo.projectManager || "SightLine PM",
-            loginUrl: `${window.location.origin}/?project=${projectId}&view=tasks`,
+            loginUrl: `${getProductionPortalUrl()}/?project=${projectId}&view=tasks`,
           },
         }).then(res => {
           if (res.success) {
@@ -399,7 +399,7 @@ export const TaskManagement = () => {
             taskStatus: newTask.status,
             taskDuration: newTask.duration,
             assignedBy: projectInfo.projectManager || "SightLine PM",
-            loginUrl: `${window.location.origin}/?project=${projectId}&view=tasks`,
+            loginUrl: `${getProductionPortalUrl()}/?project=${projectId}&view=tasks`,
           },
         }).then(res => {
           if (res.success) {

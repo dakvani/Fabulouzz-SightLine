@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const recipients = Array.isArray(to) ? to : [to];
     let finalHtml = rawHtml;
 
-    // If type is reset_password and service role key is available, generate secure recovery link without firing Lovable auth email
+    // If type is reset_password and service role key is available, generate secure recovery link
     if (type === "reset_password" && SUPABASE_URL && SERVICE_ROLE_KEY && recipients.length > 0) {
       try {
         const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -48,6 +48,28 @@ Deno.serve(async (req) => {
         }
       } catch (e) {
         console.warn("Could not generate recovery link via service role:", e);
+      }
+    }
+
+    // If type is invite and service role key is available, generate secure invite link
+    if (type === "invite" && SUPABASE_URL && SERVICE_ROLE_KEY && recipients.length > 0) {
+      try {
+        const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+        const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
+          type: "invite",
+          email: recipients[0],
+          options: {
+            redirectTo: data?.loginUrl || `${Deno.env.get("APP_URL") || "https://sightline.fabulouzz.com"}/onboarding`,
+          },
+        });
+
+        if (!linkErr && linkData?.properties?.action_link) {
+          const actionLink = linkData.properties.action_link;
+          // Inject secure action link into onboarding button
+          finalHtml = finalHtml.replace(/href="[^"]*onboarding[^"]*"/g, `href="${actionLink}"`);
+        }
+      } catch (e) {
+        console.warn("Could not generate invite link via service role:", e);
       }
     }
 

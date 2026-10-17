@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Copyright Certificate — Fabulouzz SightLine</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap');
+
+    :root {
+      --gold-primary: #c5a059;
+      --gold-light: #f5e8c8;
+      --gold-dark: #8c6b2d;
+      --slate-dark: #0f172a;
+      --slate-muted: #475569;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #0b0f19;
+      color: #1e293b;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .certificate-container {
+      background: #ffffff;
+      width: 1000px;
+      max-width: 100%;
+      min-height: 720px;
+      padding: 30px;
+      position: relative;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(197, 160, 89, 0.2);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    /* Double Ornate Border */
+    .outer-border {
+      border: 6px solid var(--gold-dark);
+      padding: 6px;
+      height: 100%;
+      position: relative;
+    }
+
+    .inner-border {
+      border: 2px solid var(--gold-primary);
+      padding: 35px 45px;
+      position: relative;
+      background: radial-gradient(circle at center, #ffffff 0%, #faf8f5 100%);
+    }
+
+    /* Corner Ornaments */
+    .corner {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--gold-dark);
+    }
+    .corner-tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+    .corner-tr { top: 10px; right: 10px; border-left: none; border-bottom: none; }
+    .corner-bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
+    .corner-br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+
+    /* Watermark */
+    .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-25deg);
+      font-family: 'Cinzel', serif;
+      font-size: 80px;
+      font-weight: 900;
+      color: rgba(197, 160, 89, 0.05);
+      text-transform: uppercase;
+      letter-spacing: 12px;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 1;
+    }
+
+    .header-section {
+      text-align: center;
+      margin-bottom: 25px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .reg-badge {
+      display: inline-block;
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 3px;
+      font-weight: 700;
+      color: var(--gold-dark);
+      border-bottom: 1px solid var(--gold-primary);
+      padding-bottom: 4px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    h1.cert-title {
+      font-family: 'Cinzel', serif;
+      font-size: 30px;
+      font-weight: 900;
+      color: var(--slate-dark);
+      letter-spacing: 4px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    h2.cert-subtitle {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      font-style: italic;
+      color: var(--gold-dark);
+      letter-spacing: 1px;
+    }
+
+    .divider-ornament {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin: 18px 0;
+    }
+
+    .divider-line {
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--gold-primary), transparent);
+      flex: 1;
+      max-width: 180px;
+    }
+
+    .divider-diamond {
+      width: 8px;
+      height: 8px;
+      background: var(--gold-primary);
+      transform: rotate(45deg);
+    }
+
+    .cert-body {
+      text-align: center;
+      position: relative;
+      z-index: 2;
+      margin-bottom: 25px;
+    }
+
+    .attestation-text {
+      font-size: 13px;
+      color: var(--slate-muted);
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .work-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--slate-dark);
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .work-subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      color: #334155;
+      margin-bottom: 20px;
+    }
+
+    .claimant-box {
+      background: rgba(245, 232, 200, 0.25);
+      border: 1px dashed var(--gold-primary);
+      border-radius: 4px;
+      padding: 14px 20px;
+      margin: 0 auto 20px;
+      max-width: 680px;
+    }
+
+    .claimant-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gold-dark);
+      margin-bottom: 4px;
+    }
+
+    .claimant-name {
+      font-family: 'Cinzel', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--slate-dark);
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      max-width: 800px;
+      margin: 0 auto 25px;
+      text-align: left;
+    }
+
+    .detail-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 10px 14px;
+    }
+
+    .detail-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #64748b;
+      margin-bottom: 3px;
+    }
+
+    .detail-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: #0f172a;
+      word-break: break-all;
+    }
+
+    .legal-notice {
+      font-size: 11px;
+      line-height: 1.5;
+      color: #64748b;
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: justify;
+    }
+
+    /* Signature & Seal Section */
+    .cert-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      position: relative;
+      z-index: 2;
+    }
+
+    .sig-block {
+      text-align: center;
+      width: 250px;
+    }
+
+    .sig-line {
+      border-bottom: 1.5px solid #0f172a;
+      margin-bottom: 6px;
+      height: 35px;
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 18px;
+      color: #1e3a8a;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .sig-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .sig-title {
+      font-size: 10px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Golden Seal */
+    .seal-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .golden-seal {
+      width: 90px;
+      height: 90px;
+      background: radial-gradient(circle, #f9f0d9 0%, #d4af37 60%, #aa8012 100%);
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(170, 128, 18, 0.4), inset 0 0 0 3px #ffffff, inset 0 0 0 5px #aa8012;
+      position: relative;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .seal-text-top {
+      font-family: 'Cinzel', serif;
+      font-size: 7px;
+      font-weight: 900;
+      color: #453000;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .seal-star {
+      font-size: 14px;
+      color: #453000;
+      margin: 2px 0;
+    }
+
+    .seal-text-bot {
+      font-family: 'Cinzel', serif;
+      font-size: 7px;
+      font-weight: 900;
+      color: #453000;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+
+    .print-btn-bar {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+    }
+
+    .print-btn {
+      background: var(--gold-primary);
+      color: #0f172a;
+      border: none;
+      padding: 10px 20px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+    }
+
+    .print-btn:hover {
+      background: #dfb76c;
+      transform: translateY(-1px);
+    }
+
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+      }
+      .certificate-container {
+        box-shadow: none;
+        width: 100%;
+        max-width: 100%;
+        min-height: auto;
+      }
+      .print-btn-bar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="print-btn-bar">
+    <button class="print-btn" onclick="window.print()">Print / Save as PDF Certificate</button>
+  </div>
+
+  <div class="certificate-container">
+    <div class="outer-border">
+      <div class="inner-border">
+        <!-- Corner Ornaments -->
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-tr"></div>
+        <div class="corner corner-bl"></div>
+        <div class="corner corner-br"></div>
+
+        <!-- Watermark -->
+        <div class="watermark">Copyright Registered</div>
+
+        <!-- Header -->
+        <div class="header-section">
+          <div class="reg-badge">Registration Certificate No. TX-9-482-108-SL-2026</div>
+          <h1 class="cert-title">Certificate of Copyright Registration</h1>
+          <h2 class="cert-subtitle">International Intellectual Property & Software Proprietary Title</h2>
+          <div class="divider-ornament">
+            <div class="divider-line"></div>
+            <div class="divider-diamond"></div>
+            <div class="divider-line"></div>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="cert-body">
+          <p class="attestation-text">This official certificate attests that proprietary copyright ownership has been recorded for the work titled:</p>
+          <div class="work-title">Fabulouzz SightLine</div>
+          <div class="work-subtitle">Command Center, Real-Time Project Monitoring & White-Label Enterprise SaaS</div>
+
+          <div class="claimant-box">
+            <div class="claimant-label">Registered Copyright Claimant & Author</div>
+            <div class="claimant-name">Fabulouzz Technologies / DVHQ Innovations</div>
+          </div>
+
+          <div class="details-grid">
+            <div class="detail-card">
+              <div class="detail-label">Classification</div>
+              <div class="detail-val">Commercial Enterprise Software</div>
+            </div>
+            <div class="detail-card">
+              <div class="detail-label">Effective Date</div>
+              <div class="detail-val">October 18, 2026</div>
+            </div>
+            <div class="detail-card">
+              <div class="detail-label">International Registry</div>
+              <div class="detail-val">Berne Convention & WCT</div>
+            </div>
+            <div class="detail-card">
+              <div class="detail-label">Repository Canonical Ref</div>
+              <div class="detail-val">DVHQ-REPO/Fabulouzz-SightLine</div>
+            </div>
+            <div class="detail-card">
+              <div class="detail-label">Privilege Architecture</div>
+              <div class="detail-val">3-Tier RBAC & RLS Defense</div>
+            </div>
+            <div class="detail-card">
+              <div class="detail-label">Cryptographic Hash</div>
+              <div class="detail-val">SHA-256: 7f83b1657ff1fc53...</div>
+            </div>
+          </div>
+
+          <p class="legal-notice">
+            <strong>Statutory Declaration:</strong> All rights, title, and interest in and to the source code, database architecture, graphical interfaces, workflows, and algorithms of Fabulouzz SightLine remain the exclusive property of Fabulouzz Technologies. Any unauthorized copying, decompilation, redistribution, commercial hosting, or preparation of derivative works without prior written consent is strictly prohibited and subject to legal prosecution under international copyright law.
+          </p>
+        </div>
+
+        <!-- Footer / Signatures -->
+        <div class="cert-footer">
+          <div class="sig-block">
+            <div class="sig-line">D. K. Vani</div>
+            <div class="sig-name">Chief Technology Officer</div>
+            <div class="sig-title">Fabulouzz Technologies / DVHQ</div>
+          </div>
+
+          <div class="seal-container">
+            <div class="golden-seal">
+              <span class="seal-text-top">Official Seal</span>
+              <span class="seal-star">★ ★ ★</span>
+              <span class="seal-text-bot">Intellectual Property</span>
+            </div>
+          </div>
+
+          <div class="sig-block">
+            <div class="sig-line">Legal Directorate</div>
+            <div class="sig-name">Head of Legal & IP Compliance</div>
+            <div class="sig-title">Global Governance Division</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

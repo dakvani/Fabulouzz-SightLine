@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -16,6 +16,7 @@ import {
   X,
   Building2,
   Crown,
+  Briefcase,
   Sliders,
   SlidersHorizontal,
 } from "lucide-react";
@@ -25,6 +26,7 @@ import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 import { useBranding } from "@/contexts/BrandingContext";
 import { useProjectData } from "@/contexts/ProjectDataContext";
+import { ROLE_DEFINITIONS } from "@/lib/auth/roles";
 import AuthModal from "./AuthModal";
 import ExportReport from "./ExportReport";
 import ThemeSelector from "./ThemeSelector";
@@ -68,42 +70,40 @@ const AppHeader = ({
 }: AppHeaderProps) => {
   const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { branding, isPremium } = useBranding();
-  const { canEditProject } = useProjectData();
+  const { canEditProject, userRole, isSuperAdmin, isAdmin: ctxIsAdmin } = useProjectData();
   const navigate = useNavigate();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) checkAdmin(session.user.id);
-      else setIsAdmin(false);
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) checkAdmin(session.user.id);
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkAdmin = async (userId: string) => {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).single();
-    setIsAdmin(data?.role === "admin");
-  };
+  const isAdministrative = isSuperAdmin || ctxIsAdmin;
 
-  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setIsAdmin(false); };
+  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); };
 
   const { hidden, scrolled } = useScrollDirection();
   const { theme, setTheme } = useTheme();
 
-  const views = [
-    { id: "dashboard" as const, label: "Dashboard", icon: BarChart3 },
-    { id: "timeline" as const, label: "Timeline", icon: Eye },
-    { id: "tasks" as const, label: "Tasks", icon: List },
-    { id: "kanban" as const, label: "Kanban", icon: LayoutGrid },
-    { id: "details" as const, label: "Project Details", icon: Sliders },
-  ];
+  const views = useMemo(() => {
+    const base = [
+      { id: "dashboard" as const, label: "Dashboard", icon: BarChart3 },
+      { id: "timeline" as const, label: "Timeline", icon: Eye },
+      { id: "tasks" as const, label: "Tasks", icon: List },
+      { id: "kanban" as const, label: "Kanban", icon: LayoutGrid },
+    ];
+    if (canEditProject) {
+      base.push({ id: "details" as const, label: "Project Details", icon: Sliders });
+    }
+    return base;
+  }, [canEditProject]);
 
   return (
     <>

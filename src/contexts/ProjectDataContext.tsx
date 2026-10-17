@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { tasks as staticTasks, projectInfo as staticProjectInfo, type ProjectTask, type TaskStatus, type ProjectInfo } from "@/data/projectData";
+import { UserRole, normalizeRole } from "@/lib/auth/roles";
+import { resolveUserAuth, checkAccountActiveOrLogout } from "@/lib/auth/session";
 
 interface ProjectDataContextType {
   tasks: ProjectTask[];
@@ -11,7 +13,12 @@ interface ProjectDataContextType {
   setSelectedProjectId: (id: string | null) => void;
   selectedProjectId: string | null;
   canEditProject: boolean;
-  userRole: "admin" | "pm" | "client" | null;
+  userRole: UserRole | null;
+  isSuperAdmin: boolean;
+  isAdmin: boolean;
+  isProjectManager: boolean;
+  isClient: boolean;
+  assignedProjectIds: string[];
   updateProjectContacts: (contacts: {
     clientContactPerson?: string;
     clientContactPhone?: string;
@@ -30,6 +37,11 @@ const ProjectDataContext = createContext<ProjectDataContextType>({
   selectedProjectId: null,
   canEditProject: false,
   userRole: null,
+  isSuperAdmin: false,
+  isAdmin: false,
+  isProjectManager: false,
+  isClient: false,
+  assignedProjectIds: [],
   updateProjectContacts: () => {},
 });
 
@@ -40,9 +52,13 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
   const [projectInfo, setProjectInfo] = useState<ProjectInfo>(staticProjectInfo);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [canEditProject, setCanEditProject] = useState(false);
-  const [userRole, setUserRole] = useState<"admin" | "pm" | "client" | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [assignedProjectIds, setAssignedProjectIds] = useState<string[]>([]);
   const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlProj = urlParams.get("project") || urlParams.get("projectId");
+      if (urlProj) return urlProj;
       return localStorage.getItem("sightline_selected_project_id");
     }
     return null;
@@ -59,6 +75,15 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlProj = urlParams.get("project") || urlParams.get("projectId");
+    if (urlProj && urlProj !== selectedProjectId) {
+      setSelectedProjectId(urlProj);
+    }
+  }, [selectedProjectId, setSelectedProjectId]);
 
   const updateProjectContacts = useCallback(
     (contacts: {
@@ -166,11 +191,13 @@ const withTimeout = <T,>(promise: Promise<T> | PromiseLike<T>, ms = 6000): Promi
       setLoading(false);
       setCanEditProject(false);
       setUserRole(null);
+      setAssignedProjectIds([]);
       return;
     }
 
     try {
       setLoading(true);
+
       const [projectRes, sessionRes] = await withTimeout(
         Promise.all([
           supabase
@@ -186,9 +213,65 @@ const withTimeout = <T,>(promise: Promise<T> | PromiseLike<T>, ms = 6000): Promi
       const project = projectRes?.data;
       const user = sessionRes?.data?.session?.user;
 
-      if (project) {
+      if (!project) {
+        setSelectedProjectId(null);
+        setCanEditProject(false);
+        setUserRole(null);
+        setAssignedProjectIds([]);
+        setLoading(false);
+        return;
+      }
+
+      // Check user authentication & authorization
+      if (user) {
+        const isActive = await checkAccountActiveOrLogout(user.id);
+        if (!isActive) {
+          setSelectedProjectId(null);
+          setCanEditProject(false);
+          setUserRole(null);
+          setAssignedProjectIds([]);
+          setLoading(false);
+          return;
+        }
+
+        const authDetails = await resolveUserAuth(user.id);
+        const resolvedRole = authDetails?.role || "client";
+        const assignedIds = authDetails?.assignedProjectIds || [];
+        setUserRole(resolvedRole);
+        setAssignedProjectIds(assignedIds);
+
+        // Project-level access authorization check
+        const isSuper = resolvedRole === "super_admin";
+        const isAdm = resolvedRole === "admin";
+        const isPmUser = resolvedRole === "pm";
+        const isClientUser = resolvedRole === "client";
+
+        // Check if user is assigned to this project
+        const isAssigned = assignedIds.includes(project.id);
+
+        if (!isSuper && !isAdm && !isAssigned) {
+          console.warn(`[AccessControl] User ${user.email} (${resolvedRole}) is unauthorized to access project ${project.id}. Access revoked.`);
+          setSelectedProjectId(null);
+          setCanEditProject(false);
+          setLoading(false);
+          return;
+        }
+
+        // Apply authorized project data
         applyProject(project);
 
+        // Client accounts are STRICTLY read-only
+        if (isClientUser) {
+          setCanEditProject(false);
+        } else if (isSuper || isAdm) {
+          setCanEditProject(true);
+        } else if (isPmUser && isAssigned) {
+          setCanEditProject(true);
+        } else {
+          setCanEditProject(false);
+        }
+
+        // Load project tasks
         const tasksResult = (await withTimeout(
           supabase
             .from("tasks")
@@ -204,40 +287,8 @@ const withTimeout = <T,>(promise: Promise<T> | PromiseLike<T>, ms = 6000): Promi
         } else {
           setTasks([]);
         }
-
-        // Verify access control for project editing
-        if (user) {
-          const [roleRes, memberRes] = await withTimeout(
-            Promise.all([
-              supabase.from("user_roles").select("role").eq("user_id", user.id),
-              supabase
-                .from("project_members")
-                .select("id")
-                .eq("project_id", project.id)
-                .eq("user_id", user.id)
-                .maybeSingle(),
-            ]),
-            6000
-          ).catch(() => [{ data: [] }, { data: null }] as any);
-
-          const roles = (roleRes?.data || []).map((r: any) => r.role);
-          const isAdmin = roles.includes("admin");
-          const isPm = roles.includes("pm");
-          const isMember = !!memberRes?.data;
-          const isCreator = project.created_by === user.id;
-
-          const determinedRole = isAdmin ? "admin" : isPm ? "pm" : "client";
-          setUserRole(determinedRole);
-
-          // Super Admin can edit all projects; PM, Creator, or assigned Member has edit permissions
-          const hasEditPermission = isAdmin || isPm || isMember || isCreator;
-          setCanEditProject(hasEditPermission);
-        } else {
-          setCanEditProject(false);
-          setUserRole(null);
-        }
       } else {
-        // Project ID was invalid, not found, or deleted
+        // Unauthenticated access not permitted for sensitive project command deck
         setSelectedProjectId(null);
         setCanEditProject(false);
         setUserRole(null);
@@ -245,7 +296,6 @@ const withTimeout = <T,>(promise: Promise<T> | PromiseLike<T>, ms = 6000): Promi
     } catch (err) {
       console.warn("Failed or delayed fetching project data from Supabase:", err);
       setCanEditProject(false);
-      // Ensure we don't wipe out existing tasks/projectInfo on transient network timeout
       setProjectInfo((prev) => (prev.title ? prev : staticProjectInfo));
     } finally {
       setLoading(false);
@@ -304,6 +354,11 @@ const withTimeout = <T,>(promise: Promise<T> | PromiseLike<T>, ms = 6000): Promi
     };
   }, [projectId, applyProject, applyTasks]);
 
+  const isSuperAdmin = userRole === "super_admin";
+  const isAdmin = userRole === "admin";
+  const isProjectManager = userRole === "pm";
+  const isClient = userRole === "client";
+
   return (
     <ProjectDataContext.Provider value={{
       tasks,
@@ -315,6 +370,11 @@ const withTimeout = <T,>(promise: Promise<T> | PromiseLike<T>, ms = 6000): Promi
       selectedProjectId,
       canEditProject,
       userRole,
+      isSuperAdmin,
+      isAdmin,
+      isProjectManager,
+      isClient,
+      assignedProjectIds,
       updateProjectContacts,
     }}>
       {children}

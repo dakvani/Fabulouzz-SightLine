@@ -111,7 +111,7 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const roles = (roleRes.data || []).map((r: any) => r.role);
-      const adminRole = roles.includes("admin");
+      const adminRole = roles.includes("admin") || roles.includes("super_admin");
       setIsAdmin(adminRole);
 
       // Admin user is automatically granted Enterprise Tier with all premium options

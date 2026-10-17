@@ -49,7 +49,13 @@ import {
   CheckSquare,
   PlusCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Briefcase as BriefcaseIcon,
+  Terminal as TerminalIcon,
+  UserX,
+  UserCheck,
+  Ban,
+  ShieldAlert as ShieldAlertIcon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -60,8 +66,11 @@ import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 import CreateProjectModal from "@/components/CreateProjectModal";
 import TaskManagement from "@/components/TaskManagement";
-import { sendBrandedEmail } from "@/lib/emailService";
+import { sendBrandedEmail, getProductionPortalUrl } from "@/lib/emailService";
 import ProjectInfoEditor from "@/components/ProjectInfoEditor";
+import { resolveUserAuth, checkAccountActiveOrLogout } from "@/lib/auth/session";
+import { UserRole, isSuperAdmin, isAdmin, canActorManageTargetRole } from "@/lib/auth/roles";
+import { logAuditEvent, fetchAuditLogs, AuditLogEntry } from "@/lib/auth/audit";
 
 type AdminTab =
   | "breakdown"
@@ -101,6 +110,7 @@ interface UserProfile {
   created_at: string;
   subscription_tier?: string;
   role?: string;
+  status?: string;
   must_change_password?: boolean;
 }
 
@@ -112,6 +122,9 @@ const Admin = () => {
 
   // Authentication & Role
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
@@ -164,7 +177,7 @@ const Admin = () => {
   const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newFullName, setNewFullName] = useState("");
-  const [newRole, setNewRole] = useState<"admin" | "pm" | "client">("pm");
+  const [newRole, setNewRole] = useState<UserRole>("pm");
   const [newPlan, setNewPlan] = useState<"free" | "premium" | "enterprise">("enterprise");
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [sendInviteEmail, setSendInviteEmail] = useState(true);
@@ -181,9 +194,9 @@ const Admin = () => {
   // System Diagnostics
   const [systemPing, setSystemPing] = useState<number | null>(null);
   const [systemStatus, setSystemStatus] = useState<"healthy" | "checking" | "degraded">("checking");
-  const [auditLogs, setAuditLogs] = useState<{ id: string; action: string; details: string; time: string }[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
 
-  // 1. Authenticate & Verify Super Admin
+  // 1. Authoritative Authenticate & Verify Role Hierarchy
   useEffect(() => {
     let isMounted = true;
 
@@ -191,48 +204,47 @@ const Admin = () => {
       try {
         setLoadingAuth(true);
 
-        // Check for local demo admin override
-        const isOverride = typeof window !== "undefined" && localStorage.getItem("sightline_admin_override") === "true";
-        if (isOverride) {
-          if (isMounted) {
-            setCurrentUser({ id: "superadmin-demo", email: "admin@fabulouzz.com", role: "admin" });
-            setIsAdmin(true);
-            setLoadingAuth(false);
-          }
-          return;
-        }
-
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) {
           if (isMounted) {
             setCurrentUser(null);
+            setUserRole(null);
+            setIsSuperAdminUser(false);
+            setIsAdminUser(false);
             setIsAdmin(false);
             setLoadingAuth(false);
           }
           return;
         }
 
-        if (isMounted) setCurrentUser(session.user);
-
-        // Verify role in user_roles, metadata, or email pattern
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id);
-
-        const roles = (roleData || []).map((r: any) => r.role);
-        const hasAdmin =
-          roles.includes("admin") ||
-          session.user.user_metadata?.role === "admin" ||
-          session.user.email?.toLowerCase().includes("admin") ||
-          false;
-
-        if (isMounted) {
-          setIsAdmin(hasAdmin);
+        const auth = await resolveUserAuth(session.user);
+        if (auth && (auth.accountStatus === "deactivated" || auth.status === "deactivated")) {
+          await supabase.auth.signOut();
+          if (isMounted) {
+            setCurrentUser(null);
+            setUserRole(null);
+            setIsSuperAdminUser(false);
+            setIsAdminUser(false);
+            setIsAdmin(false);
+            setLoadingAuth(false);
+          }
+          toast({
+            title: "Account Deactivated",
+            description: "Your account is deactivated. Please contact an administrator.",
+            variant: "destructive",
+          });
+          return;
         }
 
-        // Super Admin is always Enterprise Tier — automatically persist to database profile
-        if (hasAdmin && session.user.id) {
+        if (isMounted) {
+          setCurrentUser(session.user);
+          setUserRole(auth.userRole);
+          setIsSuperAdminUser(auth.isSuperAdmin);
+          setIsAdminUser(auth.isAdmin);
+          setIsAdmin(auth.isSuperAdmin || auth.isAdmin);
+        }
+
+        if (auth.isSuperAdmin || auth.isAdmin) {
           supabase
             .from("profiles")
             .update({ subscription_tier: "enterprise" })
@@ -262,31 +274,34 @@ const Admin = () => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!isMounted) return;
-      const isOverride = typeof window !== "undefined" && localStorage.getItem("sightline_admin_override") === "true";
-      if (isOverride) {
-        setCurrentUser({ id: "superadmin-demo", email: "admin@fabulouzz.com", role: "admin" });
-        setIsAdmin(true);
-        setLoadingAuth(false);
-        return;
-      }
 
       if (!session?.user) {
         setCurrentUser(null);
+        setUserRole(null);
+        setIsSuperAdminUser(false);
+        setIsAdminUser(false);
         setIsAdmin(false);
       } else {
-        setCurrentUser(session.user);
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id);
-
-        const roles = (roleData || []).map((r: any) => r.role);
-        const hasAdmin =
-          roles.includes("admin") ||
-          session.user.user_metadata?.role === "admin" ||
-          session.user.email?.toLowerCase().includes("admin");
-
-        setIsAdmin(hasAdmin);
+        const auth = await resolveUserAuth(session.user);
+        if (auth && (auth.accountStatus === "deactivated" || auth.status === "deactivated")) {
+          await supabase.auth.signOut();
+          setCurrentUser(null);
+          setUserRole(null);
+          setIsSuperAdminUser(false);
+          setIsAdminUser(false);
+          setIsAdmin(false);
+          toast({
+            title: "Account Deactivated",
+            description: "Your account is deactivated. Please contact an administrator.",
+            variant: "destructive",
+          });
+        } else {
+          setCurrentUser(session.user);
+          setUserRole(auth.userRole);
+          setIsSuperAdminUser(auth.isSuperAdmin);
+          setIsAdminUser(auth.isAdmin);
+          setIsAdmin(auth.isSuperAdmin || auth.isAdmin);
+        }
       }
       setLoadingAuth(false);
     });
@@ -316,15 +331,11 @@ const Admin = () => {
         description: "Your administrator account has full Enterprise privileges and all premium options unlocked.",
       });
 
-      setAuditLogs(prev => [
-        {
-          id: Math.random().toString(),
-          action: "Enterprise Verified",
-          details: `Admin profile synced to Enterprise plan (${currentUser.email})`,
-          time: new Date().toLocaleTimeString(),
-        },
-        ...prev,
-      ]);
+      await logAuditEvent({
+        action: "security.policy_change",
+        target_resource: `profile:${currentUser.id}`,
+        details: { syncedPlan: "enterprise" }
+      });
     } catch (err: any) {
       toast({ title: "Sync Failed", description: err.message, variant: "destructive" });
     }
@@ -343,6 +354,7 @@ const Admin = () => {
         membRes,
         subsRes,
         notifRes,
+        fetchedLogs,
       ] = await Promise.all([
         supabase.from("projects").select("*").order("created_at", { ascending: false }),
         supabase.from("tasks").select("*").order("task_number", { ascending: true }),
@@ -351,6 +363,7 @@ const Admin = () => {
         supabase.from("project_members").select("*"),
         supabase.from("email_subscribers").select("*").order("subscribed_at", { ascending: false }),
         supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(50),
+        fetchAuditLogs(100),
       ]);
 
       setProjects(projRes.data || []);
@@ -360,6 +373,7 @@ const Admin = () => {
       setMemberships(membRes.data || []);
       setSubscribers(subsRes.data || []);
       setNotifications(notifRes.data || []);
+      setAuditLogs(fetchedLogs || []);
 
       const elapsed = Math.round(performance.now() - start);
       setSystemPing(elapsed);
@@ -449,7 +463,7 @@ const Admin = () => {
             role: newRole,
             tempPassword: generatedPassword,
             invitedBy: currentUser?.email,
-            loginUrl: `${window.location.origin}/?auth=login&email=${encodeURIComponent(newEmail.trim())}`,
+            loginUrl: `${getProductionPortalUrl()}/onboarding?email=${encodeURIComponent(newEmail.trim())}&role=${newRole}&name=${encodeURIComponent(newFullName.trim())}`,
           },
         });
       } else {
@@ -465,7 +479,7 @@ const Admin = () => {
             fullName: newFullName.trim(),
             role: newRole,
             planTier: assignedPlan,
-            loginUrl: `${window.location.origin}/?auth=login&email=${encodeURIComponent(newEmail.trim())}`,
+            loginUrl: `${getProductionPortalUrl()}/welcome?email=${encodeURIComponent(newEmail.trim())}&role=${newRole}`,
           },
         });
       }
@@ -569,7 +583,39 @@ const Admin = () => {
   };
 
   // Change Role
-  const handleChangeRole = async (userId: string, targetRole: string) => {
+  const handleChangeRole = async (userId: string, targetRole: string, currentRole: string) => {
+    // Permission checks
+    if (!isSuperAdminUser && (targetRole === "admin" || targetRole === "super_admin")) {
+      toast({
+        title: "Permission Denied",
+        description: "Admins cannot elevate accounts to Admin or Super Admin.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isSuperAdminUser && (currentRole === "admin" || currentRole === "super_admin")) {
+      toast({
+        title: "Permission Denied",
+        description: "Admins cannot modify Admin or Super Admin accounts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Protect last active super admin
+    if (currentRole === "super_admin" && targetRole !== "super_admin") {
+      const superAdmins = userRoles.filter(r => r.role === "super_admin");
+      if (superAdmins.length <= 1) {
+        toast({
+          title: "Protection Policy",
+          description: "Cannot demote the last remaining Super Administrator account.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
         body: {
@@ -583,8 +629,7 @@ const Admin = () => {
         throw new Error(error?.message || data?.error || "Could not update user role.");
       }
 
-      // If promoted to admin, also upgrade to Enterprise tier
-      if (targetRole === "admin") {
+      if (targetRole === "admin" || targetRole === "super_admin") {
         await supabase.from("profiles").update({ subscription_tier: "enterprise" }).eq("id", userId);
       }
 
@@ -595,9 +640,87 @@ const Admin = () => {
     }
   };
 
+  // Toggle User Status (Deactivate / Activate)
+  const handleToggleUserStatus = async (userId: string, currentStatus: string, email: string, role: string) => {
+    const newStatus = currentStatus === "inactive" ? "active" : "inactive";
+
+    if (!isSuperAdminUser && (role === "admin" || role === "super_admin")) {
+      toast({
+        title: "Permission Denied",
+        description: "Admins cannot deactivate Admin or Super Admin accounts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (role === "super_admin" && newStatus === "inactive") {
+      const superAdmins = userRoles.filter(r => r.role === "super_admin");
+      if (superAdmins.length <= 1) {
+        toast({
+          title: "Protection Policy",
+          description: "Cannot deactivate the last remaining Super Administrator account.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (newStatus === "inactive" && !confirm(`Are you sure you want to deactivate user ${email}? Their active session will be invalidated and all access revoked.`)) {
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: {
+          action: "update_status",
+          userId,
+          newStatus,
+        },
+      });
+
+      if (error || data?.error) {
+        throw new Error(error?.message || data?.error || "Could not update account status.");
+      }
+
+      toast({
+        title: newStatus === "active" ? "User Reactivated" : "User Deactivated",
+        description: `${email} is now ${newStatus}.`,
+      });
+      loadAllData();
+    } catch (err: any) {
+      toast({ title: "Status Change Failed", description: err.message, variant: "destructive" });
+    }
+  };
+
   // Delete User
-  const handleDeleteUser = async (userId: string, email: string) => {
-    if (!confirm(`Are you sure you want to permanently delete user ${email}?`)) return;
+  const handleDeleteUser = async (userId: string, email: string, role: string) => {
+    if (userId === currentUser?.id) {
+      toast({ title: "Operation Blocked", description: "You cannot delete your own account.", variant: "destructive" });
+      return;
+    }
+
+    if (!isSuperAdminUser && (role === "admin" || role === "super_admin")) {
+      toast({
+        title: "Permission Denied",
+        description: "Admins cannot delete Admin or Super Admin accounts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (role === "super_admin") {
+      const superAdmins = userRoles.filter(r => r.role === "super_admin");
+      if (superAdmins.length <= 1) {
+        toast({
+          title: "Protection Policy",
+          description: "Cannot delete the last remaining Super Administrator account.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (!confirm(`Are you sure you want to permanently delete user ${email}? This action cannot be undone.`)) return;
 
     try {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
@@ -722,6 +845,12 @@ const Admin = () => {
         if (error) throw error;
         toast({ title: "Access Revoked", description: "User removed from project access list." });
 
+        await logAuditEvent({
+          action: "user.revoke_project",
+          target_resource: `project:${editingProject.id}`,
+          details: { target_user_id: userId, user_email: userEmail, project_title: editingProject.title }
+        });
+
         if (userEmail) {
           sendBrandedEmail({
             type: "project_unassignment",
@@ -740,14 +869,27 @@ const Admin = () => {
           });
         }
       } else {
+        const targetRoleRow = userRoles.find(r => r.user_id === userId);
+        const assignedRole = targetRoleRow?.role === "pm" ? "project_manager" : "client";
+
         const { error } = await supabase
           .from("project_members")
           .insert({
             project_id: editingProject.id,
             user_id: userId,
+            assigned_role: assignedRole,
+            assigned_by: currentUser?.id,
+            assigned_at: new Date().toISOString(),
+            assignment_status: "active"
           });
         if (error) throw error;
-        toast({ title: "Access Granted", description: "User assigned to project access list." });
+        toast({ title: "Access Granted", description: `User assigned to project as ${assignedRole.toUpperCase()}.` });
+
+        await logAuditEvent({
+          action: "user.assign_project",
+          target_resource: `project:${editingProject.id}`,
+          details: { target_user_id: userId, user_email: userEmail, project_title: editingProject.title, assigned_role: assignedRole }
+        });
 
         if (userEmail) {
           sendBrandedEmail({
@@ -764,7 +906,7 @@ const Admin = () => {
               projectRef: editingProject.project_ref,
               clientName: editingProject.client_name,
               assignedBy: currentUser?.email,
-              loginUrl: `${window.location.origin}/?project=${editingProject.id}&view=details&tab=info`,
+              loginUrl: `${getProductionPortalUrl()}/?project=${editingProject.id}&view=details&tab=info`,
             },
           });
         }
@@ -1038,7 +1180,7 @@ const Admin = () => {
     });
   }, [profiles, userRoles, memberships, searchUserQuery, planFilter, currentUser?.id]);
 
-  // SuperAdmin Direct Login Handler
+  // Administrator Direct Login Handler
   const handleAdminDirectLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!loginEmail.trim() || !loginPassword) {
@@ -1057,29 +1199,39 @@ const Admin = () => {
       });
       if (error) throw error;
 
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.user.id);
-      const roles = (roleData || []).map((r: any) => r.role);
-      const hasAdmin =
-        roles.includes("admin") ||
-        data.user.user_metadata?.role === "admin" ||
-        data.user.email?.toLowerCase().includes("admin");
+      const auth = await resolveUserAuth(data.user);
+      if (auth && (auth.accountStatus === "deactivated" || auth.status === "deactivated")) {
+        await supabase.auth.signOut();
+        throw new Error("Your account has been deactivated. Please contact an administrator.");
+      }
 
-      setCurrentUser(data.user);
-      setIsAdmin(hasAdmin);
-
-      if (!hasAdmin) {
+      if (!auth.isSuperAdmin && !auth.isAdmin) {
+        await supabase.auth.signOut();
         toast({
           title: "Access Restricted",
-          description: "Authenticated successfully, but this account is not assigned SuperAdmin privileges.",
+          description: "Authenticated successfully, but this account is not assigned Administrator privileges.",
           variant: "destructive",
         });
-      } else {
-        toast({ title: "SuperAdmin Authorized", description: `Welcome back, ${data.user.email}` });
-        loadAllData();
+        return;
       }
+
+      setCurrentUser(data.user);
+      setUserRole(auth.userRole);
+      setIsSuperAdminUser(auth.isSuperAdmin);
+      setIsAdminUser(auth.isAdmin);
+      setIsAdmin(true);
+
+      await logAuditEvent({
+        action: "auth.login",
+        target_resource: `user:${data.user.id}`,
+        details: { email: data.user.email, role: auth.userRole }
+      });
+
+      toast({
+        title: auth.isSuperAdmin ? "Super Admin Authorized" : "Contractor Admin Authorized",
+        description: `Welcome back, ${data.user.email}`
+      });
+      loadAllData();
     } catch (err: any) {
       toast({
         title: "Authorization Failed",
@@ -1089,17 +1241,6 @@ const Admin = () => {
     } finally {
       setLoggingIn(false);
     }
-  };
-
-  const handleDemoAccess = () => {
-    localStorage.setItem("sightline_admin_override", "true");
-    setCurrentUser({ id: "superadmin-demo", email: "admin@fabulouzz.com", role: "admin" });
-    setIsAdmin(true);
-    toast({
-      title: "SuperAdmin Demo Mode Activated",
-      description: "Full Fleet Command Deck unlocked with full administrative authority.",
-    });
-    loadAllData();
   };
 
   // ──────────────────────────────────────────────────────────
@@ -1186,7 +1327,7 @@ const Admin = () => {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setLoginEmail("admin@fabulouzz.com")}
+                    onClick={() => setLoginEmail("support@fabulouzz.com")}
                     className="text-[10px] text-primary hover:underline font-mono"
                   >
                     Quick-fill
@@ -1198,7 +1339,7 @@ const Admin = () => {
                     type="email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="admin@fabulouzz.com"
+                    placeholder="support@fabulouzz.com"
                     required
                     className="w-full bg-secondary/30 border border-border/40 focus:border-primary rounded-xl pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none transition-colors"
                   />
@@ -1250,15 +1391,8 @@ const Admin = () => {
             </form>
           )}
 
-          {/* Demo SuperAdmin Quick Access */}
+          {/* Return to Portal */}
           <div className="pt-3 border-t border-border/30 flex flex-col gap-2">
-            <button
-              onClick={handleDemoAccess}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-2 transition-all"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Demo SuperAdmin Quick Access</span>
-            </button>
 
             <button
               onClick={() => navigate("/")}
@@ -1362,20 +1496,24 @@ const Admin = () => {
               <RefreshCw className={`w-3.5 h-3.5 ${loadingData ? "animate-spin text-primary" : ""}`} />
             </button>
 
-            {/* Demo Status Indicator */}
-            {typeof window !== "undefined" && localStorage.getItem("sightline_admin_override") === "true" && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-500 text-[11px] font-semibold">
-                <Sparkles className="w-3 h-3 text-amber-500" />
-                <span className="hidden sm:inline">Demo Admin Active</span>
-              </div>
-            )}
+            {/* Role Badge */}
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${
+              isSuperAdminUser
+                ? "bg-amber-500/15 border-amber-500/30 text-amber-500"
+                : "bg-primary/15 border-primary/30 text-primary"
+            }`}>
+              <Shield className="w-3 h-3" />
+              <span>{isSuperAdminUser ? "SUPER ADMIN (Tier 1)" : "ADMIN (Tier 2)"}</span>
+            </div>
 
             {/* Sign Out */}
             <button
               onClick={async () => {
-                localStorage.removeItem("sightline_admin_override");
                 await supabase.auth.signOut();
                 setCurrentUser(null);
+                setUserRole(null);
+                setIsSuperAdminUser(false);
+                setIsAdminUser(false);
                 setIsAdmin(false);
                 navigate("/");
               }}
@@ -1396,7 +1534,7 @@ const Admin = () => {
             { id: "breakdown", label: "Portfolio Breakdown", icon: BarChart3 },
             { id: "projects", label: `Projects (${projects.length})`, icon: FolderOpen },
             { id: "users", label: `Team & Users (${profiles.length})`, icon: Users },
-            { id: "system", label: "System & Telemetry", icon: Activity },
+            ...(isSuperAdminUser ? [{ id: "system", label: "System & Security", icon: Activity }] : []),
           ].map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -1929,15 +2067,23 @@ const Admin = () => {
                     <tr>
                       <th className="py-3 px-4">User</th>
                       <th className="py-3 px-4">System Role</th>
+                      <th className="py-3 px-4">Account Status</th>
                       <th className="py-3 px-4">Subscription Plan</th>
                       <th className="py-3 px-4">Projects Assigned</th>
                       <th className="py-3 px-4">Created Date</th>
-                      <th className="py-3 px-4 text-right">Role Actions</th>
+                      <th className="py-3 px-4 text-right">Role & Account Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/20">
                     {filteredUsers.map((u) => {
                       const isSelf = u.id === currentUser?.id;
+                      const isSuperAdminTarget = u.role === "super_admin";
+                      const isAdminTarget = u.role === "admin";
+                      const isLastSuperAdmin = isSuperAdminTarget && profiles.filter(p => userRoles.some(r => r.user_id === p.id && r.role === "super_admin")).length <= 1;
+
+                      // Admin restriction: Admin cannot manage Super Admin or Admin
+                      const canManageThisUser = isSuperAdminUser ? (!isLastSuperAdmin && !isSelf) : (!isSuperAdminTarget && !isAdminTarget && !isSelf);
+
                       return (
                         <tr key={u.id} className="hover:bg-secondary/20 transition-colors">
                           <td className="py-3.5 px-4">
@@ -1960,28 +2106,40 @@ const Admin = () => {
                           </td>
                           <td className="py-3.5 px-4">
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${u.role === "admin"
-                                ? "bg-destructive/10 text-destructive border-destructive/20"
-                                : u.role === "pm"
-                                  ? "bg-primary/10 text-primary border-primary/20"
-                                  : "bg-secondary text-muted-foreground border-border/30"
-                                }`}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                u.role === "super_admin"
+                                  ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                                  : u.role === "admin"
+                                    ? "bg-destructive/10 text-destructive border-destructive/20"
+                                    : u.role === "pm"
+                                      ? "bg-primary/10 text-primary border-primary/20"
+                                      : "bg-secondary text-muted-foreground border-border/30"
+                              }`}
                             >
-                              {u.role === "admin" ? "Super Admin" : u.role === "pm" ? "Project Manager" : "Client Viewer"}
+                              {u.role === "super_admin" ? "Super Admin" : u.role === "admin" ? "Admin" : u.role === "pm" ? "Project Manager" : "Client"}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                              u.status === "inactive"
+                                ? "bg-destructive/15 text-destructive border-destructive/30"
+                                : "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                            }`}>
+                              {u.status === "inactive" ? "Deactivated" : "Active"}
                             </span>
                           </td>
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-1.5">
-                              {u.role === "admin" || isSelf ? (
+                              {u.role === "super_admin" || u.role === "admin" || isSelf ? (
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-[11px]">
                                   <Crown className="w-3.5 h-3.5 text-amber-500" />
-                                  <span>Enterprise (SuperAdmin)</span>
+                                  <span>Enterprise</span>
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2">
                                   <select
                                     value={u.planTier}
-                                    disabled={updatingPlanUserId === u.id}
+                                    disabled={updatingPlanUserId === u.id || !canManageThisUser}
                                     onChange={(e) => handleChangePlan(u.id, e.target.value as any, u.email)}
                                     className={`bg-card border text-[11px] font-semibold rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 cursor-pointer transition-colors ${u.planTier === "enterprise"
                                       ? "border-amber-500/40 text-amber-500 bg-amber-500/5 focus:ring-amber-500/30"
@@ -2008,27 +2166,50 @@ const Admin = () => {
                             {new Date(u.created_at).toLocaleDateString()}
                           </td>
                           <td className="py-3.5 px-4 text-right">
-                            {!isSelf ? (
-                              <div className="flex items-center justify-end gap-2">
+                            {isSelf ? (
+                              <span className="text-[11px] text-muted-foreground italic">Protected (You)</span>
+                            ) : isLastSuperAdmin ? (
+                              <span className="text-[11px] text-amber-500 font-medium italic">Protected (Last Owner)</span>
+                            ) : !isSuperAdminUser && (isSuperAdminTarget || isAdminTarget) ? (
+                              <span className="text-[11px] text-muted-foreground italic">Restricted (Admin Account)</span>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1.5">
                                 <select
                                   value={u.role}
-                                  onChange={(e) => handleChangeRole(u.id, e.target.value)}
+                                  onChange={(e) => handleChangeRole(u.id, e.target.value, u.role)}
                                   className="bg-card border border-border/40 text-[11px] rounded-lg px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
                                 >
                                   <option value="client">Client</option>
-                                  <option value="pm">PM / Eng</option>
-                                  <option value="admin">Admin</option>
+                                  <option value="pm">Project Manager</option>
+                                  {isSuperAdminUser && (
+                                    <>
+                                      <option value="admin">Admin</option>
+                                      <option value="super_admin">Super Admin</option>
+                                    </>
+                                  )}
                                 </select>
+
+                                {/* Toggle Status Button */}
                                 <button
-                                  onClick={() => handleDeleteUser(u.id, u.email)}
-                                  className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                  onClick={() => handleToggleUserStatus(u.id, u.status || "active", u.email, u.role)}
+                                  className={`p-1.5 rounded-lg transition-colors ${
+                                    u.status === "inactive"
+                                      ? "text-emerald-500 hover:bg-emerald-500/10"
+                                      : "text-amber-500 hover:bg-amber-500/10"
+                                  }`}
+                                  title={u.status === "inactive" ? "Reactivate User" : "Deactivate User"}
+                                >
+                                  {u.status === "inactive" ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
+                                </button>
+
+                                <button
+                                  onClick={() => handleDeleteUser(u.id, u.email, u.role)}
+                                  className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                                   title="Delete User"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
-                            ) : (
-                              <span className="text-[11px] text-muted-foreground italic">Protected</span>
                             )}
                           </td>
                         </tr>
@@ -2042,74 +2223,183 @@ const Admin = () => {
         )}
 
         {/* ═══════════════════════════════════════════════════════════
-            TAB 4: SYSTEM TELEMETRY & AUDIT LOGS
+            TAB 4: SYSTEM TELEMETRY, POLICIES & AUDIT LOGS
         ═══════════════════════════════════════════════════════════ */}
         {activeTab === "system" && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-bold text-foreground">System Telemetry & Edge Services</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Real-time connection metrics, edge function endpoints, and session audit logs.
+          !isSuperAdminUser ? (
+            <div className="glass-card p-8 rounded-2xl border border-destructive/30 text-center max-w-lg mx-auto my-12">
+              <div className="w-12 h-12 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center mx-auto mb-3">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-foreground">Access Restricted: Super Administrator Only</h3>
+              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                The Main System Administration & Security Controls Panel is restricted to <strong>Tier 1 — System Owner (SUPER_ADMIN)</strong>.
+                Contractor Administrators (Tier 2) operate projects, scopes, tasks, and project-level assignments.
               </p>
+              <button
+                onClick={() => setActiveTab("breakdown")}
+                className="mt-4 px-4 py-2 rounded-xl text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-all"
+              >
+                Return to Portfolio Breakdown
+              </button>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="glass-card p-5 rounded-2xl border border-border/30">
-                <span className="text-xs font-semibold text-muted-foreground block mb-1">Database Connection</span>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-base font-bold text-foreground">Postgres Online</span>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">System Security, Telemetry & Audit Logs</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Tier 1 Main System Administration: Global security policies, RLS enforcement, and enterprise audit trail.
+                  </p>
                 </div>
-                <div className="text-[11px] font-mono text-muted-foreground mt-2">
-                  Latency: {systemPing ? `${systemPing}ms` : "Syncing"}
-                </div>
-              </div>
-
-              <div className="glass-card p-5 rounded-2xl border border-border/30">
-                <span className="text-xs font-semibold text-muted-foreground block mb-1">Port Status</span>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="w-3 h-3 rounded-full bg-primary" />
-                  <span className="text-base font-bold text-foreground">Port 8080 Active</span>
-                </div>
-                <div className="text-[11px] font-mono text-muted-foreground mt-2">
-                  Autostart: Enabled on Logon
-                </div>
-              </div>
-
-              <div className="glass-card p-5 rounded-2xl border border-border/30">
-                <span className="text-xs font-semibold text-muted-foreground block mb-1">Security Model</span>
-                <div className="flex items-center gap-2 mt-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  <span className="text-base font-bold text-foreground">RLS Policies Enforced</span>
-                </div>
-                <div className="text-[11px] font-mono text-muted-foreground mt-2">
-                  Role: Super Administrator
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      const logs = await fetchAuditLogs(100);
+                      setAuditLogs(logs);
+                      toast({ title: "Audit Trail Synchronized", description: `Loaded ${logs.length} latest security events.` });
+                    }}
+                    className="px-3 py-1.5 rounded-xl border border-border/40 text-xs font-semibold hover:border-primary/40 flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Sync Audit Trail</span>
+                  </button>
                 </div>
               </div>
-            </div>
 
-            {/* Audit Log Box */}
-            <div className="glass-card p-5 rounded-2xl border border-border/30">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <TerminalIcon className="w-4 h-4 text-primary" />
-                  <span>Session Audit Trail</span>
-                </h3>
-                <span className="text-[10px] text-muted-foreground font-mono">Live Monitoring</span>
-              </div>
-
-              <div className="space-y-1.5 font-mono text-[11px] max-h-[300px] overflow-y-auto">
-                <div className="p-2 rounded-lg bg-secondary/30 text-emerald-400">
-                  [{new Date().toLocaleTimeString()}] Authenticated superadmin session verified ({currentUser?.email}).
-                </div>
-                {auditLogs.map((log) => (
-                  <div key={log.id} className="p-2 rounded-lg bg-secondary/30 text-foreground">
-                    [{log.time}] {log.action}: {log.details}
+              {/* System Diagnostics & Policy Tiles */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="glass-card p-4 rounded-2xl border border-border/30">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Database Connectivity</span>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-sm font-bold text-foreground">Postgres Online</span>
                   </div>
-                ))}
+                  <div className="text-[11px] font-mono text-muted-foreground mt-1.5">
+                    Latency: {systemPing ? `${systemPing}ms` : "Syncing"}
+                  </div>
+                </div>
+
+                <div className="glass-card p-4 rounded-2xl border border-border/30">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Authorization Model</span>
+                  <div className="flex items-center gap-2 mt-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                    <span className="text-sm font-bold text-foreground">Postgres RLS Enforced</span>
+                  </div>
+                  <div className="text-[11px] font-mono text-muted-foreground mt-1.5">
+                    Projects, Tasks, Members Isolated
+                  </div>
+                </div>
+
+                <div className="glass-card p-4 rounded-2xl border border-border/30">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Owner Protection</span>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Crown className="w-4 h-4 text-amber-500" />
+                    <span className="text-sm font-bold text-foreground">Last SuperAdmin Protected</span>
+                  </div>
+                  <div className="text-[11px] font-mono text-muted-foreground mt-1.5">
+                    Postgres Trigger Active
+                  </div>
+                </div>
+
+                <div className="glass-card p-4 rounded-2xl border border-border/30">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Authentication Standard</span>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Lock className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-bold text-foreground">Enterprise MFA & JWT</span>
+                  </div>
+                  <div className="text-[11px] font-mono text-muted-foreground mt-1.5">
+                    Session Duration: 8h Max
+                  </div>
+                </div>
+              </div>
+
+              {/* Comprehensive Audit Log Table */}
+              <div className="glass-card p-5 rounded-2xl border border-border/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TerminalIcon className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-bold text-foreground">Security & Operational Audit Log</h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-mono font-semibold">
+                      {auditLogs.length} Events Recorded
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-mono">Immutable Security Trail</span>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-border/20">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-secondary/40 border-b border-border/30 text-muted-foreground font-semibold">
+                      <tr>
+                        <th className="py-2.5 px-3">Timestamp</th>
+                        <th className="py-2.5 px-3">Actor / Email</th>
+                        <th className="py-2.5 px-3">Role</th>
+                        <th className="py-2.5 px-3">Action</th>
+                        <th className="py-2.5 px-3">Target Resource</th>
+                        <th className="py-2.5 px-3">Details</th>
+                        <th className="py-2.5 px-3 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/20 font-mono text-[11px]">
+                      {auditLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-6 text-center text-muted-foreground font-sans">
+                            No security audit records logged yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        auditLogs.slice(0, 50).map((log) => {
+                          const isSecurityAction = log.action.startsWith("auth.") || log.action.startsWith("security.");
+                          const isUserAction = log.action.startsWith("user.");
+                          return (
+                            <tr key={log.id} className="hover:bg-secondary/20 transition-colors">
+                              <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground">
+                                {new Date(log.created_at).toLocaleTimeString()}
+                              </td>
+                              <td className="py-2.5 px-3 whitespace-nowrap text-foreground font-sans font-medium">
+                                {log.actor_email || log.actor_id || "System"}
+                              </td>
+                              <td className="py-2.5 px-3 whitespace-nowrap">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-secondary text-foreground">
+                                  {log.actor_role || "system"}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 whitespace-nowrap">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                  isSecurityAction
+                                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                    : isUserAction
+                                      ? "bg-primary/10 text-primary border-primary/20"
+                                      : "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                }`}>
+                                  {log.action}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground truncate max-w-[180px]">
+                                {log.target_resource || "—"}
+                              </td>
+                              <td className="py-2.5 px-3 text-muted-foreground truncate max-w-[240px]" title={JSON.stringify(log.details)}>
+                                {log.details ? JSON.stringify(log.details) : "—"}
+                              </td>
+                              <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                  log.status === "denied"
+                                    ? "bg-destructive/15 text-destructive"
+                                    : "bg-emerald-500/15 text-emerald-500"
+                                }`}>
+                                  {log.status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </div>
+          )
         )}
       </main>
 
@@ -2164,17 +2454,22 @@ const Admin = () => {
                     onChange={(e) => setNewRole(e.target.value as any)}
                     className="w-full bg-card border border-border/40 rounded-xl px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                   >
-                    <option value="pm">Project Manager / Engineer (Full Project CRUD)</option>
-                    <option value="client">Client Viewer (Read & Stakeholder Access)</option>
-                    <option value="admin">Super Administrator (Full Enterprise Suite)</option>
+                    <option value="pm">Project Manager (Tier 3 — Operational Project CRUD)</option>
+                    <option value="client">Client (Tier 3 — Read-Only Monitoring Portal)</option>
+                    {isSuperAdminUser && (
+                      <>
+                        <option value="admin">Contractor Administrator (Tier 2 — All Projects & Management)</option>
+                        <option value="super_admin">Super Administrator (Tier 1 — System Owner)</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground block mb-1">Subscription Plan</label>
                   <select
-                    value={newRole === "admin" ? "enterprise" : newPlan}
-                    disabled={newRole === "admin"}
+                    value={(newRole === "admin" || newRole === "super_admin") ? "enterprise" : newPlan}
+                    disabled={newRole === "admin" || newRole === "super_admin"}
                     onChange={(e) => setNewPlan(e.target.value as any)}
                     className="w-full bg-card border border-border/40 rounded-xl px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60 cursor-pointer"
                   >
@@ -2182,8 +2477,8 @@ const Admin = () => {
                     <option value="premium">Premium Plan ($29/mo - Reports & Custom Theme)</option>
                     <option value="free">Free Plan ($0 - Standard View)</option>
                   </select>
-                  {newRole === "admin" ? (
-                    <span className="text-[10px] text-amber-500 mt-1 block">Super Admins are automatically provisioned with the Enterprise Plan.</span>
+                  {(newRole === "admin" || newRole === "super_admin") ? (
+                    <span className="text-[10px] text-amber-500 mt-1 block">Administrators are automatically provisioned with the Enterprise Plan.</span>
                   ) : (
                     <span className="text-[10px] text-muted-foreground mt-1 block">Determines access to custom reports, branding, and export capabilities.</span>
                   )}

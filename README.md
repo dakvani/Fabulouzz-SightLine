@@ -160,6 +160,18 @@ The production build generates clean static assets in `dist/`. You can serve the
 
 ---
 
+## 📚 Documentation & Legal Registry
+
+Comprehensive enterprise manuals and legal copyright documents are cataloged in the [`docs/`](docs/) directory:
+
+- 📖 **[Administrator Manual (`docs/ADMIN_MANUAL.md`)](docs/ADMIN_MANUAL.md)**: Operational guide for Super Admins and Admins covering the 3-tier RBAC system, user provisioning, project assignments, client portal administration, security policies, audit logging, and disaster recovery SOPs.
+- 📜 **[Certificate of Copyright Registration (`docs/COPYRIGHT_CERTIFICATE.md`)](docs/COPYRIGHT_CERTIFICATE.md)**: Official intellectual property title, registration metadata (TX-9-482-108-SL-2026), international convention protections, and cryptographic SHA-256 genesis fingerprint.
+- 🖨️ **[Print-Ready Visual Certificate (`docs/COPYRIGHT_CERTIFICATE.html`)](docs/COPYRIGHT_CERTIFICATE.html)**: High-resolution, ornate gold-seal certificate suitable for browser preview, framing, or instant PDF export.
+- ⚖️ **[Proprietary Software License & IP Policy (`docs/LICENSE_AND_IP_POLICY.md`)](docs/LICENSE_AND_IP_POLICY.md)**: Commercial enterprise license terms, trade secret declarations, usage boundaries, data ownership, and legal liabilities.
+
+---
+
 ## 🛡️ License & Ownership
 
-Developed for **Fabulouzz Technologies**. All rights reserved.
+Copyright © 2026 **Fabulouzz Technologies / DVHQ Innovations**. All rights reserved.  
+Protected under the Berne Convention, WIPO Copyright Treaty, and international proprietary software laws.

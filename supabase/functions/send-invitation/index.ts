@@ -41,12 +41,14 @@ Deno.serve(async (req) => {
     }
 
     const { email, password, fullName, role, loginUrl } = await req.json();
-    const portalUrl = loginUrl || ((Deno.env.get("APP_URL") || "https://sightline.fabulouzz.com").replace(/\/+$/, "") + "/");
+    const appBase = (Deno.env.get("APP_URL") || "https://sightline.fabulouzz.com").replace(/\/+$/, "");
+    const portalUrl = loginUrl || `${appBase}/onboarding?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role || "client")}&name=${encodeURIComponent(fullName || "")}`;
 
     const roleLabel: Record<string, string> = {
-      admin: "Admin",
-      pm: "PM / Engineer",
-      client: "Client",
+      super_admin: "Super Admin",
+      admin: "Contractor Admin",
+      pm: "Project Manager",
+      client: "Client Stakeholder",
     };
 
     const html = `

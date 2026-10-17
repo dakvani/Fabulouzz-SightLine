@@ -208,6 +208,14 @@ Deno.serve(async (req) => {
       </table>
     </div>
 
+    <!-- Direct Project Action Button -->
+    <div style="background: #ffffff; padding: 8px 32px 28px; text-align: center;">
+      <a href="${(Deno.env.get("APP_URL") || "https://sightline.fabulouzz.com").replace(/\/+$/, "")}/?project=${encodeURIComponent(projectId || "")}&view=dashboard" 
+         style="display: inline-block; background: #2fbf2f; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">
+        Open Project in SightLine Command Center →
+      </a>
+    </div>
+
     <!-- Footer -->
     <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 0 0 16px 16px; padding: 24px 32px; text-align: center;">
       <div style="width: 60px; height: 2px; background: #2fbf2f; margin: 0 auto 12px;"></div>

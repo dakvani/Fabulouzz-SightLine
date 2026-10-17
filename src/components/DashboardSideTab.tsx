@@ -46,7 +46,7 @@ export const DashboardSideTab = ({
   user,
 }: DashboardSideTabProps) => {
   const { branding, subscriptionTier, isEnterprise, isPremium, isAdmin } = useBranding();
-  const { projectInfo, canEditProject } = useProjectData();
+  const { projectInfo, canEditProject, userRole } = useProjectData();
   const { themeStyle, setThemeStyle } = useThemeStyle();
 
   const handleLogout = async () => {
@@ -185,39 +185,48 @@ export const DashboardSideTab = ({
                   </div>
 
                   {/* Manage Project (Project Details) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onNavigateToDetails("info");
-                      onClose();
-                    }}
-                    className="w-full flex items-center justify-between p-3 rounded-xl border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-all text-xs font-semibold"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sliders className="w-4 h-4 text-primary" />
-                      <span>Manage Project Data & Scope</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-primary" />
-                  </button>
+                  {canEditProject ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onNavigateToDetails("info");
+                          onClose();
+                        }}
+                        className="w-full flex items-center justify-between p-3 rounded-xl border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-all text-xs font-semibold"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Sliders className="w-4 h-4 text-primary" />
+                          <span>Manage Project Data & Scope</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-primary" />
+                      </button>
 
-                  {/* Manage Timeline & Duration */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onNavigateToDetails("timeline");
-                      onClose();
-                    }}
-                    className="w-full flex items-center justify-between p-3 rounded-xl border border-border/40 bg-secondary/30 hover:bg-secondary/60 text-foreground transition-all text-xs font-semibold"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-primary" />
-                      <span>Manage Timeline & Durations</span>
+                      {/* Manage Timeline & Duration */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onNavigateToDetails("timeline");
+                          onClose();
+                        }}
+                        className="w-full flex items-center justify-between p-3 rounded-xl border border-border/40 bg-secondary/30 hover:bg-secondary/60 text-foreground transition-all text-xs font-semibold"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-primary" />
+                          <span>Manage Timeline & Durations</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs flex items-center gap-2 font-medium">
+                      <Shield className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      <span>Client Monitoring Mode: Read-Only Project Access</span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </button>
+                  )}
 
                   {/* Admin Suite (Enterprise Admin Center) */}
-                  {isAdmin && (
+                  {(isAdmin || userRole === "super_admin" || userRole === "admin") && (
                     <button
                       type="button"
                       onClick={() => {

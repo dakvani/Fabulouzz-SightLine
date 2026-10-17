@@ -16,14 +16,35 @@ export const BRAND_MAIN_EMAIL = "info@fabulouzz.com";
 export const BRAND_PROVIDER_TEXT = "Provided by Fabulouzz Technologies";
 export const BRAND_WEBSITE = "https://www.fabulouzz.com/";
 
-// Dynamically resolves to the current browser origin or configured corporate domain
-const portalBase = (
-  typeof window !== "undefined" && window.location.origin
-    ? window.location.origin
-    : (import.meta.env?.VITE_APP_URL || "https://sightline.fabulouzz.com")
-).replace(/\/+$/, "");
+/**
+ * Resolves the authoritative public production domain or local testing origin.
+ * Strictly avoids injecting temporary *.vercel.app preview URLs into email links.
+ */
+export const getProductionPortalUrl = (): string => {
+  // If explicitly configured in VITE_APP_URL and not a temporary Vercel preview
+  const configured = import.meta.env?.VITE_APP_URL;
+  if (configured && !configured.includes(".vercel.app")) {
+    return configured.replace(/\/+$/, "");
+  }
 
-export const APP_PORTAL_URL = portalBase;
+  if (typeof window !== "undefined" && window.location?.origin) {
+    const origin = window.location.origin;
+    // Keep local testing origins intact
+    const isLocal =
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.startsWith("http://10.") ||
+      origin.startsWith("http://192.168.");
+    if (isLocal) {
+      return origin.replace(/\/+$/, "");
+    }
+  }
+
+  // Official corporate public production domain
+  return "https://sightline.fabulouzz.com";
+};
+
+export const APP_PORTAL_URL = getProductionPortalUrl();
 
 export type EmailType =
   | "invite"
@@ -119,7 +140,7 @@ export function buildBrandedEmailHtml(payload: SendEmailPayload): { subject: str
         </div>
 
         <div style="text-align: center; margin: 28px 0 16px;">
-          <a href="${d.loginUrl || APP_PORTAL_URL}" 
+          <a href="${d.loginUrl || `${APP_PORTAL_URL}/onboarding?email=${encodeURIComponent(Array.isArray(payload.to) ? payload.to[0] : payload.to)}&role=${encodeURIComponent(d.role || "client")}&name=${encodeURIComponent(d.fullName || "")}`}" 
              style="display: inline-block; background: ${accent}; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(47, 191, 47, 0.25);">
             Accept Invitation & Access Portal →
           </a>
@@ -148,7 +169,7 @@ export function buildBrandedEmailHtml(payload: SendEmailPayload): { subject: str
         </div>
 
         <div style="text-align: center; margin: 28px 0 16px;">
-          <a href="${d.loginUrl || APP_PORTAL_URL}" 
+          <a href="${d.loginUrl || `${APP_PORTAL_URL}/welcome?email=${encodeURIComponent(Array.isArray(payload.to) ? payload.to[0] : payload.to)}&role=${encodeURIComponent(d.role || "")}`}" 
              style="display: inline-block; background: ${accent}; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700;">
             Go to Your Command Dashboard →
           </a>
@@ -238,7 +259,7 @@ export function buildBrandedEmailHtml(payload: SendEmailPayload): { subject: str
         </div>
 
         <div style="text-align: center; margin: 28px 0 16px;">
-          <a href="${d.loginUrl || APP_PORTAL_URL}" 
+          <a href="${d.loginUrl || `${APP_PORTAL_URL}/?project=${encodeURIComponent(d.projectRef || d.projectName || "")}&view=details&tab=info`}" 
              style="display: inline-block; background: ${accent}; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700;">
             Open Project in Portal →
           </a>
@@ -263,6 +284,8 @@ export function buildBrandedEmailHtml(payload: SendEmailPayload): { subject: str
           </p>
         </div>
       `;
+      break;
+
     case "task_assignment":
       title = "TASK ASSIGNMENT";
       subject = payload.subject || `Task Assignment: #${d.taskNumber || 1} - ${d.taskName || "New Task"} (${d.projectName || "SightLine"})`;
@@ -306,7 +329,7 @@ export function buildBrandedEmailHtml(payload: SendEmailPayload): { subject: str
         </div>
 
         <div style="text-align: center; margin: 28px 0 16px;">
-          <a href="${d.loginUrl || `${APP_PORTAL_URL}/?view=tasks`}" 
+          <a href="${d.loginUrl || `${APP_PORTAL_URL}/?project=${encodeURIComponent(d.projectRef || d.projectName || "")}&view=tasks`}" 
              style="display: inline-block; background: ${accent}; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; box-shadow: 0 4px 12px rgba(47, 191, 47, 0.25);">
             View Task in Portal →
           </a>

@@ -29,35 +29,116 @@ Deno.serve(async (req) => {
     }
 
     const { data: roleData } = await anonClient.from("user_roles").select("role").eq("user_id", caller.id).single();
-    if (!roleData || roleData.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Admin access required" }), {
+    const callerRole = roleData?.role;
+    if (!callerRole || (callerRole !== "admin" && callerRole !== "super_admin")) {
+      return new Response(JSON.stringify({ error: "Administrator privileges required" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { action, userId, newRole, newTier } = await req.json();
+    const { action, userId, newRole, newTier, newStatus } = await req.json();
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Prevent admin from deleting/demoting their own account (allow plan updates)
+    // Fetch target user's current role & profile
+    const { data: targetRoleData } = await adminClient.from("user_roles").select("role").eq("user_id", userId).single();
+    const targetRole = targetRoleData?.role || "client";
+
+    const { data: targetProfile } = await adminClient.from("profiles").select("email, status").eq("id", userId).single();
+    const targetEmail = targetProfile?.email || userId;
+
+    // Prevent actor from modifying their own role or deleting themselves
     if (userId === caller.id && action !== "update_plan") {
-      return new Response(JSON.stringify({ error: "Cannot delete or change role on your own account" }), {
+      return new Response(JSON.stringify({ error: "Cannot delete, deactivate, or change role on your own account" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Role Hierarchy & Privilege Escalation Checks:
+    // If caller is Admin:
+    // - Cannot modify or delete Super Admin
+    // - Cannot modify or delete another Admin
+    // - Cannot promote anyone to Admin or Super Admin
+    if (callerRole === "admin") {
+      if (targetRole === "super_admin" || targetRole === "admin") {
+        return new Response(JSON.stringify({ error: "Admins do not have permission to modify Super Admin or Admin accounts." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (action === "update_role" && (newRole === "admin" || newRole === "super_admin")) {
+        return new Response(JSON.stringify({ error: "Admins cannot elevate accounts to Admin or Super Admin." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Protect last active Super Admin
+    if (targetRole === "super_admin" && (action === "delete_user" || (action === "update_role" && newRole !== "super_admin") || (action === "update_status" && newStatus === "inactive"))) {
+      const { data: superAdmins } = await adminClient.from("user_roles").select("user_id").eq("role", "super_admin");
+      if ((superAdmins || []).length <= 1) {
+        return new Response(JSON.stringify({ error: "Protection Policy: Cannot delete, demote, or deactivate the last remaining Super Administrator." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     if (action === "update_role") {
-      const validRoles = ["admin", "pm", "client"];
+      const validRoles = callerRole === "super_admin" ? ["super_admin", "admin", "pm", "client"] : ["pm", "client"];
       if (!validRoles.includes(newRole)) {
-        return new Response(JSON.stringify({ error: "Invalid role" }), {
+        return new Response(JSON.stringify({ error: `Invalid role specified: ${newRole}` }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       const { error } = await adminClient.from("user_roles").update({ role: newRole }).eq("user_id", userId);
       if (error) throw error;
+
+      await adminClient.from("audit_logs").insert({
+        actor_id: caller.id,
+        actor_email: caller.email,
+        actor_role: callerRole,
+        action: "user.role_change",
+        target_resource: `user:${targetEmail}`,
+        details: { previousRole: targetRole, newRole },
+        status: "success",
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "update_status") {
+      const validStatuses = ["active", "inactive"];
+      if (!validStatuses.includes(newStatus)) {
+        return new Response(JSON.stringify({ error: "Invalid status" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error } = await adminClient.from("profiles").update({ status: newStatus }).eq("id", userId);
+      if (error) throw error;
+
+      // Invalidate active session if deactivating
+      if (newStatus === "inactive") {
+        try {
+          await adminClient.auth.admin.signOut(userId);
+        } catch (_) {
+          // ignore if user not currently in active session
+        }
+      }
+
+      await adminClient.from("audit_logs").insert({
+        actor_id: caller.id,
+        actor_email: caller.email,
+        actor_role: callerRole,
+        action: "user.status_change",
+        target_resource: `user:${targetEmail}`,
+        details: { previousStatus: targetProfile?.status, newStatus },
+        status: "success",
+      });
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -75,15 +156,34 @@ Deno.serve(async (req) => {
       const { error } = await adminClient.from("profiles").update({ subscription_tier: newTier }).eq("id", userId);
       if (error) throw error;
 
+      await adminClient.from("audit_logs").insert({
+        actor_id: caller.id,
+        actor_email: caller.email,
+        actor_role: callerRole,
+        action: "user.plan_change",
+        target_resource: `user:${targetEmail}`,
+        details: { newTier },
+        status: "success",
+      });
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (action === "delete_user") {
-      // Delete from auth (cascades to profiles and user_roles via FK)
       const { error } = await adminClient.auth.admin.deleteUser(userId);
       if (error) throw error;
+
+      await adminClient.from("audit_logs").insert({
+        actor_id: caller.id,
+        actor_email: caller.email,
+        actor_role: callerRole,
+        action: "user.delete",
+        target_resource: `user:${targetEmail}`,
+        details: { deletedRole: targetRole },
+        status: "success",
+      });
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

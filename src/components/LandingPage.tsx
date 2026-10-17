@@ -14,19 +14,11 @@ import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { sendBrandedEmail, BRAND_MAIN_EMAIL, BRAND_PROVIDER_TEXT } from "@/lib/emailService";
+import { sendBrandedEmail, BRAND_MAIN_EMAIL, BRAND_PROVIDER_TEXT, getProductionPortalUrl } from "@/lib/emailService";
 
 interface LandingPageProps {
   onAuthSuccess: () => void;
 }
-
-type RoleOption = "admin" | "pm_engineer" | "client";
-
-const roleLabels: Record<RoleOption, { label: string; icon: typeof Shield }> = {
-  admin: { label: "Admin", icon: Shield },
-  pm_engineer: { label: "PM / Engineer", icon: Briefcase },
-  client: { label: "Client", icon: Users },
-};
 
 /* ── Animated section wrapper ── */
 const AnimatedSection = ({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => {
@@ -125,8 +117,6 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleOption>("client");
-  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
 
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
@@ -144,6 +134,10 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       }
       if (authParam === "login" || authParam === "signin" || emailParam) {
         setShowLogin(true);
+        setMode("login");
+      } else if (authParam === "forgot" || authParam === "reset") {
+        setShowLogin(true);
+        setMode("forgot");
       }
     }
   }, []);
@@ -165,7 +159,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
         const user = authData?.user;
         const targetEmail = user?.email || email.trim();
         const fullName = user?.user_metadata?.full_name || targetEmail.split("@")[0];
-        const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://sightline.fabulouzz.com";
+        const portalOrigin = getProductionPortalUrl();
 
         sendBrandedEmail({
           type: "welcome",
@@ -196,7 +190,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     }
     setLoading(true);
     try {
-      const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://sightline.fabulouzz.com";
+      const portalOrigin = getProductionPortalUrl();
       const redirectUrl = `${portalOrigin}/reset-password`;
 
       // Trigger Supabase auth reset session preparation
@@ -860,27 +854,6 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
 
             {mode === "login" && (
               <form onSubmit={handleLogin} className="space-y-4">
-                {/* Role */}
-                <div className="relative">
-                  <button type="button" onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
-                    <div className="flex items-center gap-2"><CurrentRoleIcon className="w-4 h-4 text-primary" /><span>{roleLabels[selectedRole].label}</span></div>
-                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${roleDropdownOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  {roleDropdownOpen && (
-                    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="absolute z-10 mt-1 w-full bg-background border border-border/50 rounded-lg shadow-lg overflow-hidden">
-                      {(Object.keys(roleLabels) as RoleOption[]).map(key => {
-                        const { label, icon: Icon } = roleLabels[key];
-                        return (
-                          <button key={key} type="button" onClick={() => { setSelectedRole(key); setRoleDropdownOpen(false); }}
-                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-secondary/50 transition-colors ${selectedRole === key ? "bg-primary/10 text-primary" : "text-foreground"}`}>
-                            <Icon className="w-4 h-4" /><span className="font-medium">{label}</span>
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </div>
                 {/* Email */}
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

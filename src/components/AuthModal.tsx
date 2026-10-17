@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogIn, Mail, Lock, ArrowLeft, Eye, EyeOff, ChevronDown, Shield, Briefcase, Users, KeyRound, Sparkles } from "lucide-react";
+import { LogIn, Mail, Lock, ArrowLeft, Eye, EyeOff, Shield, KeyRound, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
-import { sendBrandedEmail, BRAND_MAIN_EMAIL, BRAND_PROVIDER_TEXT } from "@/lib/emailService";
+import { sendBrandedEmail, BRAND_MAIN_EMAIL, BRAND_PROVIDER_TEXT, getProductionPortalUrl } from "@/lib/emailService";
+import { logAuditEvent } from "@/lib/auth/audit";
+import { resolveUserAuth } from "@/lib/auth/session";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -12,13 +14,8 @@ interface AuthModalProps {
   onSuccess: () => void;
 }
 
-type RoleOption = "admin" | "pm_engineer" | "client";
-
-const roleLabels: Record<RoleOption, { label: string; icon: typeof Shield }> = {
-  admin: { label: "Admin", icon: Shield },
-  pm_engineer: { label: "PM / Engineer", icon: Briefcase },
-  client: { label: "Client", icon: Users },
-};
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 5;
 
 const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const [mode, setMode] = useState<"login" | "forgot" | "otp">("login");
@@ -29,47 +26,158 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const [otpSent, setOtpSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleOption>("client");
-  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState<number>(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && isOpen) {
+      const params = new URLSearchParams(window.location.search);
+      const emailParam = params.get("email");
+      const authParam = params.get("auth");
+      if (emailParam) setEmail(emailParam);
+      if (authParam === "forgot" || authParam === "reset") {
+        setMode("forgot");
+      } else if (authParam === "otp") {
+        setMode("otp");
+      } else if (authParam === "login") {
+        setMode("login");
+      }
+    }
+  }, [isOpen]);
+
+  const isLockedOut = (): boolean => {
+    if (!lockoutUntil) return false;
+    if (Date.now() < lockoutUntil) return true;
+    setLockoutUntil(null);
+    setFailedAttempts(0);
+    return false;
+  };
 
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
+
+    if (isLockedOut()) {
+      const remainingSecs = Math.ceil((lockoutUntil! - Date.now()) / 1000);
+      toast({
+        title: "Account Temporarily Protected",
+        description: `Too many unsuccessful login attempts. Please wait ${remainingSecs} seconds before trying again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
-      setLoading(false);
+      const cleanEmail = email.trim();
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
+
       if (error) {
-        toast({ title: "Login failed", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Welcome back!" });
-        onSuccess();
+        const nextAttempts = failedAttempts + 1;
+        setFailedAttempts(nextAttempts);
 
-        // Dispatch Welcome Email on login
-        const user = authData?.user;
-        const targetEmail = user?.email || email.trim();
-        const fullName = user?.user_metadata?.full_name || targetEmail.split("@")[0];
-        const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://sightline.fabulouzz.com";
-
-        sendBrandedEmail({
-          type: "welcome",
-          to: targetEmail,
-          data: {
-            fullName,
-            loginUrl: `${portalOrigin}/`,
-          },
-        }).then(res => {
-          if (res.success) {
-            console.info("[AuthModal] Welcome email dispatched to:", targetEmail);
-          }
-        }).catch(err => {
-          console.warn("[AuthModal] Welcome email error:", err);
-        });
+        if (nextAttempts >= MAX_FAILED_ATTEMPTS) {
+          const lockTime = Date.now() + LOCKOUT_MINUTES * 60 * 1000;
+          setLockoutUntil(lockTime);
+          await logAuditEvent({
+            action: "auth.rate_limit_locked",
+            resourceType: "auth",
+            actorEmail: cleanEmail,
+            details: { failedAttempts: nextAttempts, lockDurationMinutes: LOCKOUT_MINUTES },
+          });
+          toast({
+            title: "Security Cooldown Triggered",
+            description: `Maximum login attempts exceeded. Access locked for ${LOCKOUT_MINUTES} minutes.`,
+            variant: "destructive",
+          });
+        } else {
+          await logAuditEvent({
+            action: "auth.failed_login",
+            resourceType: "auth",
+            actorEmail: cleanEmail,
+            details: { reason: error.message, attempt: nextAttempts },
+          });
+          toast({
+            title: "Authentication Failed",
+            description: "Invalid email or password. Please verify your credentials.",
+            variant: "destructive",
+          });
+        }
+        setLoading(false);
+        return;
       }
+
+      const user = authData?.user;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Check account activation status
+      const userAuth = await resolveUserAuth(user.id);
+      if (userAuth && userAuth.status === "deactivated") {
+        await supabase.auth.signOut();
+        await logAuditEvent({
+          action: "auth.deactivated_attempt",
+          resourceType: "user",
+          resourceId: user.id,
+          actorEmail: cleanEmail,
+          actorId: user.id,
+          details: { status: "deactivated" },
+        });
+        setLoading(false);
+        toast({
+          title: "Account Deactivated",
+          description: "This account has been deactivated. Please contact your System Administrator.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Successful login
+      setFailedAttempts(0);
+      setLockoutUntil(null);
+
+      // Record audit log
+      await logAuditEvent({
+        action: "auth.login_success",
+        resourceType: "auth",
+        resourceId: user.id,
+        actorEmail: cleanEmail,
+        actorId: user.id,
+        details: { role: userAuth?.role || "client" },
+      });
+
+      // Update last_login_at in database
+      supabase
+        .from("profiles")
+        .update({ last_login_at: new Date().toISOString() })
+        .eq("id", user.id)
+        .then();
+
+      setLoading(false);
+      toast({ title: "Authenticated Successfully", description: `Welcome back, ${userAuth?.fullName || cleanEmail}` });
+      onSuccess();
+
+      // Dispatch welcome notification
+      const fullName = userAuth?.fullName || user.user_metadata?.full_name || cleanEmail.split("@")[0];
+      const portalOrigin = getProductionPortalUrl();
+
+      sendBrandedEmail({
+        type: "welcome",
+        to: cleanEmail,
+        data: {
+          fullName,
+          loginUrl: `${portalOrigin}/`,
+        },
+      }).catch(() => {});
     } catch (err: any) {
       setLoading(false);
       toast({
-        title: "Connection error",
-        description: "Unable to reach the server. Please check your internet connection.",
+        title: "Connection Error",
+        description: "Unable to reach the authentication service. Please check your network connection.",
         variant: "destructive",
       });
     }
@@ -78,39 +186,43 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const handleForgotPassword = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!email.trim()) {
-      toast({ title: "Email required", description: "Please enter your email address." });
+      toast({ title: "Email required", description: "Please enter your registered email address." });
       return;
     }
     setLoading(true);
     try {
-      const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://sightline.fabulouzz.com";
+      const cleanEmail = email.trim();
+      const portalOrigin = getProductionPortalUrl();
       const resetUrl = `${portalOrigin}/reset-password`;
 
-      // Trigger Supabase auth reset session preparation
-      supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: resetUrl }).catch(err => {
-        console.warn("Supabase resetPasswordForEmail warning:", err);
+      supabase.auth.resetPasswordForEmail(cleanEmail, { redirectTo: resetUrl }).catch(() => {});
+
+      await logAuditEvent({
+        action: "auth.password_reset_requested",
+        resourceType: "auth",
+        actorEmail: cleanEmail,
+        details: { resetUrl },
       });
 
-      // Dispatch official branded password reset email with Fabulouzz Technologies branding & info@fabulouzz.com
-      const emailResult = await sendBrandedEmail({
+      await sendBrandedEmail({
         type: "reset_password",
-        to: email.trim(),
+        to: cleanEmail,
         data: {
           resetUrl,
-          fullName: email.split("@")[0],
+          fullName: cleanEmail.split("@")[0],
         },
       });
 
       setLoading(false);
       toast({
         title: "Secure Reset Link Dispatched",
-        description: `Official instructions sent from ${BRAND_MAIN_EMAIL} to ${email.trim()}. Please check your inbox.`,
+        description: `Official instructions sent from ${BRAND_MAIN_EMAIL} to ${cleanEmail}. Please check your inbox.`,
       });
       setMode("login");
     } catch (err: any) {
       setLoading(false);
       toast({
-        title: "Connection error",
+        title: "Connection Error",
         description: "Unable to reach the server.",
         variant: "destructive",
       });
@@ -125,13 +237,21 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     }
     setLoading(true);
     try {
+      const cleanEmail = email.trim();
+
+      // Request OTP via Supabase Auth
+      const { error: sbError } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: { shouldCreateUser: false },
+      });
+
+      // Also generate fallback verification code for email service
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(code);
 
-      // Dispatch branded OTP email
       await sendBrandedEmail({
         type: "otp",
-        to: email.trim(),
+        to: cleanEmail,
         data: {
           otpCode: code,
           validMinutes: 10,
@@ -140,39 +260,73 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
 
       setOtpSent(true);
       setLoading(false);
-      toast({ title: "Verification OTP Dispatched", description: `A 6-digit code has been sent to ${email}.` });
+      toast({ title: "Verification OTP Dispatched", description: `A 6-digit secure code has been sent to ${cleanEmail}.` });
     } catch (err: any) {
       setLoading(false);
       toast({ title: "Failed to send OTP", description: err.message, variant: "destructive" });
     }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode.trim() === generatedOtp || otpCode.trim() === "123456") {
-      toast({ title: "OTP Verified", description: "Authentication verified successfully." });
-      onSuccess();
+    setLoading(true);
+    const cleanEmail = email.trim();
+    const token = otpCode.trim();
 
-      // Dispatch welcome email on OTP verification
-      const portalOrigin = typeof window !== "undefined" ? window.location.origin : "https://sightline.fabulouzz.com";
-      if (email.trim()) {
-        sendBrandedEmail({
-          type: "welcome",
-          to: email.trim(),
-          data: {
-            fullName: email.split("@")[0],
-            loginUrl: `${portalOrigin}/`,
-          },
-        }).catch(() => {});
+    try {
+      // 1. Try Supabase token verification
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token,
+        type: "email",
+      });
+
+      if (!error && data?.session) {
+        await logAuditEvent({
+          action: "auth.otp_verified",
+          resourceType: "auth",
+          actorEmail: cleanEmail,
+          actorId: data.session.user.id,
+          details: { method: "supabase_otp" },
+        });
+
+        toast({ title: "Authenticated", description: "OTP session verified successfully." });
+        setLoading(false);
+        onSuccess();
+        return;
       }
-    } else {
-      toast({ title: "Invalid Code", description: "The verification code entered does not match.", variant: "destructive" });
+
+      // 2. Fallback to generated OTP if applicable
+      if (generatedOtp && token === generatedOtp) {
+        await logAuditEvent({
+          action: "auth.otp_verified",
+          resourceType: "auth",
+          actorEmail: cleanEmail,
+          details: { method: "custom_otp" },
+        });
+
+        toast({ title: "Code Verified", description: "Secure passcode validated." });
+        setLoading(false);
+        onSuccess();
+        return;
+      }
+
+      // Verification failed
+      setLoading(false);
+      await logAuditEvent({
+        action: "auth.otp_failed",
+        resourceType: "auth",
+        actorEmail: cleanEmail,
+        details: { tokenProvided: token.slice(0, 2) + "****" },
+      });
+      toast({ title: "Invalid Code", description: "The verification code is incorrect or expired.", variant: "destructive" });
+    } catch (err: any) {
+      setLoading(false);
+      toast({ title: "Verification Error", description: err.message, variant: "destructive" });
     }
   };
 
   if (!isOpen) return null;
-
-  const CurrentRoleIcon = roleLabels[selectedRole].icon;
 
   return (
     <AnimatePresence>
@@ -200,17 +354,17 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               SIGHTLINE
             </span>
             <span className="text-[9px] text-muted-foreground font-semibold tracking-[0.15em] uppercase mb-3">
-              Command Center
+              Enterprise Command Center
             </span>
             <h2 className="text-lg font-bold text-foreground">
-              {mode === "login" && "Welcome Back"}
+              {mode === "login" && "Enterprise Sign In"}
               {mode === "otp" && (otpSent ? "Enter Verification Code" : "OTP Sign In")}
               {mode === "forgot" && "Reset Password"}
             </h2>
             <p className="text-xs text-muted-foreground mt-1 text-center">
-              {mode === "login" && "Sign in to your SightLine command center"}
+              {mode === "login" && "Enter your individual credentials to access your authorized tier"}
               {mode === "otp" && (otpSent ? `Enter the 6-digit OTP dispatched to ${email}` : "Receive a secure one-time passcode to your email")}
-              {mode === "forgot" && "Enter your email to receive a secure reset link"}
+              {mode === "forgot" && "Enter your email to receive a verified password recovery link"}
             </p>
           </div>
 
@@ -240,75 +394,58 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
 
           {mode === "login" && (
             <form onSubmit={handleLogin} className="space-y-4">
-              {/* Role Dropdown */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  <div className="flex items-center gap-2">
-                    <CurrentRoleIcon className="w-4 h-4 text-primary" />
-                    <span>{roleLabels[selectedRole].label}</span>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${roleDropdownOpen ? "rotate-180" : ""}`} />
-                </button>
-
-                <AnimatePresence>
-                  {roleDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      className="absolute z-10 mt-1 w-full bg-background border border-border/50 rounded-lg shadow-lg overflow-hidden"
-                    >
-                      {(Object.keys(roleLabels) as RoleOption[]).map((key) => {
-                        const { label, icon: Icon } = roleLabels[key];
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => { setSelectedRole(key); setRoleDropdownOpen(false); }}
-                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-secondary/50 transition-colors ${selectedRole === key ? "bg-primary/10 text-primary" : "text-foreground"}`}
-                          >
-                            <Icon className="w-4 h-4" />
-                            <span className="font-medium">{label}</span>
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 flex items-center gap-2 text-[11px] text-muted-foreground">
+                <Shield className="w-4 h-4 text-primary flex-shrink-0" />
+                <span>Enterprise RBAC: System Owner, Contractor Admin, PM & Client access.</span>
               </div>
 
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
-                  type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                  placeholder="Email" className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  placeholder="name@company.com"
+                  className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>
+
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
-                  type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required
-                  placeholder="Password" className="w-full pl-10 pr-10 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  placeholder="Password"
+                  className="w-full pl-10 pr-10 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <button type="button" onClick={() => setMode("forgot")} className="text-xs text-primary hover:underline">
-                Forgot password?
-              </button>
+
+              <div className="flex justify-between items-center">
+                <button type="button" onClick={() => setMode("forgot")} className="text-xs text-primary hover:underline">
+                  Forgot password?
+                </button>
+              </div>
+
               <motion.button
-                type="submit" disabled={loading}
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={loading}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2"
                 style={{ background: "var(--gradient-primary)" }}
               >
                 <LogIn className="w-4 h-4" />
-                {loading ? "Signing in..." : "Sign In"}
+                {loading ? "Authenticating..." : "Sign In"}
               </motion.button>
             </form>
           )}
@@ -320,13 +457,19 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
-                      type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                      placeholder="Enter account email" className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      placeholder="Enter registered email"
+                      className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                   </div>
                   <motion.button
-                    type="submit" disabled={loading}
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    disabled={loading}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2"
                     style={{ background: "var(--gradient-primary)" }}
                   >
@@ -338,7 +481,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                 <form onSubmit={handleVerifyOtp} className="space-y-4">
                   <div>
                     <label className="text-xs font-semibold text-muted-foreground block mb-1.5 text-center">
-                      6-Digit Passcode
+                      6-Digit Secure Code
                     </label>
                     <input
                       type="text"
@@ -352,7 +495,9 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
                   </div>
                   <motion.button
                     type="submit"
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    disabled={loading}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground flex items-center justify-center gap-2"
                     style={{ background: "var(--gradient-primary)" }}
                   >
@@ -384,31 +529,41 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
-                  type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                  placeholder="Email" className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  placeholder="Enter account email"
+                  className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>
               <motion.button
-                type="submit" disabled={loading}
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={loading}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50"
                 style={{ background: "var(--gradient-primary)" }}
               >
                 {loading ? "Sending..." : "Send Reset Link"}
               </motion.button>
-              <button type="button" onClick={() => setMode("login")} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mx-auto">
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mx-auto"
+              >
                 <ArrowLeft className="w-3 h-3" /> Back to login
               </button>
             </form>
           )}
 
-          {/* Modal Footer with Mandatory Fabulouzz Technologies attribution and info@fabulouzz.com */}
+          {/* Modal Footer */}
           <div className="mt-6 pt-4 border-t border-border/40 text-center">
             <p className="text-[11px] text-muted-foreground">
               {BRAND_PROVIDER_TEXT}
             </p>
             <p className="text-[10px] text-muted-foreground/80 mt-1">
-              Support & Communications:{" "}
+              Support & Administration:{" "}
               <a href={`mailto:${BRAND_MAIN_EMAIL}`} className="text-primary font-medium hover:underline">
                 {BRAND_MAIN_EMAIL}
               </a>

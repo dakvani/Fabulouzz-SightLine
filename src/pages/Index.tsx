@@ -27,6 +27,7 @@ import DashboardSideTab from "@/components/DashboardSideTab";
 import { SlidersHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import ClientPortal from "@/components/ClientPortal";
 import { useProjectData } from "@/contexts/ProjectDataContext";
 import { motion } from "framer-motion";
 
@@ -41,7 +42,7 @@ const Index = () => {
   >("info");
   const [sideTabOpen, setSideTabOpen] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState(false);
-  const { tasks, selectedProjectId, setSelectedProjectId, loading: projectLoading } = useProjectData();
+  const { tasks, selectedProjectId, setSelectedProjectId, loading: projectLoading, isClient } = useProjectData();
   const navigate = useNavigate();
 
   const [showLoadingEscape, setShowLoadingEscape] = useState(false);
@@ -209,7 +210,11 @@ const Index = () => {
 
         <ErrorBoundary fallbackTitle="SightLine Project Dashboard Encountered an Error">
           <main className="max-w-[1600px] mx-auto px-2.5 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6 relative">
-            {activeView === "dashboard" && (
+            {isClient ? (
+              <ClientPortal />
+            ) : (
+              <>
+                {activeView === "dashboard" && (
               <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3 sm:space-y-4 md:space-y-5">
                 <div className="space-y-2 sm:space-y-3">
                   <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
@@ -378,6 +383,8 @@ const Index = () => {
                   onNavigateView={(view) => setActiveView(view)}
                 />
               </motion.div>
+            )}
+              </>
             )}
           </main>
         </ErrorBoundary>

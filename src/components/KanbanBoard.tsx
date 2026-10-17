@@ -44,7 +44,7 @@ const KanbanBoard = ({ onOpenDetails }: KanbanBoardProps) => {
   const handleDragStart = (taskId: number) => setDraggedTask(taskId);
 
   const handleDrop = async (targetColumn: KanbanColumn) => {
-    if (draggedTask === null) return;
+    if (draggedTask === null || !canEditProject) return;
     const newStatus: Record<KanbanColumn, TaskStatus> = {
       "To-Do": "Planning",
       "In Progress": "Processing",
@@ -94,9 +94,13 @@ const KanbanBoard = ({ onOpenDetails }: KanbanBoardProps) => {
             <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               Kanban Board
             </h3>
-            {canEditProject && (
+            {canEditProject ? (
               <span className="text-[10px] text-muted-foreground ml-1 hidden sm:inline bg-secondary/50 px-2 py-0.5 rounded-full">
                 Drag cards between columns to update status in real-time
+              </span>
+            ) : (
+              <span className="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1 font-semibold">
+                Read-Only Progress View
               </span>
             )}
           </div>
@@ -105,7 +109,7 @@ const KanbanBoard = ({ onOpenDetails }: KanbanBoardProps) => {
             <span className="text-[10px] font-mono bg-muted/50 text-muted-foreground px-2.5 py-1 rounded-full">
               {taskList.length} total tasks
             </span>
-            {onOpenDetails && (
+            {canEditProject && onOpenDetails && (
               <button
                 onClick={onOpenDetails}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
