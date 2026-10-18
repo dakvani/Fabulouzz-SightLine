@@ -411,7 +411,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
           damping: 24,
           mass: 0.8,
         }}
-        className="fixed top-3 sm:top-4 inset-x-0 z-50 mx-auto max-w-6xl px-3 sm:px-4 pointer-events-none"
+        className="fixed top-3 sm:top-4 inset-x-0 z-50 mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 pointer-events-none"
       >
         <div className="pointer-events-auto liquid-header-pill rounded-full px-4 sm:px-6 h-13 sm:h-14 flex items-center justify-between shadow-2xl transition-all">
           <motion.div
@@ -606,7 +606,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-[850px] h-36 bg-primary/[0.08] blur-[160px] rounded-full" />
         </div>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="liquid-glass-card rounded-3xl p-8 sm:p-12 grid grid-cols-2 sm:grid-cols-4 gap-8 shadow-2xl border border-white/20 dark:border-white/10 melt-radial">
             <StatCounter value={99} suffix="%" label="Uptime Reliability" delay={0} />
             <StatCounter value={500} suffix="+" label="Projects Tracked" delay={0.15} />
@@ -646,7 +646,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-[850px] h-[450px] bg-emerald-500/[0.05] blur-[220px] rounded-full" />
         </div>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <AnimatedSection className="text-center mb-16 sm:mb-20">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs sm:text-sm font-semibold mb-5 shadow-sm">
               <Clock className="w-4 h-4" /> Seamless Workflow
@@ -758,7 +758,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       {/* ═══════ PRICING ═══════ */}
       <section id="pricing" className="relative py-24 sm:py-32 scroll-mt-16 overflow-hidden">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[850px] h-[500px] bg-primary/[0.08] blur-[220px] pointer-events-none rounded-full" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <AnimatedSection className="text-center mb-16 sm:mb-20">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs sm:text-sm font-semibold mb-5 shadow-sm">
               <Crown className="w-4 h-4" /> Transparent Pricing Plans
@@ -776,7 +776,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
             </div>
           </AnimatedSection>
 
-          <div className="grid md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 sm:gap-8 max-w-7xl mx-auto">
             {plans.map((plan, i) => (
               <AnimatedSection key={plan.tier} delay={0.1 * i} className="h-full">
                 <motion.div

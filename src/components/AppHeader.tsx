@@ -120,7 +120,7 @@ const AppHeader = ({
           damping: 24,
           mass: 0.8,
         }}
-        className="sticky top-2 sm:top-3.5 z-50 mx-auto max-w-7xl px-2 sm:px-4 transition-all duration-300 pointer-events-none"
+        className="sticky top-2 sm:top-3.5 z-50 mx-auto max-w-[1600px] w-full px-2.5 sm:px-4 md:px-6 transition-all duration-300 pointer-events-none"
       >
         <div className="pointer-events-auto liquid-header-pill rounded-full sm:rounded-2xl px-3 sm:px-5 h-13 sm:h-14 flex items-center justify-between shadow-2xl transition-all">
           {/* Left: Back + Logo */}
