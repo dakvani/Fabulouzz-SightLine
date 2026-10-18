@@ -104,8 +104,8 @@ SightLine is configured to automatically launch upon Windows startup/reboot so y
 
 ## 🏗️ Google Antigravity Architectural Standards
 
-The codebase has been refactored and standardized from Lovable conventions to **Google Antigravity Engineering Standards**:
-- **Zero Vendor Lock-in**: All proprietary Lovable hooks, taggers, and platform-specific artifacts have been eradicated.
+The codebase adheres strictly to **Google Antigravity Engineering Standards**:
+- **Zero Vendor Lock-in**: Fully decoupled from third-party builders, proprietary taggers, and platform-specific artifacts.
 - **Resilient Offline-First Fallbacks**: Dynamic database schema features (such as `tasks.description`) operate seamlessly even if backend migrations have not yet run, using smart local persistence caches (`sightline_task_descriptions`).
 - **High-Fidelity Code Quality**: Enforced strict TypeScript typings, comprehensive Vitest unit suites, and zero-error builds.
 - **Architectural Rules**: Formalized under [`.agents/rules/antigravity.md`](file:///.agents/rules/antigravity.md).
@@ -115,7 +115,7 @@ The codebase has been refactored and standardized from Lovable conventions to **
 ## ✉️ Official Email Dispatching (`info@fabulouzz.com`)
 
 All system notifications, project alerts, and password resets originate exclusively from **`info@fabulouzz.com`** with complete Fabulouzz corporate branding:
-- **Zero Lovable Relaying**: Default Supabase Auth SMTP routing through third-party platform mailers has been fully bypassed.
+- **Dedicated Corporate Mailer**: All emails route strictly through official Fabulouzz infrastructure and verified domain records.
 - **Dual-Layer Delivery Pipeline**:
   1. **Primary**: Supabase Edge Function (`supabase/functions/send-email`) configured with official Resend API keys.
   2. **Direct Client Fallback**: Client-side Resend API dispatch (`VITE_RESEND_API_KEY`) ensuring guaranteed delivery if edge functions are offline.

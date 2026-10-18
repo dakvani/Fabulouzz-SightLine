@@ -7,7 +7,7 @@ describe("LandingPage Component & Production Readiness", () => {
   it("renders LandingPage cleanly without any runtime reference errors", () => {
     const { container } = render(
       <ThemeProvider attribute="class" defaultTheme="dark">
-        <LandingPage onAuthSuccess={() => {}} />
+        <LandingPage onAuthSuccess={() => { }} />
       </ThemeProvider>
     );
 
@@ -21,7 +21,7 @@ describe("LandingPage Component & Production Readiness", () => {
   it("renders all feature cards and pricing tiers", () => {
     render(
       <ThemeProvider attribute="class" defaultTheme="dark">
-        <LandingPage onAuthSuccess={() => {}} />
+        <LandingPage onAuthSuccess={() => { }} />
       </ThemeProvider>
     );
 
@@ -39,7 +39,7 @@ describe("LandingPage Component & Production Readiness", () => {
   it("opens login modal without any role selector (pure email + password authentication)", () => {
     render(
       <ThemeProvider attribute="class" defaultTheme="dark">
-        <LandingPage onAuthSuccess={() => {}} />
+        <LandingPage onAuthSuccess={() => { }} />
       </ThemeProvider>
     );
 

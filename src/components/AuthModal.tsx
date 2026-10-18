@@ -193,9 +193,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     try {
       const cleanEmail = email.trim();
       const portalOrigin = getProductionPortalUrl();
-      const resetUrl = `${portalOrigin}/reset-password`;
-
-      supabase.auth.resetPasswordForEmail(cleanEmail, { redirectTo: resetUrl }).catch(() => {});
+      const resetUrl = `${portalOrigin}/reset-password?email=${encodeURIComponent(cleanEmail)}`;
 
       await logAuditEvent({
         action: "auth.password_reset_requested",

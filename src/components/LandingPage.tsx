@@ -191,12 +191,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     setLoading(true);
     try {
       const portalOrigin = getProductionPortalUrl();
-      const redirectUrl = `${portalOrigin}/reset-password`;
-
-      // Trigger Supabase auth reset session preparation
-      supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: redirectUrl }).catch(err => {
-        console.warn("Supabase resetPasswordForEmail warning:", err);
-      });
+      const redirectUrl = `${portalOrigin}/reset-password?email=${encodeURIComponent(email.trim())}`;
 
       // Route through official Fabulouzz corporate mailer (info@fabulouzz.com)
       await sendBrandedEmail({
