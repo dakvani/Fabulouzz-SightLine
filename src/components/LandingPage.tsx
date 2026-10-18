@@ -6,7 +6,7 @@ import {
   BarChart3, Kanban, CalendarRange, Bell, FileText, Palette,
   Zap, Clock, Globe, Crown, CheckCircle2, ArrowRight,
   LayoutDashboard, ListTodo, GanttChart, Activity,
-  Sparkles, TrendingUp, Lock as LockIcon,
+  Sparkles, TrendingUp, Lock as LockIcon, AlertCircle, ShieldCheck,
   Quote, Star, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon
 } from "lucide-react";
 import { useThemeStyle } from "@/contexts/ThemeStyleContext";
@@ -72,17 +72,17 @@ const FeatureCard = ({ icon: Icon, title, desc, delay, gradient }: { icon: any; 
       initial={{ opacity: 0, y: 40, scale: 0.95 }}
       animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
       transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -6, transition: { duration: 0.25 } }}
-      className="group relative liquid-glass-card p-6 sm:p-8 overflow-hidden cursor-default"
+      whileHover={{ y: -8, scale: 1.02, transition: { duration: 0.25 } }}
+      className="group relative liquid-glass-card p-7 sm:p-9 rounded-3xl overflow-hidden cursor-default shadow-xl shadow-black/5 dark:shadow-black/20"
     >
-      <div className={`absolute top-0 left-0 w-full h-1 ${gradient}`} />
-      <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-[60px] bg-primary/10" />
+      <div className={`absolute top-0 left-0 w-full h-1.5 ${gradient}`} />
+      <div className="absolute top-0 right-0 w-44 h-44 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-[80px] bg-primary/20 pointer-events-none" />
       <div className="relative z-10">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-          <Icon className="w-6 h-6 text-primary" />
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5 group-hover:bg-primary/20 group-hover:scale-105 transition-all">
+          <Icon className="w-7 h-7 text-primary" />
         </div>
-        <h3 className="text-lg font-bold text-foreground mb-2">{title}</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+        <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-3">{title}</h3>
+        <p className="text-sm sm:text-base text-muted-foreground/90 leading-relaxed">{desc}</p>
       </div>
     </motion.div>
   );
@@ -123,9 +123,9 @@ const StatCounter = ({ value, label, suffix = "", delay = 0 }: { value: number; 
   }, [isInView, value, delay]);
 
   return (
-    <div ref={ref} className="text-center">
-      <div className="text-3xl sm:text-4xl font-bold text-primary">{count}{suffix}</div>
-      <div className="text-sm text-muted-foreground mt-1">{label}</div>
+    <div ref={ref} className="text-center py-2">
+      <div className="text-4xl sm:text-5xl md:text-6xl font-black text-primary tracking-tight">{count}{suffix}</div>
+      <div className="text-sm sm:text-base text-muted-foreground/90 font-medium mt-2">{label}</div>
     </div>
   );
 };
@@ -141,8 +141,11 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
   const [mode, setMode] = useState<"login" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
@@ -171,6 +174,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
   /* ── Auth handlers ── */
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    setLoginError(null);
     setLoading(true);
     try {
       const cleanEmail = email.trim();
@@ -182,8 +186,11 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       const error = res.error;
       setLoading(false);
       if (error) {
-        toast({ title: "Login failed", description: error.message, variant: "destructive" });
+        const msg = error.message || "Invalid email or password. Please verify your credentials.";
+        setLoginError(msg);
+        toast({ title: "Login failed", description: msg, variant: "destructive" });
       } else {
+        setLoginError(null);
         toast({ title: "Welcome back!" });
         onAuthSuccess();
 
@@ -216,34 +223,77 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
 
   const handleForgotPassword = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!email.trim()) {
-      toast({ title: "Email required", description: "Please enter your email address." });
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      toast({ title: "Email required", description: "Please enter your registered account email.", variant: "destructive" });
       return;
     }
+    if (password.length < 6) {
+      toast({ title: "Password too short", description: "New password must be at least 6 characters.", variant: "destructive" });
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast({ title: "Passwords mismatch", description: "New password and confirmation password do not match.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
     try {
-      const portalOrigin = getProductionPortalUrl();
-      const redirectUrl = `${portalOrigin}/reset-password?email=${encodeURIComponent(email.trim())}`;
-
-      // Route through official Fabulouzz corporate mailer (info@fabulouzz.com)
-      await sendBrandedEmail({
-        type: "reset_password",
-        to: email.trim(),
-        data: {
-          resetUrl: redirectUrl,
-          fullName: email.split("@")[0],
+      // Direct recovery via backend Edge Function (no expiring secure links or magic tokens required)
+      const { data, error } = await supabase.functions.invoke("recover-password", {
+        body: {
+          email: cleanEmail,
+          newPassword: password,
         },
       });
 
-      setLoading(false);
-      toast({
-        title: "Secure Reset Link Dispatched",
-        description: `Official instructions sent from ${BRAND_MAIN_EMAIL} to ${email.trim()}. Please check your inbox.`,
+      if (error) {
+        let displayError = "Failed to recover password. Please check your email.";
+        try {
+          if (error.context && typeof error.context.json === "function") {
+            const errJson = await error.context.json();
+            if (errJson?.error) displayError = errJson.error;
+          } else if (error.message) {
+            displayError = error.message;
+          }
+        } catch (_) {
+          if (error.message) displayError = error.message;
+        }
+        setLoading(false);
+        toast({ title: "Recovery Error", description: displayError, variant: "destructive" });
+        return;
+      }
+
+      if (data?.error) {
+        setLoading(false);
+        toast({ title: "Recovery Error", description: data.error, variant: "destructive" });
+        return;
+      }
+
+      // Automatically sign in with recovered credentials
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
       });
-      setMode("login");
-    } catch {
+
       setLoading(false);
-      toast({ title: "Connection error", description: "Unable to reach the server.", variant: "destructive" });
+      if (!signInErr) {
+        toast({
+          title: "Account Recovered Successfully",
+          description: "Your password has been updated and you are now signed in.",
+        });
+        setShowLogin(false);
+        onAuthSuccess();
+      } else {
+        toast({
+          title: "Password Updated",
+          description: "Password reset successful. Please sign in with your new password.",
+        });
+        setMode("login");
+      }
+    } catch (err: any) {
+      setLoading(false);
+      toast({ title: "Connection error", description: err?.message || "Unable to reach the server.", variant: "destructive" });
     }
   };
 
@@ -349,23 +399,40 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     <div className="min-h-screen bg-background overflow-x-hidden scroll-smooth">
       {/* ═══════ EDGE-ROUNDED FLOATING AUTOHIDING NAV ═══════ */}
       <motion.nav
-        initial={{ y: -60, opacity: 0 }}
-        animate={{ y: hidden ? -100 : 0, opacity: hidden ? 0 : 1 }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ y: -70, opacity: 0, scale: 0.95 }}
+        animate={{
+          y: hidden ? -110 : 0,
+          opacity: hidden ? 0 : 1,
+          scale: hidden ? 0.95 : 1,
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 260,
+          damping: 24,
+          mass: 0.8,
+        }}
         className="fixed top-3 sm:top-4 inset-x-0 z-50 mx-auto max-w-6xl px-3 sm:px-4 pointer-events-none"
       >
         <div className="pointer-events-auto liquid-header-pill rounded-full px-4 sm:px-6 h-13 sm:h-14 flex items-center justify-between shadow-2xl transition-all">
-          <div className="flex items-center gap-2.5">
+          <motion.div
+            role="button"
+            tabIndex={0}
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2.5 cursor-pointer group select-none"
+            title="SightLine Command Center - Click to scroll to top"
+          >
             {mounted && (
-              <img
+              <motion.img
                 src={isDark ? fabulouzzLogo : fabulouzzLogoLight}
                 alt="Fabulouzz"
-                className="h-7 w-auto drop-shadow-sm"
+                className="h-7 w-auto drop-shadow-sm transition-transform duration-300 group-hover:rotate-[-4deg] group-hover:scale-105"
               />
             )}
             <div className="flex flex-col border-l border-white/15 dark:border-white/10 pl-2.5">
               <span
-                className="text-xs font-bold tracking-wide text-primary"
+                className="text-xs font-bold tracking-wide text-primary transition-colors group-hover:text-emerald-400"
                 style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
               >
                 SIGHTLINE
@@ -374,7 +441,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                 Command Center
               </span>
             </div>
-          </div>
+          </motion.div>
 
           <div className="flex items-center gap-2 sm:gap-3">
             <a
@@ -431,31 +498,34 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </motion.nav>
 
       {/* ═══════ HERO ═══════ */}
-      <section ref={heroRef} className="relative pt-24 sm:pt-28 pb-16 min-h-[100vh] flex items-center overflow-hidden">
-        {/* BG elements */}
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-[10%] w-[500px] h-[500px] rounded-full bg-primary/[0.07] blur-[130px] pointer-events-none" />
-          <div className="absolute bottom-20 right-[10%] w-[450px] h-[450px] rounded-full bg-[hsl(var(--processing)/0.07)] blur-[110px] pointer-events-none" />
+      <section ref={heroRef} className="relative pt-24 sm:pt-32 pb-20 min-h-[100vh] flex items-center overflow-hidden">
+        {/* Deep Melt & Feather Blurry BG Elements */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-10 left-[8%] w-[650px] h-[650px] rounded-full bg-primary/[0.12] blur-[200px]" />
+          <div className="absolute bottom-10 right-[8%] w-[580px] h-[580px] rounded-full bg-[hsl(var(--processing)/0.12)] blur-[180px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full bg-emerald-500/[0.08] blur-[220px]" />
           <div
-            className="absolute inset-0 opacity-[0.025] pointer-events-none"
+            className="absolute inset-0 opacity-[0.025]"
             style={{
               backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
               backgroundSize: "80px 80px",
             }}
           />
+          {/* Feathered Melt Vignette joining seamlessly to background */}
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/60 to-transparent" />
         </div>
 
         <motion.div style={{ y: heroY, opacity: heroOpacity }} className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-            {/* Left - copy */}
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-14 items-center">
+            {/* Left - Larger Executive Copy */}
             <div className="lg:col-span-5 text-center lg:text-left">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.2 }}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-6"
+                className="inline-flex items-center gap-2 px-4 py-1.5 sm:py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs sm:text-sm font-bold mb-6 shadow-md shadow-primary/10"
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-4 h-4 text-primary" />
                 Project Management, Reimagined
               </motion.div>
 
@@ -463,7 +533,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.35 }}
-                className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground leading-[1.12] mb-5"
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-foreground tracking-tight leading-[1.04] mb-6"
               >
                 Your Projects.{" "}
                 <span className="text-gradient">One Command Center.</span>
@@ -473,22 +543,22 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.5 }}
-                className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0 mb-7"
+                className="text-base sm:text-lg md:text-xl text-muted-foreground/90 leading-relaxed max-w-xl mx-auto lg:mx-0 mb-8 sm:mb-9 font-normal"
               >
-                Real-time dashboards, Gantt charts, Kanban boards, live notifications, and branded PDF reports — everything your team needs to deliver projects on time.
+                Real-time telemetry dashboards, Saudi-calendar Gantt charts, Kanban boards, live notifications, and executive branded PDF reports — engineered for peak performance.
               </motion.p>
 
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.65 }}
-                className="flex flex-wrap justify-center lg:justify-start gap-3"
+                className="flex flex-wrap justify-center lg:justify-start gap-3 sm:gap-4"
               >
                 <motion.button
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setShowLogin(true)}
-                  className="px-6 py-3 rounded-full text-sm font-bold text-primary-foreground shadow-lg flex items-center gap-2 cursor-pointer"
+                  className="px-7 sm:px-8 py-3.5 sm:py-4 rounded-full text-sm sm:text-base font-bold text-primary-foreground shadow-2xl flex items-center gap-2.5 cursor-pointer"
                   style={{ background: "var(--gradient-primary)" }}
                 >
                   Get Started Free <ArrowRight className="w-4 h-4" />
@@ -498,22 +568,24 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                   whileTap={{ scale: 0.97 }}
                   href="#features"
                   onClick={(e: React.MouseEvent<HTMLAnchorElement>) => smoothScroll(e, "features")}
-                  className="px-6 py-3 rounded-full text-sm font-semibold border border-white/20 dark:border-white/10 text-foreground hover:bg-white/10 dark:hover:bg-white/5 transition-colors flex items-center gap-2 liquid-glass"
+                  className="px-7 sm:px-8 py-3.5 sm:py-4 rounded-full text-sm sm:text-base font-semibold border border-white/20 dark:border-white/10 text-foreground hover:bg-white/10 dark:hover:bg-white/5 transition-colors flex items-center gap-2 liquid-glass"
                 >
                   Explore Features <ChevronDown className="w-4 h-4" />
                 </motion.a>
               </motion.div>
             </div>
 
-            {/* Right - Live Animated Dashboard Demo Showcase (Zero performance lag) */}
+            {/* Right - Live Animated Dashboard Demo Showcase with Feathered Melt Edge */}
             <motion.div
               id="demo"
               initial={{ opacity: 0, x: 40, scale: 0.98 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="lg:col-span-7 w-full scroll-mt-24"
+              className="lg:col-span-7 w-full scroll-mt-24 relative"
             >
               <DashboardDemoShowcase />
+              {/* Soft feather overlay at the showcase base */}
+              <div className="absolute -bottom-4 inset-x-4 h-12 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none rounded-b-3xl" />
             </motion.div>
           </div>
         </motion.div>
@@ -529,27 +601,38 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ STATS ═══════ */}
-      <section className="py-16 border-y border-border/30 bg-card/50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 grid grid-cols-2 sm:grid-cols-4 gap-8">
-          <StatCounter value={99} suffix="%" label="Uptime" delay={0} />
-          <StatCounter value={500} suffix="+" label="Projects Tracked" delay={0.15} />
-          <StatCounter value={50} suffix="+" label="Teams" delay={0.3} />
-          <StatCounter value={10} suffix="x" label="Faster Reporting" delay={0.45} />
+      <section className="relative py-20 overflow-hidden">
+        {/* Soft feather blurry ambient join */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[850px] h-36 bg-primary/[0.08] blur-[160px] rounded-full" />
+        </div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
+          <div className="liquid-glass-card rounded-3xl p-8 sm:p-12 grid grid-cols-2 sm:grid-cols-4 gap-8 shadow-2xl border border-white/20 dark:border-white/10 melt-radial">
+            <StatCounter value={99} suffix="%" label="Uptime Reliability" delay={0} />
+            <StatCounter value={500} suffix="+" label="Projects Tracked" delay={0.15} />
+            <StatCounter value={50} suffix="+" label="Engineering Teams" delay={0.3} />
+            <StatCounter value={10} suffix="x" label="Faster Reporting" delay={0.45} />
+          </div>
         </div>
       </section>
 
       {/* ═══════ FEATURES ═══════ */}
-      <section id="features" className="py-20 scroll-mt-16 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AnimatedSection className="text-center mb-14">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
-              <Sparkles className="w-3 h-3" /> Features
+      <section id="features" className="relative py-24 sm:py-32 scroll-mt-16 overflow-hidden">
+        {/* Diffuse feather blurry orbs joining seamlessly into the background */}
+        <div className="absolute top-1/4 -left-40 w-[600px] h-[600px] bg-primary/[0.08] blur-[220px] pointer-events-none rounded-full" />
+        <div className="absolute bottom-10 -right-40 w-[600px] h-[600px] bg-[hsl(var(--processing)/0.08)] blur-[220px] pointer-events-none rounded-full" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <AnimatedSection className="text-center mb-16 sm:mb-20">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs sm:text-sm font-semibold mb-5 shadow-sm">
+              <Sparkles className="w-4 h-4" /> Core Capabilities
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">Everything You Need to Deliver</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">From real-time dashboards to white-label PDF reports, SightLine puts every project management tool in one place.</p>
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-foreground mb-5 tracking-tight">Everything You Need to Deliver</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground/90 max-w-3xl mx-auto leading-relaxed">
+              From real-time telemetry dashboards to white-label PDF reports, SightLine unifies your entire project management workflow into one seamless command center.
+            </p>
           </AnimatedSection>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {features.map((f, i) => (
               <FeatureCard key={f.title} {...f} delay={0.08 * i} />
             ))}
@@ -558,14 +641,20 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ HOW IT WORKS ═══════ */}
-      <section id="how-it-works" className="py-20 scroll-mt-16 sm:py-28 bg-card/50 border-y border-border/30">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AnimatedSection className="text-center mb-16">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
-              <Clock className="w-3 h-3" /> How It Works
+      <section id="how-it-works" className="relative py-24 sm:py-32 scroll-mt-16 overflow-hidden">
+        {/* Soft blurry background blend */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[850px] h-[450px] bg-emerald-500/[0.05] blur-[220px] rounded-full" />
+        </div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <AnimatedSection className="text-center mb-16 sm:mb-20">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs sm:text-sm font-semibold mb-5 shadow-sm">
+              <Clock className="w-4 h-4" /> Seamless Workflow
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">Up and Running in Minutes</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">Three simple steps to take control of your project delivery.</p>
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-foreground mb-5 tracking-tight">Up and Running in Minutes</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground/90 max-w-2xl mx-auto leading-relaxed">
+              Three simple steps to transform project chaos into crystal-clear visibility.
+            </p>
           </AnimatedSection>
 
           <div className="grid md:grid-cols-3 gap-8 relative">
@@ -574,14 +663,14 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
             {steps.map((s, i) => (
               <AnimatedSection key={s.title} delay={0.15 * i} className="text-center relative">
                 <motion.div
-                  className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-5 relative z-10"
+                  className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-6 relative z-10 group-hover:scale-110 transition-transform shadow-lg shadow-primary/5"
                   whileHover={{ rotate: 8, scale: 1.1 }}
                 >
-                  <s.icon className="w-6 h-6 text-primary" />
+                  <s.icon className="w-8 h-8 text-primary" />
                 </motion.div>
-                <span className="text-xs font-bold text-primary mb-2 block">Step {i + 1}</span>
-                <h3 className="text-lg font-bold text-foreground mb-2">{s.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+                <span className="text-xs font-bold text-primary mb-2.5 block tracking-wide uppercase">Step {i + 1}</span>
+                <h3 className="text-xl font-bold text-foreground mb-3">{s.title}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground/90 leading-relaxed">{s.desc}</p>
               </AnimatedSection>
             ))}
           </div>
@@ -589,27 +678,30 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ TESTIMONIALS ═══════ */}
-      <section id="testimonials" className="py-20 sm:py-28 scroll-mt-16">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AnimatedSection className="text-center mb-14">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
-              <Quote className="w-3 h-3" /> Testimonials
+      <section id="testimonials" className="relative py-24 sm:py-32 scroll-mt-16 overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[750px] h-[380px] bg-primary/[0.07] blur-[200px] pointer-events-none rounded-full" />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <AnimatedSection className="text-center mb-16">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs sm:text-sm font-semibold mb-5 shadow-sm">
+              <Quote className="w-4 h-4" /> Client Feedback
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">Trusted by Project Teams</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">See what project managers, engineers, and clients say about SightLine.</p>
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-foreground mb-5 tracking-tight">Trusted by Project Teams</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground/90 max-w-xl mx-auto leading-relaxed">
+              See what project managers, engineers, and clients say about SightLine.
+            </p>
           </AnimatedSection>
 
           <div className="relative max-w-3xl mx-auto">
             {/* Navigation arrows */}
             <button
               onClick={prevTestimonial}
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 sm:-translate-x-12 z-10 w-10 h-10 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 sm:-translate-x-12 z-10 w-10 h-10 rounded-full bg-card/80 backdrop-blur-md border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors shadow-lg cursor-pointer"
             >
               <ChevronLeftIcon className="w-5 h-5" />
             </button>
             <button
               onClick={nextTestimonial}
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 sm:translate-x-12 z-10 w-10 h-10 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 sm:translate-x-12 z-10 w-10 h-10 rounded-full bg-card/80 backdrop-blur-md border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors shadow-lg cursor-pointer"
             >
               <ChevronRightIcon className="w-5 h-5" />
             </button>
@@ -623,26 +715,26 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -60 }}
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                  className="liquid-glass-card p-8 sm:p-10 rounded-2xl text-center"
+                  className="liquid-glass-card p-8 sm:p-12 rounded-3xl text-center shadow-2xl border border-white/20 dark:border-white/10"
                 >
                   {/* Stars */}
-                  <div className="flex justify-center gap-1 mb-5">
+                  <div className="flex justify-center gap-1.5 mb-6">
                     {Array.from({ length: testimonials[testimonialIdx].stars }).map((_, i) => (
                       <Star key={i} className="w-5 h-5 text-primary fill-primary" />
                     ))}
                   </div>
 
-                  <p className="text-lg sm:text-xl text-foreground font-medium leading-relaxed mb-8 italic">
+                  <p className="text-xl sm:text-2xl text-foreground font-medium leading-relaxed mb-9 italic">
                     "{testimonials[testimonialIdx].quote}"
                   </p>
 
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+                  <div className="flex items-center justify-center gap-3.5">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-bold text-primary shadow-sm">
                       {testimonials[testimonialIdx].avatar}
                     </div>
                     <div className="text-left">
-                      <div className="text-sm font-bold text-foreground">{testimonials[testimonialIdx].name}</div>
-                      <div className="text-xs text-muted-foreground">{testimonials[testimonialIdx].role}</div>
+                      <div className="text-base font-bold text-foreground">{testimonials[testimonialIdx].name}</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">{testimonials[testimonialIdx].role}</div>
                     </div>
                   </div>
                 </motion.div>
@@ -650,12 +742,12 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
             </div>
 
             {/* Dots */}
-            <div className="flex justify-center gap-2 mt-6">
+            <div className="flex justify-center gap-2 mt-8">
               {testimonials.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setTestimonialIdx(i)}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${i === testimonialIdx ? "bg-primary w-6" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"}`}
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 cursor-pointer ${i === testimonialIdx ? "bg-primary w-8" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"}`}
                 />
               ))}
             </div>
@@ -664,59 +756,60 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ PRICING ═══════ */}
-      <section id="pricing" className="py-20 scroll-mt-16 sm:py-28">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AnimatedSection className="text-center mb-14">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-4">
-              <Crown className="w-3.5 h-3.5" /> Transparent Pricing Plans
+      <section id="pricing" className="relative py-24 sm:py-32 scroll-mt-16 overflow-hidden">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[850px] h-[500px] bg-primary/[0.08] blur-[220px] pointer-events-none rounded-full" />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <AnimatedSection className="text-center mb-16 sm:mb-20">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs sm:text-sm font-semibold mb-5 shadow-sm">
+              <Crown className="w-4 h-4" /> Transparent Pricing Plans
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">Plans Built for Modern Engineering & EPC</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-foreground mb-5 tracking-tight">Plans Built for Modern Engineering & EPC</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground/90 max-w-2xl mx-auto leading-relaxed">
               Start free, upgrade for full corporate white-label branding, or scale across your entire portfolio with our Enterprise Command Deck.
             </p>
-            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
               <span>Provided by <strong className="text-foreground">Fabulouzz Technologies</strong></span>
               <span>•</span>
               <a href="mailto:info@fabulouzz.com" className="text-primary hover:underline font-semibold flex items-center gap-1">
-                <Mail className="w-3 h-3" /> info@fabulouzz.com
+                <Mail className="w-3.5 h-3.5" /> info@fabulouzz.com
               </a>
             </div>
           </AnimatedSection>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
             {plans.map((plan, i) => (
               <AnimatedSection key={plan.tier} delay={0.1 * i} className="h-full">
                 <motion.div
-                  whileHover={{ y: -6 }}
-                  className={`liquid-glass-card p-6 sm:p-8 rounded-2xl relative overflow-hidden flex flex-col justify-between h-full transition-shadow duration-300 ${
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className={`liquid-glass-card p-7 sm:p-9 rounded-3xl relative overflow-hidden flex flex-col justify-between h-full transition-all duration-300 shadow-xl ${
                     plan.highlight
-                      ? "border-primary/50 ring-1 ring-primary/30 shadow-xl shadow-primary/5"
+                      ? "border-primary/50 ring-2 ring-primary/30 shadow-2xl shadow-primary/10"
                       : "border-border/60 hover:border-primary/30"
                   }`}
                 >
                   {plan.highlight && (
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-emerald-400 to-[hsl(var(--processing))]" />
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-emerald-400 to-[hsl(var(--processing))]" />
                   )}
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                      <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
                         plan.highlight
                           ? "bg-primary/20 text-primary border-primary/30"
                           : "bg-secondary text-muted-foreground border-border/50"
                       }`}>
                         {plan.badge}
                       </span>
-                      {plan.highlight && <Crown className="w-4 h-4 text-primary" />}
+                      {plan.highlight && <Crown className="w-5 h-5 text-primary" />}
                     </div>
-                    <h3 className="text-2xl font-bold text-foreground">{plan.tier}</h3>
-                    <p className="text-xs text-muted-foreground mt-1 mb-5 min-h-[34px] leading-relaxed">{plan.description}</p>
+                    <h3 className="text-2xl sm:text-3xl font-black text-foreground">{plan.tier}</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 mb-5 min-h-[38px] leading-relaxed">{plan.description}</p>
                     <div className="mb-6 pb-6 border-b border-border/40">
-                      <span className="text-4xl sm:text-5xl font-black text-foreground">{plan.price}</span>
+                      <span className="text-4xl sm:text-5xl font-black text-foreground tracking-tight">{plan.price}</span>
                       <span className="text-muted-foreground text-sm font-medium">/month</span>
                     </div>
-                    <ul className="space-y-3 mb-8">
+                    <ul className="space-y-3.5 mb-8">
                       {plan.features.map(f => (
-                        <li key={f} className="flex items-start gap-2.5 text-xs text-muted-foreground">
+                        <li key={f} className="flex items-start gap-2.5 text-xs sm:text-sm text-muted-foreground/90">
                           <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                           <span className="leading-snug">{f}</span>
                         </li>
@@ -728,7 +821,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setShowLogin(true)}
-                      className={`w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md ${
+                      className={`w-full py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md cursor-pointer ${
                         plan.highlight
                           ? "text-primary-foreground shadow-primary/20"
                           : "text-foreground bg-secondary/80 border border-border/60 hover:bg-secondary"
@@ -744,16 +837,16 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
           </div>
 
           {/* Custom Enterprise Banner */}
-          <div className="mt-12 p-6 sm:p-8 rounded-2xl liquid-glass-card border border-primary/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="mt-14 p-7 sm:p-9 rounded-3xl liquid-glass-card border border-primary/30 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl">
             <div>
-              <h4 className="text-base sm:text-lg font-bold text-foreground">Need Custom Integrations or Multi-Site Licensing?</h4>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-xl">
+              <h4 className="text-lg sm:text-xl font-bold text-foreground">Need Custom Integrations or Multi-Site Licensing?</h4>
+              <p className="text-xs sm:text-sm text-muted-foreground/90 mt-1 max-w-xl leading-relaxed">
                 Provided by Fabulouzz Technologies — our team delivers dedicated database instances, custom ERP bridges, and private corporate deployments.
               </p>
             </div>
             <a
               href="mailto:info@fabulouzz.com?subject=SightLine%20Enterprise%20Custom%20Deployment"
-              className="whitespace-nowrap px-6 py-3 rounded-xl text-xs sm:text-sm font-bold text-primary-foreground bg-primary hover:opacity-90 transition-opacity shadow-md flex items-center gap-2"
+              className="whitespace-nowrap px-7 py-3.5 rounded-xl text-xs sm:text-sm font-bold text-primary-foreground bg-primary hover:opacity-90 transition-opacity shadow-lg flex items-center gap-2 cursor-pointer"
             >
               <Mail className="w-4 h-4" /> Contact info@fabulouzz.com
             </a>
@@ -762,17 +855,21 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ CTA ═══════ */}
-      <section className="py-20 sm:py-28 bg-card/50 border-t border-border/30">
-        <AnimatedSection className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">Ready to Take Command?</h2>
-          <p className="text-muted-foreground mb-8 max-w-lg mx-auto text-sm sm:text-base">
+      <section className="relative py-24 sm:py-32 overflow-hidden">
+        {/* Deep ambient blur join */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[850px] h-[400px] bg-primary/[0.12] blur-[220px] rounded-full" />
+        </div>
+        <AnimatedSection className="max-w-4xl mx-auto px-4 sm:px-6 text-center relative z-10">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-foreground mb-5 tracking-tight">Ready to Take Command?</h2>
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground/90 mb-10 max-w-2xl mx-auto leading-relaxed">
             Join teams already using SightLine to deliver projects faster, with full visibility and professional reporting.
           </p>
           <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => setShowLogin(true)}
-            className="px-8 py-3.5 rounded-xl text-base font-bold text-primary-foreground shadow-lg inline-flex items-center gap-2"
+            className="px-9 sm:px-10 py-4 sm:py-4.5 rounded-full text-base sm:text-lg font-bold text-primary-foreground shadow-2xl inline-flex items-center gap-2.5 cursor-pointer"
             style={{ background: "var(--gradient-primary)" }}
           >
             Get Started Free <ArrowRight className="w-5 h-5" />
@@ -781,7 +878,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       </section>
 
       {/* ═══════ FOOTER ═══════ */}
-      <footer className="py-10 border-t border-border/30 bg-card/20">
+      <footer className="relative py-12 border-t border-border/20 bg-card/20 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
             {mounted && <img src={isDark ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz" className="h-7 w-auto" />}
@@ -837,8 +934,35 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
               </div>
             </div>
 
-            <h2 className="text-xl font-bold text-foreground mb-1">{mode === "login" ? "Welcome Back" : "Reset Password"}</h2>
-            <p className="text-sm text-muted-foreground mb-6">{mode === "login" ? "Sign in to your SightLine account" : "Enter your email to receive a reset link"}</p>
+            <h2 className="text-xl font-bold text-foreground mb-1">{mode === "login" ? "Welcome Back" : "Password Recovery"}</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              {mode === "login"
+                ? "Sign in to your SightLine account"
+                : "Enter your registered email and new password to recover your account immediately"}
+            </p>
+
+            {/* Highly Visible In-Modal Error Alert Banner */}
+            {loginError && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className="mb-4 p-3.5 rounded-xl bg-destructive/15 border-2 border-destructive/50 text-destructive-foreground dark:text-rose-200 text-xs sm:text-sm font-medium flex items-start gap-2.5 shadow-xl shadow-destructive/15 relative z-20"
+              >
+                <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold text-rose-400">Authentication Error</p>
+                  <p className="text-xs text-rose-300/90 mt-0.5 leading-snug">{loginError}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLoginError(null)}
+                  className="text-rose-400 hover:text-rose-200 p-0.5 cursor-pointer"
+                  aria-label="Dismiss error"
+                >
+                  ✕
+                </button>
+              </motion.div>
+            )}
 
             {mode === "login" && (
               <form onSubmit={handleLogin} className="space-y-4">
@@ -859,7 +983,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                 </div>
                 <button type="button" onClick={() => setMode("forgot")} className="text-xs text-primary hover:underline">Forgot password?</button>
                 <motion.button type="submit" disabled={loading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                   style={{ background: "var(--gradient-primary)" }}>
                   <LogIn className="w-4 h-4" /> {loading ? "Signing in..." : "Sign In"}
                 </motion.button>
@@ -870,20 +994,58 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
             )}
 
             {mode === "forgot" && (
-              <form onSubmit={handleForgotPassword} className="space-y-4">
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="Email"
-                    className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <form onSubmit={handleForgotPassword} className="space-y-3.5">
+                {/* Account Email */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Account Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="e.g. support@fabulouzz.com"
+                      className="w-full pl-10 pr-3 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  </div>
                 </div>
+
+                {/* New Password */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">New Password (Min 6 chars)</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required placeholder="Enter new password"
+                      className="w-full pl-10 pr-10 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm New Password */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Confirm New Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required placeholder="Confirm new password"
+                      className="w-full pl-10 pr-10 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
                 <motion.button type="submit" disabled={loading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer mt-2"
                   style={{ background: "var(--gradient-primary)" }}>
-                  {loading ? "Sending..." : "Send Reset Link"}
+                  <ShieldCheck className="w-4 h-4" />
+                  {loading ? "Recovering..." : "Recover Password & Sign In"}
                 </motion.button>
-                <button type="button" onClick={() => setMode("login")} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mx-auto">
-                  <ArrowLeft className="w-3 h-3" /> Back to login
-                </button>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <button type="button" onClick={() => setMode("login")} className="flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer">
+                    <ArrowLeft className="w-3 h-3" /> Back to login
+                  </button>
+                  <a href={`/reset-password?email=${encodeURIComponent(email)}`} className="text-primary hover:underline font-medium">
+                    Full page recovery →
+                  </a>
+                </div>
               </form>
             )}
 

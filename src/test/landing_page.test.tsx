@@ -56,4 +56,26 @@ describe("LandingPage Component & Production Readiness", () => {
     expect(screen.queryByText("PM / Engineer")).not.toBeInTheDocument();
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
   });
+
+  it("switches to direct password recovery mode without requiring secure email links", () => {
+    render(
+      <ThemeProvider attribute="class" defaultTheme="dark">
+        <LandingPage onAuthSuccess={() => { }} />
+      </ThemeProvider>
+    );
+
+    // Open modal
+    const signInButtons = screen.getAllByRole("button", { name: /Sign In/i });
+    fireEvent.click(signInButtons[0]);
+
+    // Click "Forgot password?"
+    const forgotBtn = screen.getByText(/Forgot password\?/i);
+    fireEvent.click(forgotBtn);
+
+    // Direct recovery fields should be visible
+    expect(screen.getByText("Password Recovery")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Enter new password/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Confirm new password/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Recover Password & Sign In/i })).toBeInTheDocument();
+  });
 });

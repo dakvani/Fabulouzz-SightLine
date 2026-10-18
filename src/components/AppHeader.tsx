@@ -108,9 +108,18 @@ const AppHeader = ({
   return (
     <>
       <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: hidden ? -90 : 0 }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0, y: -40, scale: 0.95 }}
+        animate={{
+          opacity: hidden ? 0 : 1,
+          y: hidden ? -90 : 0,
+          scale: hidden ? 0.96 : 1,
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 260,
+          damping: 24,
+          mass: 0.8,
+        }}
         className="sticky top-2 sm:top-3.5 z-50 mx-auto max-w-7xl px-2 sm:px-4 transition-all duration-300 pointer-events-none"
       >
         <div className="pointer-events-auto liquid-header-pill rounded-full sm:rounded-2xl px-3 sm:px-5 h-13 sm:h-14 flex items-center justify-between shadow-2xl transition-all">
@@ -121,7 +130,7 @@ const AppHeader = ({
                 onClick={onBackToProjects}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-1 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium border border-border/20 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors flex-shrink-0"
+                className="flex items-center gap-1 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] font-medium border border-border/20 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors flex-shrink-0 cursor-pointer"
                 title="Back to Projects"
               >
                 <ArrowLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
@@ -129,27 +138,26 @@ const AppHeader = ({
               </motion.button>
             )}
             <motion.div
-              className="flex items-center gap-2 cursor-pointer min-w-0"
+              className="flex items-center gap-2 cursor-pointer min-w-0 group select-none"
               onClick={() => onViewChange("dashboard")}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
+              title="Return to Command Center Dashboard"
             >
               {isPremium && branding?.logo_url ? (
                 <motion.img
                   src={branding.logo_url}
                   alt={branding.company_name || "Company"}
-                  className="h-6 sm:h-7 w-auto flex-shrink-0 object-contain"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 400 }}
+                  className="h-6 sm:h-7 w-auto flex-shrink-0 object-contain transition-transform duration-300 group-hover:rotate-[-4deg] group-hover:scale-105"
                 />
               ) : (
                 <motion.img
                   src={isDark ? fabulouzzLogo : fabulouzzLogoLight}
                   alt="Fabulouzz Technologies"
-                  className="h-6 sm:h-7 w-auto flex-shrink-0"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 400 }}
+                  className="h-6 sm:h-7 w-auto flex-shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:rotate-[-4deg] group-hover:scale-105"
                 />
               )}
               <div className="hidden md:flex flex-col border-l border-border/30 pl-2.5">

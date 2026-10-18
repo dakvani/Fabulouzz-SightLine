@@ -288,6 +288,26 @@
     box-shadow: 0 0 24px -6px hsl(var(--primary) / 0.25);
   }
 
+  /* Feathered & Melting Blurry Background Join Utilities */
+  .melt-bottom {
+    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  }
+
+  .melt-top-bottom {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
+  }
+
+  .melt-radial {
+    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 50%, black 55%, transparent 100%);
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 50%, black 55%, transparent 100%);
+  }
+
+  .feathery-blur-edge {
+    box-shadow: 0 0 60px 20px hsl(var(--background));
+  }
+
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-primary);

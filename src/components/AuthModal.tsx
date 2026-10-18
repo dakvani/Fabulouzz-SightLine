@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogIn, Mail, Lock, ArrowLeft, Eye, EyeOff, Shield, KeyRound, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { LogIn, Mail, Lock, ArrowLeft, Eye, EyeOff, Shield, KeyRound, AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
@@ -25,7 +25,10 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [failedAttempts, setFailedAttempts] = useState<number>(0);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
 
@@ -89,6 +92,8 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
         if (nextAttempts >= MAX_FAILED_ATTEMPTS) {
           const lockTime = Date.now() + LOCKOUT_MINUTES * 60 * 1000;
           setLockoutUntil(lockTime);
+          const lockMsg = `Maximum login attempts exceeded. Access locked for ${LOCKOUT_MINUTES} minutes.`;
+          setLoginError(lockMsg);
           await logAuditEvent({
             action: "auth.rate_limit_locked",
             resourceType: "auth",
@@ -97,10 +102,12 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
           });
           toast({
             title: "Security Cooldown Triggered",
-            description: `Maximum login attempts exceeded. Access locked for ${LOCKOUT_MINUTES} minutes.`,
+            description: lockMsg,
             variant: "destructive",
           });
         } else {
+          const authMsg = "Invalid email or password. Please verify your credentials or use direct password recovery.";
+          setLoginError(authMsg);
           await logAuditEvent({
             action: "auth.failed_login",
             resourceType: "auth",
@@ -109,13 +116,14 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
           });
           toast({
             title: "Authentication Failed",
-            description: "Invalid email or password. Please verify your credentials.",
+            description: authMsg,
             variant: "destructive",
           });
         }
         setLoading(false);
         return;
       }
+      setLoginError(null);
 
       const user = authData?.user;
       if (!user) {
@@ -193,43 +201,86 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
 
   const handleForgotPassword = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!email.trim()) {
-      toast({ title: "Email required", description: "Please enter your registered email address." });
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      toast({ title: "Email required", description: "Please enter your registered account email.", variant: "destructive" });
       return;
     }
+    if (password.length < 6) {
+      toast({ title: "Password too short", description: "New password must be at least 6 characters.", variant: "destructive" });
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast({ title: "Passwords mismatch", description: "New password and confirmation password do not match.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
     try {
-      const cleanEmail = email.trim();
-      const portalOrigin = getProductionPortalUrl();
-      const resetUrl = `${portalOrigin}/reset-password?email=${encodeURIComponent(cleanEmail)}`;
-
-      await logAuditEvent({
-        action: "auth.password_reset_requested",
-        resourceType: "auth",
-        actorEmail: cleanEmail,
-        details: { resetUrl },
-      });
-
-      await sendBrandedEmail({
-        type: "reset_password",
-        to: cleanEmail,
-        data: {
-          resetUrl,
-          fullName: cleanEmail.split("@")[0],
+      // Direct recovery via backend Edge Function (no expiring secure links or magic tokens required)
+      const { data, error } = await supabase.functions.invoke("recover-password", {
+        body: {
+          email: cleanEmail,
+          newPassword: password,
         },
       });
 
-      setLoading(false);
-      toast({
-        title: "Secure Reset Link Dispatched",
-        description: `Official instructions sent from ${BRAND_MAIN_EMAIL} to ${cleanEmail}. Please check your inbox.`,
+      if (error) {
+        let displayError = "Failed to recover password. Please check your email.";
+        try {
+          if (error.context && typeof error.context.json === "function") {
+            const errJson = await error.context.json();
+            if (errJson?.error) displayError = errJson.error;
+          } else if (error.message) {
+            displayError = error.message;
+          }
+        } catch (_) {
+          if (error.message) displayError = error.message;
+        }
+        setLoading(false);
+        toast({ title: "Recovery Error", description: displayError, variant: "destructive" });
+        return;
+      }
+
+      if (data?.error) {
+        setLoading(false);
+        toast({ title: "Recovery Error", description: data.error, variant: "destructive" });
+        return;
+      }
+
+      await logAuditEvent({
+        action: "auth.direct_recovery",
+        resourceType: "auth",
+        actorEmail: cleanEmail,
+        details: { method: "direct_password_recovery" },
       });
-      setMode("login");
+
+      // Automatically sign in with recovered credentials
+      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
+
+      setLoading(false);
+      if (!signInErr && signInData?.session) {
+        toast({
+          title: "Account Recovered Successfully",
+          description: "Your password has been updated and you are now signed in.",
+        });
+        onSuccess();
+        onClose();
+      } else {
+        toast({
+          title: "Password Updated",
+          description: "Password reset successful. Please sign in with your new password.",
+        });
+        setMode("login");
+      }
     } catch (err: any) {
       setLoading(false);
       toast({
         title: "Connection Error",
-        description: "Unable to reach the server.",
+        description: err?.message || "Unable to reach the server.",
         variant: "destructive",
       });
     }
@@ -398,6 +449,29 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
             </div>
           )}
 
+          {/* Highly Visible In-Modal Error Alert Banner */}
+          {loginError && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              className="mb-4 p-3.5 rounded-xl bg-destructive/15 border-2 border-destructive/50 text-destructive-foreground dark:text-rose-200 text-xs sm:text-sm font-medium flex items-start gap-2.5 shadow-xl shadow-destructive/15 relative z-20"
+            >
+              <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-bold text-rose-400">Authentication Error</p>
+                <p className="text-xs text-rose-300/90 mt-0.5 leading-snug">{loginError}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLoginError(null)}
+                className="text-rose-400 hover:text-rose-200 p-0.5 cursor-pointer"
+                aria-label="Dismiss error"
+              >
+                ✕
+              </button>
+            </motion.div>
+          )}
+
           {mode === "login" && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -531,35 +605,90 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
           )}
 
           {mode === "forgot" && (
-            <form onSubmit={handleForgotPassword} className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  placeholder="Enter account email"
-                  className="w-full pl-10 pr-3 py-2.5 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
+            <form onSubmit={handleForgotPassword} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Account Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    placeholder="Enter registered account email"
+                    className="w-full pl-10 pr-3 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">New Password (Min 6 chars)</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    placeholder="Enter new password"
+                    className="w-full pl-10 pr-10 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Confirm New Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    required
+                    placeholder="Confirm new password"
+                    className="w-full pl-10 pr-10 py-2 bg-secondary/50 border border-border/50 rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
               <motion.button
                 type="submit"
                 disabled={loading}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                className="w-full py-2.5 rounded-lg text-sm font-semibold text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer mt-2"
                 style={{ background: "var(--gradient-primary)" }}
               >
-                {loading ? "Sending..." : "Send Reset Link"}
+                <ShieldCheck className="w-4 h-4" />
+                {loading ? "Recovering..." : "Recover Password & Sign In"}
               </motion.button>
-              <button
-                type="button"
-                onClick={() => setMode("login")}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mx-auto"
-              >
-                <ArrowLeft className="w-3 h-3" /> Back to login
-              </button>
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <button
+                  type="button"
+                  onClick={() => setMode("login")}
+                  className="flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <ArrowLeft className="w-3 h-3" /> Back to login
+                </button>
+                <a href={`/reset-password?email=${encodeURIComponent(email)}`} className="text-primary hover:underline font-medium">
+                  Full page recovery →
+                </a>
+              </div>
             </form>
           )}
 
