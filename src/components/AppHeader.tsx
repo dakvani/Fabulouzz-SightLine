@@ -21,7 +21,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useTheme } from "next-themes";
+import { useThemeStyle } from "@/contexts/ThemeStyleContext";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 import { useBranding } from "@/contexts/BrandingContext";
@@ -90,7 +90,7 @@ const AppHeader = ({
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); };
 
   const { hidden, scrolled } = useScrollDirection();
-  const { theme, setTheme } = useTheme();
+  const { isDark } = useThemeStyle();
 
   const views = useMemo(() => {
     const base: { id: "dashboard" | "timeline" | "tasks" | "kanban" | "details"; label: string; icon: any }[] = [
@@ -109,21 +109,11 @@ const AppHeader = ({
     <>
       <motion.header
         initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: hidden ? -80 : 0 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className={`sticky top-[max(0.5rem,env(safe-area-inset-top,0px))] z-50 mx-2 sm:mx-3 md:mx-5 transition-all duration-300 ${scrolled ? "top-[max(0.25rem,env(safe-area-inset-top,0px))]" : ""}`}
+        animate={{ opacity: 1, y: hidden ? -90 : 0 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className="sticky top-2 sm:top-3.5 z-50 mx-auto max-w-7xl px-2 sm:px-4 transition-all duration-300 pointer-events-none"
       >
-        <div
-          className={`absolute inset-0 backdrop-blur-xl border border-border/20 transition-all duration-300 ${scrolled ? "bg-background/30" : "bg-background/10"}`}
-          style={{
-            borderRadius: scrolled ? "14px" : "18px",
-            boxShadow: scrolled
-              ? "0 4px 24px -4px hsl(var(--foreground) / 0.06)"
-              : "0 2px 16px -2px hsl(var(--foreground) / 0.03)",
-          }}
-        />
-
-        <div className="max-w-[1600px] mx-auto px-2.5 sm:px-3 md:px-5 h-12 sm:h-14 flex items-center justify-between relative">
+        <div className="pointer-events-auto liquid-header-pill rounded-full sm:rounded-2xl px-3 sm:px-5 h-13 sm:h-14 flex items-center justify-between shadow-2xl transition-all">
           {/* Left: Back + Logo */}
           <div className="flex items-center gap-1 sm:gap-2 min-w-0">
             {onBackToProjects && (
@@ -155,7 +145,7 @@ const AppHeader = ({
                 />
               ) : (
                 <motion.img
-                  src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight}
+                  src={isDark ? fabulouzzLogo : fabulouzzLogoLight}
                   alt="Fabulouzz Technologies"
                   className="h-6 sm:h-7 w-auto flex-shrink-0"
                   whileHover={{ scale: 1.05 }}
@@ -248,6 +238,9 @@ const AppHeader = ({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
+            {/* Quick Liquid Glass Theme Switcher (Light & Dark) */}
+            <ThemeSelector />
+
             {user ? (
               <motion.button
                 onClick={onToggleSideTab}

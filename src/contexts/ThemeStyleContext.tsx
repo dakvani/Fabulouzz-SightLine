@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-export type ThemeType = "emerald" | "sapphire" | "light";
+export type ThemeType = "dark" | "light";
 
-interface ThemeMeta {
+export interface ThemeMeta {
   id: ThemeType;
   name: string;
   tagline: string;
@@ -13,25 +13,17 @@ interface ThemeMeta {
 
 export const THEME_OPTIONS: ThemeMeta[] = [
   {
-    id: "emerald",
-    name: "Stealth Emerald",
-    tagline: "Cyber Obsidian & Neon Mint",
+    id: "dark",
+    name: "Liquid Obsidian",
+    tagline: "Ultra-Clear Glass & Neon Emerald",
     accentColor: "#10b981",
-    bgPreview: "bg-[#0a0f18]",
-    isDark: true,
-  },
-  {
-    id: "sapphire",
-    name: "Midnight Sapphire",
-    tagline: "Aerospace Navy & Electric Cyan",
-    accentColor: "#0ea5e9",
-    bgPreview: "bg-[#070e1e]",
+    bgPreview: "bg-[#090d16]",
     isDark: true,
   },
   {
     id: "light",
-    name: "Titanium White",
-    tagline: "Crisp Architectural Daylight",
+    name: "Liquid Crystal",
+    tagline: "Pure Frosted Glass & Emerald",
     accentColor: "#059669",
     bgPreview: "bg-[#f8fafc]",
     isDark: false,
@@ -40,14 +32,18 @@ export const THEME_OPTIONS: ThemeMeta[] = [
 
 interface ThemeStyleContextType {
   themeStyle: ThemeType;
+  isDark: boolean;
   setThemeStyle: (theme: ThemeType) => void;
+  toggleTheme: () => void;
   cycleTheme: () => void;
   currentMeta: ThemeMeta;
 }
 
 const ThemeStyleContext = createContext<ThemeStyleContextType>({
-  themeStyle: "emerald",
+  themeStyle: "dark",
+  isDark: true,
   setThemeStyle: () => {},
+  toggleTheme: () => {},
   cycleTheme: () => {},
   currentMeta: THEME_OPTIONS[0],
 });
@@ -57,12 +53,11 @@ export const useThemeStyle = () => useContext(ThemeStyleContext);
 export const ThemeStyleProvider = ({ children }: { children: ReactNode }) => {
   const [themeStyle, setThemeStyleState] = useState<ThemeType>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("sightline_design_theme") as ThemeType;
-      if (saved && (saved === "emerald" || saved === "sapphire" || saved === "light")) {
-        return saved;
-      }
+      const saved = localStorage.getItem("sightline_design_theme");
+      if (saved === "light") return "light";
+      if (saved === "dark" || saved === "emerald" || saved === "sapphire") return "dark";
     }
-    return "emerald";
+    return "dark";
   });
 
   const applyThemeToDOM = (t: ThemeType) => {
@@ -70,12 +65,10 @@ export const ThemeStyleProvider = ({ children }: { children: ReactNode }) => {
     const root = document.documentElement;
     root.classList.remove("theme-emerald", "theme-sapphire", "theme-light", "dark", "light");
 
-    if (t === "emerald") {
-      root.classList.add("dark", "theme-emerald");
-    } else if (t === "sapphire") {
-      root.classList.add("dark", "theme-sapphire");
+    if (t === "dark") {
+      root.classList.add("dark");
     } else {
-      root.classList.add("light", "theme-light");
+      root.classList.add("light");
     }
   };
 
@@ -90,13 +83,11 @@ export const ThemeStyleProvider = ({ children }: { children: ReactNode }) => {
     setThemeStyleState(newTheme);
   };
 
-  const cycleTheme = () => {
-    setThemeStyleState((prev) => {
-      if (prev === "emerald") return "sapphire";
-      if (prev === "sapphire") return "light";
-      return "emerald";
-    });
+  const toggleTheme = () => {
+    setThemeStyleState((prev) => (prev === "dark" ? "light" : "dark"));
   };
+
+  const cycleTheme = toggleTheme;
 
   const currentMeta = THEME_OPTIONS.find((t) => t.id === themeStyle) || THEME_OPTIONS[0];
 
@@ -104,7 +95,9 @@ export const ThemeStyleProvider = ({ children }: { children: ReactNode }) => {
     <ThemeStyleContext.Provider
       value={{
         themeStyle,
+        isDark: themeStyle === "dark",
         setThemeStyle,
+        toggleTheme,
         cycleTheme,
         currentMeta,
       }}
@@ -113,3 +106,4 @@ export const ThemeStyleProvider = ({ children }: { children: ReactNode }) => {
     </ThemeStyleContext.Provider>
   );
 };
+

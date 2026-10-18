@@ -114,19 +114,19 @@ export const DashboardSideTab = ({
 
             {/* ── MIDDLE SCROLLABLE CONTENT (Arrowed items from screenshot) ── */}
             <div className="flex-1 touch-scroll-y p-4 sm:p-5 space-y-5">
-              {/* SECTION 1: THEME SELECTOR (3 Distinct Themes) */}
+              {/* SECTION 1: THEME SELECTOR (Light & Dark) */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <Palette className="w-3.5 h-3.5 text-primary" />
-                    Design System Theme
+                    Liquid Glass Theme
                   </span>
                   <span className="text-[10px] font-mono text-primary font-semibold">
-                    3 Styles Available
+                    Light & Dark
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {THEME_OPTIONS.map((t) => {
                     const isSelected = themeStyle === t.id;
                     return (
@@ -134,32 +134,31 @@ export const DashboardSideTab = ({
                         key={t.id}
                         type="button"
                         onClick={() => setThemeStyle(t.id as ThemeType)}
-                        className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
+                        className={`flex flex-col gap-2 p-3 rounded-xl border text-left transition-all ${
                           isSelected
                             ? "border-primary bg-primary/10 shadow-sm"
                             : "border-border/40 bg-secondary/30 hover:bg-secondary/60 text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-between w-full">
                           <span
-                            className="w-4 h-4 rounded-full border border-white/20 shadow-sm flex items-center justify-center"
+                            className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm flex items-center justify-center"
                             style={{ backgroundColor: t.accentColor }}
                           >
-                            {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                            {isSelected && <Check className="w-2 h-2 text-white" />}
                           </span>
-                          <div>
-                            <p className="text-xs font-bold text-foreground leading-tight">
-                              {t.name}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">{t.tagline}</p>
-                          </div>
+                          {isSelected && (
+                            <span className="text-[9px] font-mono uppercase font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">
+                              Active
+                            </span>
+                          )}
                         </div>
-
-                        {isSelected && (
-                          <span className="text-[9px] font-mono uppercase font-bold text-primary bg-primary/15 px-2 py-0.5 rounded-full">
-                            Active
-                          </span>
-                        )}
+                        <div>
+                          <p className="text-xs font-bold text-foreground leading-tight">
+                            {t.name}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{t.isDark ? "Dark Mode" : "Light Mode"}</p>
+                        </div>
                       </button>
                     );
                   })}

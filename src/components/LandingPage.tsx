@@ -9,7 +9,9 @@ import {
   Sparkles, TrendingUp, Lock as LockIcon,
   Quote, Star, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon
 } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useThemeStyle } from "@/contexts/ThemeStyleContext";
+import { ThemeSelector } from "./ThemeSelector";
+import { DashboardDemoShowcase } from "./DashboardDemoShowcase";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +21,29 @@ import { sendBrandedEmail, BRAND_MAIN_EMAIL, BRAND_PROVIDER_TEXT, getProductionP
 interface LandingPageProps {
   onAuthSuccess: () => void;
 }
+
+const useScrollDirection = () => {
+  const [hidden, setHidden] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 20);
+      if (y > lastScrollY.current && y > 60) {
+        setHidden(true);
+      } else if (y < lastScrollY.current) {
+        setHidden(false);
+      }
+      lastScrollY.current = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return { hidden, scrolled };
+};
 
 /* ── Animated section wrapper ── */
 const AnimatedSection = ({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => {
@@ -48,7 +73,7 @@ const FeatureCard = ({ icon: Icon, title, desc, delay, gradient }: { icon: any; 
       animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
       transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -6, transition: { duration: 0.25 } }}
-      className="group relative glass-card p-6 sm:p-8 overflow-hidden cursor-default"
+      className="group relative liquid-glass-card p-6 sm:p-8 overflow-hidden cursor-default"
     >
       <div className={`absolute top-0 left-0 w-full h-1 ${gradient}`} />
       <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-[60px] bg-primary/10" />
@@ -109,7 +134,8 @@ const StatCounter = ({ value, label, suffix = "", delay = 0 }: { value: number; 
 /*  MAIN COMPONENT                                    */
 /* ═══════════════════════════════════════════════════ */
 const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
-  const { theme } = useTheme();
+  const { isDark } = useThemeStyle();
+  const { hidden, scrolled } = useScrollDirection();
   const [mounted, setMounted] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [mode, setMode] = useState<"login" | "forgot">("login");
@@ -321,62 +347,113 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden scroll-smooth">
-      {/* ═══════ NAV ═══════ */}
+      {/* ═══════ EDGE-ROUNDED FLOATING AUTOHIDING NAV ═══════ */}
       <motion.nav
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-border/30"
+        initial={{ y: -60, opacity: 0 }}
+        animate={{ y: hidden ? -100 : 0, opacity: hidden ? 0 : 1 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed top-3 sm:top-4 inset-x-0 z-50 mx-auto max-w-6xl px-3 sm:px-4 pointer-events-none"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        <div className="pointer-events-auto liquid-header-pill rounded-full px-4 sm:px-6 h-13 sm:h-14 flex items-center justify-between shadow-2xl transition-all">
           <div className="flex items-center gap-2.5">
             {mounted && (
-              <img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz" className="h-7 w-auto" />
+              <img
+                src={isDark ? fabulouzzLogo : fabulouzzLogoLight}
+                alt="Fabulouzz"
+                className="h-7 w-auto drop-shadow-sm"
+              />
             )}
-            <div className="flex flex-col border-l border-border/30 pl-2.5">
-              <span className="text-xs font-bold tracking-wide text-primary" style={{ fontFamily: "'Neuropol X Free', sans-serif" }}>SIGHTLINE</span>
-              <span className="text-[7px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">Command Center</span>
+            <div className="flex flex-col border-l border-white/15 dark:border-white/10 pl-2.5">
+              <span
+                className="text-xs font-bold tracking-wide text-primary"
+                style={{ fontFamily: "'Neuropol X Free', sans-serif" }}
+              >
+                SIGHTLINE
+              </span>
+              <span className="text-[7px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">
+                Command Center
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <a href="#features" onClick={(e) => smoothScroll(e, "features")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#how-it-works" onClick={(e) => smoothScroll(e, "how-it-works")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
-            <a href="#testimonials" onClick={(e) => smoothScroll(e, "testimonials")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
-            <a href="#pricing" onClick={(e) => smoothScroll(e, "pricing")} className="hidden sm:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <a
+              href="#features"
+              onClick={(e) => smoothScroll(e, "features")}
+              className="hidden md:inline-block text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
+            >
+              Features
+            </a>
+            <a
+              href="#demo"
+              onClick={(e) => smoothScroll(e, "demo")}
+              className="hidden sm:inline-block text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
+            >
+              Live Demo
+            </a>
+            <a
+              href="#how-it-works"
+              onClick={(e) => smoothScroll(e, "how-it-works")}
+              className="hidden md:inline-block text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
+            >
+              How It Works
+            </a>
+            <a
+              href="#testimonials"
+              onClick={(e) => smoothScroll(e, "testimonials")}
+              className="hidden lg:inline-block text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
+            >
+              Testimonials
+            </a>
+            <a
+              href="#pricing"
+              onClick={(e) => smoothScroll(e, "pricing")}
+              className="hidden sm:inline-block text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
+            >
+              Pricing
+            </a>
+
+            {/* Quick 2-State Theme Toggle (Light & Dark) */}
+            <ThemeSelector />
+
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setShowLogin(true)}
-              className="px-4 py-2 rounded-lg text-sm font-semibold text-primary-foreground"
+              className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-bold text-primary-foreground shadow-md flex items-center gap-1.5 cursor-pointer"
               style={{ background: "var(--gradient-primary)" }}
             >
-              <span className="flex items-center gap-1.5"><LogIn className="w-4 h-4" /> Sign In</span>
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In</span>
             </motion.button>
           </div>
         </div>
       </motion.nav>
 
       {/* ═══════ HERO ═══════ */}
-      <section ref={heroRef} className="relative pt-14 min-h-[100vh] flex items-center overflow-hidden">
+      <section ref={heroRef} className="relative pt-24 sm:pt-28 pb-16 min-h-[100vh] flex items-center overflow-hidden">
         {/* BG elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 left-[10%] w-[500px] h-[500px] rounded-full bg-primary/[0.06] blur-[120px]" />
-          <div className="absolute bottom-20 right-[10%] w-[400px] h-[400px] rounded-full bg-[hsl(var(--processing)/0.06)] blur-[100px]" />
-          <div className="absolute inset-0 opacity-[0.02]" style={{
-            backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
-            backgroundSize: "80px 80px",
-          }} />
+          <div className="absolute top-20 left-[10%] w-[500px] h-[500px] rounded-full bg-primary/[0.07] blur-[130px] pointer-events-none" />
+          <div className="absolute bottom-20 right-[10%] w-[450px] h-[450px] rounded-full bg-[hsl(var(--processing)/0.07)] blur-[110px] pointer-events-none" />
+          <div
+            className="absolute inset-0 opacity-[0.025] pointer-events-none"
+            style={{
+              backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
+              backgroundSize: "80px 80px",
+            }}
+          />
         </div>
 
         <motion.div style={{ y: heroY, opacity: heroOpacity }} className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left - copy */}
-            <div>
+            <div className="lg:col-span-5 text-center lg:text-left">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.2 }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-6"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold mb-6"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 Project Management, Reimagined
@@ -386,7 +463,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.35 }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground leading-[1.1] mb-6"
+                className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground leading-[1.12] mb-5"
               >
                 Your Projects.{" "}
                 <span className="text-gradient">One Command Center.</span>
@@ -396,7 +473,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.5 }}
-                className="text-lg text-muted-foreground leading-relaxed max-w-lg mb-8"
+                className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0 mb-7"
               >
                 Real-time dashboards, Gantt charts, Kanban boards, live notifications, and branded PDF reports — everything your team needs to deliver projects on time.
               </motion.p>
@@ -405,13 +482,13 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.65 }}
-                className="flex flex-wrap gap-3"
+                className="flex flex-wrap justify-center lg:justify-start gap-3"
               >
                 <motion.button
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setShowLogin(true)}
-                  className="px-6 py-3 rounded-xl text-sm font-bold text-primary-foreground shadow-lg flex items-center gap-2"
+                  className="px-6 py-3 rounded-full text-sm font-bold text-primary-foreground shadow-lg flex items-center gap-2 cursor-pointer"
                   style={{ background: "var(--gradient-primary)" }}
                 >
                   Get Started Free <ArrowRight className="w-4 h-4" />
@@ -421,121 +498,33 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                   whileTap={{ scale: 0.97 }}
                   href="#features"
                   onClick={(e: React.MouseEvent<HTMLAnchorElement>) => smoothScroll(e, "features")}
-                  className="px-6 py-3 rounded-xl text-sm font-semibold border border-border/50 text-foreground hover:bg-secondary/50 transition-colors flex items-center gap-2"
+                  className="px-6 py-3 rounded-full text-sm font-semibold border border-white/20 dark:border-white/10 text-foreground hover:bg-white/10 dark:hover:bg-white/5 transition-colors flex items-center gap-2 liquid-glass"
                 >
                   Explore Features <ChevronDown className="w-4 h-4" />
                 </motion.a>
               </motion.div>
             </div>
 
-            {/* Right - animated dashboard mockup */}
+            {/* Right - Live Animated Dashboard Demo Showcase (Zero performance lag) */}
             <motion.div
-              initial={{ opacity: 0, x: 50, rotateY: -8 }}
-              animate={{ opacity: 1, x: 0, rotateY: 0 }}
-              transition={{ duration: 1, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="relative hidden lg:block"
-              style={{ perspective: "1200px" }}
+              id="demo"
+              initial={{ opacity: 0, x: 40, scale: 0.98 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="lg:col-span-7 w-full scroll-mt-24"
             >
-              <div className="glass-card p-6 rounded-2xl border border-border/50 relative">
-                {/* Mock dashboard header */}
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-3 h-3 rounded-full bg-destructive/60" />
-                  <div className="w-3 h-3 rounded-full bg-[hsl(var(--warning))]" />
-                  <div className="w-3 h-3 rounded-full bg-[hsl(var(--success))]" />
-                  <span className="ml-2 text-xs text-muted-foreground font-mono">sightline-dashboard</span>
-                </div>
-
-                {/* Mock progress ring */}
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <motion.div
-                    className="glass-card p-4 flex flex-col items-center"
-                    animate={{ boxShadow: ["0 0 0px hsl(142,60%,45%,0)", "0 0 20px hsl(142,60%,45%,0.1)", "0 0 0px hsl(142,60%,45%,0)"] }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  >
-                    <svg viewBox="0 0 80 80" className="w-16 h-16 mb-2">
-                      <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
-                      <motion.circle
-                        cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--primary))" strokeWidth="6"
-                        strokeLinecap="round"
-                        strokeDasharray={213}
-                        initial={{ strokeDashoffset: 213 }}
-                        animate={{ strokeDashoffset: 213 * 0.28 }}
-                        transition={{ duration: 2, delay: 1, ease: "easeOut" }}
-                        transform="rotate(-90 40 40)"
-                      />
-                    </svg>
-                    <span className="text-xs text-muted-foreground">Progress</span>
-                  </motion.div>
-
-                  {/* Mock status bars */}
-                  <div className="glass-card p-4 col-span-2 flex flex-col gap-2">
-                    {[
-                      { label: "Completed", color: "bg-[hsl(var(--completed))]", w: "w-[72%]" },
-                      { label: "Processing", color: "bg-[hsl(var(--processing))]", w: "w-[45%]" },
-                      { label: "Planning", color: "bg-[hsl(var(--planning))]", w: "w-[20%]" },
-                    ].map((b, i) => (
-                      <div key={b.label} className="flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground w-16 truncate">{b.label}</span>
-                        <div className="flex-1 h-2 rounded-full bg-muted/50 overflow-hidden">
-                          <motion.div
-                            className={`h-full rounded-full ${b.color}`}
-                            initial={{ width: 0 }}
-                            animate={{ width: b.w.replace("w-[", "").replace("]", "") }}
-                            transition={{ duration: 1.2, delay: 1.2 + i * 0.2, ease: "easeOut" }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Mock Gantt bars */}
-                <div className="space-y-2">
-                  {[
-                    { name: "Foundation Work", color: "bg-[hsl(var(--completed))]", left: "0%", width: "55%" },
-                    { name: "Structural Frame", color: "bg-[hsl(var(--processing))]", left: "30%", width: "40%" },
-                    { name: "Interior Fitout", color: "bg-[hsl(var(--initiating))]", left: "55%", width: "35%" },
-                  ].map((bar, i) => (
-                    <div key={bar.name} className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground w-24 truncate">{bar.name}</span>
-                      <div className="flex-1 relative h-4 bg-muted/30 rounded">
-                        <motion.div
-                          className={`absolute top-0 h-full rounded ${bar.color}/80`}
-                          style={{ left: bar.left }}
-                          initial={{ width: 0 }}
-                          animate={{ width: bar.width }}
-                          transition={{ duration: 1, delay: 1.8 + i * 0.15, ease: "easeOut" }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Floating badges */}
-              <FloatingBadge className="top-[-10px] right-[-10px]" delay={2}>
-                <Activity className="w-3.5 h-3.5 text-primary" />
-                <span className="text-foreground">Live Updates</span>
-              </FloatingBadge>
-              <FloatingBadge className="bottom-[-10px] left-[-10px]" delay={2.4}>
-                <TrendingUp className="w-3.5 h-3.5 text-[hsl(var(--success))]" />
-                <span className="text-foreground">72% Complete</span>
-              </FloatingBadge>
-              <FloatingBadge className="top-[40%] right-[-20px]" delay={2.8}>
-                <Bell className="w-3.5 h-3.5 text-[hsl(var(--warning))]" />
-                <span className="text-foreground">3 Updates</span>
-              </FloatingBadge>
+              <DashboardDemoShowcase />
             </motion.div>
           </div>
         </motion.div>
 
         {/* Scroll indicator */}
         <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          animate={{ y: [0, 8, 0] }}
+          className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, 6, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <ChevronDown className="w-5 h-5 text-muted-foreground" />
+          <ChevronDown className="w-5 h-5 text-muted-foreground/70" />
         </motion.div>
       </section>
 
@@ -634,7 +623,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -60 }}
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                  className="glass-card p-8 sm:p-10 rounded-2xl text-center"
+                  className="liquid-glass-card p-8 sm:p-10 rounded-2xl text-center"
                 >
                   {/* Stars */}
                   <div className="flex justify-center gap-1 mb-5">
@@ -699,7 +688,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
               <AnimatedSection key={plan.tier} delay={0.1 * i} className="h-full">
                 <motion.div
                   whileHover={{ y: -6 }}
-                  className={`glass-card p-6 sm:p-8 rounded-2xl relative overflow-hidden flex flex-col justify-between h-full transition-shadow duration-300 ${
+                  className={`liquid-glass-card p-6 sm:p-8 rounded-2xl relative overflow-hidden flex flex-col justify-between h-full transition-shadow duration-300 ${
                     plan.highlight
                       ? "border-primary/50 ring-1 ring-primary/30 shadow-xl shadow-primary/5"
                       : "border-border/60 hover:border-primary/30"
@@ -755,7 +744,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
           </div>
 
           {/* Custom Enterprise Banner */}
-          <div className="mt-12 p-6 sm:p-8 rounded-2xl glass-card border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="mt-12 p-6 sm:p-8 rounded-2xl liquid-glass-card border border-primary/30 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <h4 className="text-base sm:text-lg font-bold text-foreground">Need Custom Integrations or Multi-Site Licensing?</h4>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-xl">
@@ -795,7 +784,7 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
       <footer className="py-10 border-t border-border/30 bg-card/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
-            {mounted && <img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz" className="h-7 w-auto" />}
+            {mounted && <img src={isDark ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz" className="h-7 w-auto" />}
             <div className="text-xs text-muted-foreground">
               <span>Provided by </span>
               <a href="https://www.fabulouzz.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">
@@ -834,14 +823,14 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
             initial={{ opacity: 0, scale: 0.92, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="glass-card p-6 sm:p-8 rounded-2xl w-full max-w-md relative border border-border/50"
+            className="liquid-glass-card p-6 sm:p-8 rounded-2xl w-full max-w-md relative border border-white/20 dark:border-white/10 shadow-2xl"
           >
             <button onClick={() => setShowLogin(false)} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
               ✕
             </button>
 
             <div className="flex items-center gap-2.5 mb-8">
-              {mounted && <img src={theme === "dark" ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz" className="h-7 w-auto" />}
+              {mounted && <img src={isDark ? fabulouzzLogo : fabulouzzLogoLight} alt="Fabulouzz" className="h-7 w-auto" />}
               <div className="flex flex-col border-l border-border/30 pl-2.5">
                 <span className="text-xs font-bold tracking-wide text-primary" style={{ fontFamily: "'Neuropol X Free', sans-serif" }}>SIGHTLINE</span>
                 <span className="text-[7px] text-muted-foreground font-semibold tracking-[0.15em] uppercase leading-tight">Command Center</span>
