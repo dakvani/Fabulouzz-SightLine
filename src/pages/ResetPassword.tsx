@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveUserAuth } from "@/lib/auth/session";
+import { sendBrandedEmail } from "@/lib/emailService";
 import { toast } from "@/hooks/use-toast";
-import { Lock, Eye, EyeOff, CheckCircle2, ShieldCheck, ArrowRight, AlertTriangle } from "lucide-react";
+import { Lock, Eye, EyeOff, CheckCircle2, ShieldCheck, ArrowRight, AlertTriangle, Mail } from "lucide-react";
 import { useTheme } from "next-themes";
 import fabulouzzLogo from "@/assets/fabulouzz-logo.png";
 import fabulouzzLogoLight from "@/assets/fabulouzz-logo-light.png";
@@ -23,10 +24,37 @@ const ResetPassword = () => {
   const [timedOut, setTimedOut] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
 
+  // Fallback recovery request state
+  const [requestEmail, setRequestEmail] = useState(searchParams.get("email") || "");
+  const [requesting, setRequesting] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+
   useEffect(() => {
     setMounted(true);
 
     const initRecovery = async () => {
+      // 0. Check for access_token and refresh_token in window.location.hash
+      const hash = window.location.hash || "";
+      if (hash.includes("access_token")) {
+        const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.substring(1) : hash);
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+        if (accessToken && refreshToken) {
+          try {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            if (!error && data?.session) {
+              setSessionReady(true);
+              return;
+            }
+          } catch (e) {
+            console.warn("setSession error in reset-password:", e);
+          }
+        }
+      }
+
       // 1. Check for PKCE code in query params
       const code = searchParams.get("code");
       if (code) {
@@ -65,11 +93,12 @@ const ResetPassword = () => {
 
     initRecovery();
 
+    // 12-second generous window for token verification over mobile/slow networks
     const timer = setTimeout(() => {
       setTimedOut(true);
-    }, 6000);
+    }, 12000);
 
-    // Listen for auth events
+    // Listen for auth state events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || session) {
         setSessionReady(true);
@@ -112,6 +141,38 @@ const ResetPassword = () => {
         const auth = await resolveUserAuth(userData.user.id, userData.user.email);
         setUserRole(auth?.userRole || null);
       }
+    }
+  };
+
+  const handleRequestNewLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!requestEmail.trim()) {
+      toast({ title: "Email required", description: "Please enter your registered email address.", variant: "destructive" });
+      return;
+    }
+    setRequesting(true);
+    try {
+      const res = await sendBrandedEmail({
+        type: "reset_password",
+        to: requestEmail.trim(),
+        data: {
+          resetUrl: "https://sightline.fabulouzz.com/reset-password",
+          fullName: requestEmail.split("@")[0],
+        },
+      });
+      setRequesting(false);
+      if (res.success) {
+        setRequestSent(true);
+        toast({
+          title: "Reset Link Sent",
+          description: `Single-use recovery link dispatched to ${requestEmail.trim()} from info@fabulouzz.com.`,
+        });
+      } else {
+        toast({ title: "Delivery Error", description: res.message || "Failed to dispatch reset link.", variant: "destructive" });
+      }
+    } catch (err: any) {
+      setRequesting(false);
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
@@ -186,38 +247,73 @@ const ResetPassword = () => {
               </div>
             </div>
           ) : !sessionReady ? (
-            <div className="text-center py-6 space-y-4">
+            <div className="py-2 space-y-5 animate-in fade-in">
               {timedOut ? (
-                <div className="space-y-4 animate-in fade-in">
+                <div className="space-y-4">
                   <div className="w-14 h-14 rounded-2xl bg-amber-500/15 text-amber-500 border border-amber-500/30 flex items-center justify-center mx-auto">
                     <AlertTriangle className="w-7 h-7" />
                   </div>
-                  <div>
-                    <h1 className="text-xl font-bold text-foreground">Recovery Session Expired</h1>
+                  <div className="text-center">
+                    <h1 className="text-xl font-bold text-foreground">Request Password Recovery</h1>
                     <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                      This password recovery link has either expired or was already used. Please request a fresh reset link below.
+                      Enter your registered email to receive a fresh single-use verification link.
                     </p>
                   </div>
-                  <div className="pt-2 space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate("/?auth=forgot", { replace: true })}
-                      className="w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 hover:opacity-95 transition-all"
-                      style={{ background: "var(--gradient-primary)" }}
-                    >
-                      Request Fresh Reset Link →
-                    </button>
+
+                  {requestSent ? (
+                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto" />
+                      <p className="text-xs font-semibold text-emerald-400">Fresh Recovery Link Dispatched!</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Please check your inbox at <strong>{requestEmail}</strong> and click the button to set your password.
+                      </p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleRequestNewLink} className="space-y-3 pt-1">
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">
+                          Account Email Address
+                        </label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input
+                            type="email"
+                            required
+                            value={requestEmail}
+                            onChange={(e) => setRequestEmail(e.target.value)}
+                            placeholder="admin@domain.com"
+                            className="w-full pl-10 pr-4 py-2.5 bg-secondary/50 border border-border/60 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={requesting}
+                        className="w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        style={{ background: "var(--gradient-primary)" }}
+                      >
+                        {requesting ? (
+                          <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <span>Send Fresh Recovery Link →</span>
+                        )}
+                      </button>
+                    </form>
+                  )}
+
+                  <div className="pt-2 text-center">
                     <button
                       type="button"
                       onClick={() => navigate("/?auth=login", { replace: true })}
-                      className="w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-foreground bg-secondary/60 hover:bg-secondary border border-border/60 transition-all"
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      Return to Login
+                      ← Return to Login
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 text-center py-6">
                   <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
                   <h1 className="text-lg font-bold text-foreground">Verifying Secure Recovery Link...</h1>
                   <p className="text-xs text-muted-foreground">Validating single-use cryptographic token...</p>

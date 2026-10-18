@@ -1204,16 +1204,26 @@ const Admin = () => {
       const email = loginEmail.trim().toLowerCase();
       const isSupportEmail = email === "support@fabulouzz.com";
 
-      // 8s timeout race on signInWithPassword to guarantee no indefinite hanging
-      const signInPromise = supabase.auth.signInWithPassword({
-        email,
-        password: loginPassword,
-      });
+      // 10s timeout race on signInWithPassword to guarantee no indefinite hanging
+      const doSignIn = async () => {
+        let res = await supabase.auth.signInWithPassword({
+          email,
+          password: loginPassword,
+        });
+        if (res.error && loginPassword.trim() !== loginPassword) {
+          res = await supabase.auth.signInWithPassword({
+            email,
+            password: loginPassword.trim(),
+          });
+        }
+        return res;
+      };
+
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Authentication request timed out after 8 seconds. Please check your connection and retry.")), 8000)
+        setTimeout(() => reject(new Error("Authentication request timed out after 10 seconds. Please check your connection and retry.")), 10000)
       );
 
-      const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
+      const { data, error } = await Promise.race([doSignIn(), timeoutPromise]);
       if (error) throw error;
       if (!data?.user) throw new Error("No user profile returned from authentication service.");
 

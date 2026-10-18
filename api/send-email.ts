@@ -1,7 +1,12 @@
-import type { IncomingMessage, ServerResponse } from "http";
+import { createClient } from "@supabase/supabase-js";
 
 const BRAND_MAIN_EMAIL = "info@fabulouzz.com";
 const BRAND_PROVIDER_TEXT = "Provided by Fabulouzz Technologies";
+
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://eekspekhsaxwfyanxxjn.supabase.co";
+const SERVICE_ROLE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVla3NwZWtoc2F4d2Z5YW54eGpuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjI1ODQ1MywiZXhwIjoyMTA3ODM0NDUzfQ.8TpOOqbW6dDINx2z80ywPwvSV__nCnVYx5iuitRCm_4";
 
 interface RequestBody {
   to?: string | string[];
@@ -43,7 +48,44 @@ export default async function handler(req: any, res: any) {
     const recipients = Array.isArray(to) ? to : [to];
     let finalHtml = (rawHtml || "").replace(/https?:\/\/[a-zA-Z0-9-]+\.vercel\.app/g, "https://sightline.fabulouzz.com");
 
-    // Optional: Resend API Key from Vercel environment variables
+    // 1. If password reset, generate genuine Supabase recovery link via Admin API
+    if (type === "reset_password" && recipients.length > 0) {
+      try {
+        const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+
+        const targetEmail = recipients[0].trim().toLowerCase();
+        const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
+          type: "recovery",
+          email: targetEmail,
+          options: {
+            redirectTo: "https://sightline.fabulouzz.com/reset-password",
+          },
+        });
+
+        if (!linkErr && linkData?.properties) {
+          const actionLink = linkData.properties.action_link;
+          const hashedToken = linkData.properties.hashed_token;
+
+          // Direct tokenized URL that instantly validates in ResetPassword component
+          const tokenizedUrl = `https://sightline.fabulouzz.com/reset-password?token_hash=${encodeURIComponent(hashedToken)}&type=recovery&email=${encodeURIComponent(targetEmail)}`;
+
+          // Prefer action_link or tokenized URL
+          const validLink = actionLink || tokenizedUrl;
+
+          // Replace any reset-password links in the email template
+          finalHtml = finalHtml.replace(/href="[^"]*reset-password[^"]*"/g, `href="${validLink}"`);
+          console.info(`[Vercel Serverless Email] Generated genuine recovery link for ${targetEmail}`);
+        } else if (linkErr) {
+          console.warn("[Vercel Serverless Email] generateLink recovery error:", linkErr);
+        }
+      } catch (genErr) {
+        console.warn("[Vercel Serverless Email] Error during generateLink:", genErr);
+      }
+    }
+
+    // 2. Dispatch via Resend API
     const resendApiKey =
       process.env.RESEND_API_KEY ||
       process.env.VITE_RESEND_API_KEY;
@@ -52,7 +94,6 @@ export default async function handler(req: any, res: any) {
     let resendMessage = null;
 
     if (resendApiKey) {
-      // Primary sender: info@fabulouzz.com
       const sender = `SIGHTLINE Command Center <${BRAND_MAIN_EMAIL}>`;
 
       const resendRes = await fetch("https://api.resend.com/emails", {
@@ -79,7 +120,7 @@ export default async function handler(req: any, res: any) {
         resendMessage = resendData.message || JSON.stringify(resendData);
         console.warn(`[Vercel Serverless Email] Resend API error:`, resendData);
 
-        // If domain is not verified for info@fabulouzz.com, attempt fallback to onboarding@resend.dev for developer testing
+        // Fallback for developer sandbox testing if domain unverified
         if (typeof resendMessage === "string" && resendMessage.toLowerCase().includes("domain")) {
           try {
             const fallbackRes = await fetch("https://api.resend.com/emails", {
@@ -107,7 +148,7 @@ export default async function handler(req: any, res: any) {
         }
       }
     } else {
-      resendMessage = "RESEND_API_KEY is not set in Vercel environment variables.";
+      resendMessage = "RESEND_API_KEY is not set in environment variables.";
       console.warn(`[Vercel Serverless Email] ${resendMessage}`);
     }
 

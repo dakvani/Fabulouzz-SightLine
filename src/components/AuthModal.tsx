@@ -69,10 +69,18 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     setLoading(true);
     try {
       const cleanEmail = email.trim();
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
+      let res = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password,
       });
+      if (res.error && password.trim() !== password) {
+        res = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: password.trim(),
+        });
+      }
+      const authData = res.data;
+      const error = res.error;
 
       if (error) {
         const nextAttempts = failedAttempts + 1;

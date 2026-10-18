@@ -147,7 +147,13 @@ const LandingPage = ({ onAuthSuccess }: LandingPageProps) => {
     e?.preventDefault();
     setLoading(true);
     try {
-      const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
+      const cleanEmail = email.trim();
+      let res = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+      if (res.error && password.trim() !== password) {
+        res = await supabase.auth.signInWithPassword({ email: cleanEmail, password: password.trim() });
+      }
+      const authData = res.data;
+      const error = res.error;
       setLoading(false);
       if (error) {
         toast({ title: "Login failed", description: error.message, variant: "destructive" });
