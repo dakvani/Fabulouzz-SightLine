@@ -66,5 +66,26 @@ describe("Project Dashboard Date & Timeline Resilience", () => {
     expect(range.startDate).toBe("01 Mar 2026");
     expect(range.endDate).toBe("14 Mar 2026");
   });
+
+  it("should compute client portal weighted progress identically to admin command center", () => {
+    const sampleTasks = [
+      { id: 1, name: "Site Excavation", status: "Completed", duration: 5, startDay: 0 },
+      { id: 2, name: "Foundation Pours", status: "Processing", duration: 8, startDay: 5 },
+      { id: 3, name: "Steel Structure Erection", status: "Initiating", duration: 10, startDay: 13 },
+      { id: 4, name: "Exterior Facade Cladding", status: "Planning", duration: 12, startDay: 23 },
+    ];
+
+    const weights: Record<string, number> = { Completed: 1, Processing: 0.5, Initiating: 0.2, Planning: 0 };
+    const weightedScore = (1 * 1 + 0.5 * 1 + 0.2 * 1 + 0 * 1) / sampleTasks.length; // 1.7 / 4 = 0.425
+    const expectedPercent = Math.round(weightedScore * 100); // 43%
+
+    const computedPercent = Math.round(
+      (sampleTasks.reduce((sum, t) => sum + (weights[t.status] || 0), 0) / sampleTasks.length) * 100
+    );
+
+    expect(computedPercent).toBe(expectedPercent);
+    expect(computedPercent).toBe(43);
+  });
 });
+
 

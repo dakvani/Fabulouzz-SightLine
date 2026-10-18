@@ -215,7 +215,10 @@ const Index = () => {
         <ErrorBoundary fallbackTitle="SightLine Project Dashboard Encountered an Error">
           <main className="max-w-[1600px] w-full mx-auto px-2.5 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6 relative safe-x">
             {isClient ? (
-              <ClientPortal />
+              <ClientPortal
+                activeView={activeView as any}
+                onViewChange={setActiveView}
+              />
             ) : (
               <>
                 {activeView === "dashboard" && (
