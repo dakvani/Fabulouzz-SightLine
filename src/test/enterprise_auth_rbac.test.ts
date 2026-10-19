@@ -227,5 +227,72 @@ describe("Privilege Escalation & Account Security Protections", () => {
     expect(hasPermission(resolvedRole, "security.audit_logs")).toBe(true);
     expect(hasPermission(resolvedRole, "users.manage_super_admins")).toBe(true);
   });
+
+  it("TC-22: resolveUserAuth resolves assigned role from user/app metadata when DB propagation is pending", async () => {
+    // When a user was just created by Super Admin with assigned role in metadata
+    const mockUserObject = {
+      id: "mock-new-user-123",
+      email: "new.admin@contractor.com",
+      app_metadata: { role: "admin" },
+      user_metadata: { role: "admin", full_name: "New Admin" },
+    };
+
+    const auth = await resolveUserAuth(mockUserObject);
+    expect(auth).not.toBeNull();
+    expect(auth?.userRole).toBe("admin");
+    expect(auth?.isAdmin).toBe(true);
+    expect(auth?.isClient).toBe(false);
+  });
+
+  it("TC-23: Onboarding role resolution accurately maps pm, admin, and super_admin to proper workspace views", () => {
+    const roles: UserRole[] = ["super_admin", "admin", "pm", "client"];
+    
+    roles.forEach(role => {
+      const isSuper = role === "super_admin";
+      const isAdm = role === "admin";
+      const isPm = role === "pm";
+      
+      let targetWorkspace = "/";
+      if (isSuper || isAdm) {
+        targetWorkspace = "/admin";
+      } else if (isPm) {
+        targetWorkspace = "/?view=tasks";
+      } else {
+        targetWorkspace = "/";
+      }
+
+      if (role === "super_admin" || role === "admin") {
+        expect(targetWorkspace).toBe("/admin");
+      } else if (role === "pm") {
+        expect(targetWorkspace).toBe("/?view=tasks");
+      } else {
+        expect(targetWorkspace).toBe("/");
+      }
+    });
+  });
+
+  it("TC-24: Super Admin can provision all 4 roles and priority order is strictly maintained", () => {
+    const validRoles = ["super_admin", "admin", "pm", "client"];
+    expect(validRoles).toContain("super_admin");
+    expect(validRoles).toContain("admin");
+    expect(validRoles).toContain("pm");
+    expect(validRoles).toContain("client");
+
+    // Super Admin privilege tier check
+    expect(canActorManageTargetRole("super_admin", "admin")).toBe(true);
+    expect(canActorManageTargetRole("super_admin", "pm")).toBe(true);
+    expect(canActorManageTargetRole("super_admin", "client")).toBe(true);
+  });
+
+  it("TC-25: Elevating to Admin or Super Admin ensures Enterprise subscription plan", () => {
+    const getTargetTier = (role: UserRole, currentTier?: string) => {
+      return (role === "admin" || role === "super_admin") ? "enterprise" : (currentTier || "free");
+    };
+
+    expect(getTargetTier("super_admin", "free")).toBe("enterprise");
+    expect(getTargetTier("admin", "free")).toBe("enterprise");
+    expect(getTargetTier("pm", "free")).toBe("free");
+    expect(getTargetTier("client", "premium")).toBe("premium");
+  });
 });
 

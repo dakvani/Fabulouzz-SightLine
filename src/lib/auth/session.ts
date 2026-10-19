@@ -51,7 +51,18 @@ export const resolveUserAuth = async (
     ]);
 
     const profile = profileRes.data;
-    const roles = (rolesRes.data || []).map((r: any) => r.role);
+    const dbRoles = (rolesRes.data || []).map((r: any) => r.role);
+
+    // Extract metadata role as fallback if database row is momentarily propagating
+    let metaRole: string | null = null;
+    if (typeof userOrId === "object" && userOrId !== null) {
+      metaRole = (userOrId as any).app_metadata?.role || (userOrId as any).user_metadata?.role || null;
+    }
+
+    const roles = [...dbRoles];
+    if (metaRole && !roles.includes(metaRole)) {
+      roles.push(metaRole);
+    }
     
     // Resolve email
     const resolvedEmail = (profile?.email || directEmail || fallbackEmail || "").trim().toLowerCase();

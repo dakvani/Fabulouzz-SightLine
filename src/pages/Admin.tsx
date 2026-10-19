@@ -447,6 +447,24 @@ const Admin = () => {
         throw new Error(error?.message || data?.error || "Failed to provision user.");
       }
 
+      const createdUserId = data?.userId || data?.user?.id;
+
+      // Optimistic update of local userRoles and profiles so UI reflects change immediately
+      if (createdUserId) {
+        setUserRoles(prev => [...prev.filter(r => r.user_id !== createdUserId), { user_id: createdUserId, role: newRole }]);
+        setProfiles(prev => [
+          {
+            id: createdUserId,
+            email: newEmail.trim().toLowerCase(),
+            full_name: newFullName.trim(),
+            created_at: new Date().toISOString(),
+            subscription_tier: assignedPlan,
+            status: "active",
+          },
+          ...prev.filter(p => p.id !== createdUserId),
+        ]);
+      }
+
       toast({
         title: "User Provisioned Successfully",
         description: `Created account for ${newEmail} as ${newRole.toUpperCase()} on ${assignedPlan.toUpperCase()} plan.`,
@@ -622,6 +640,17 @@ const Admin = () => {
       }
     }
 
+    // Immediate optimistic update of userRoles state for instant UI response
+    const previousUserRoles = [...userRoles];
+    setUserRoles(prev => {
+      const remaining = prev.filter(r => r.user_id !== userId);
+      return [...remaining, { user_id: userId, role: targetRole }];
+    });
+
+    if (targetRole === "admin" || targetRole === "super_admin") {
+      setProfiles(prev => prev.map(p => p.id === userId ? { ...p, subscription_tier: "enterprise" } : p));
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
         body: {
@@ -632,6 +661,8 @@ const Admin = () => {
       });
 
       if (error || data?.error) {
+        // Rollback optimistic state on failure
+        setUserRoles(previousUserRoles);
         throw new Error(error?.message || data?.error || "Could not update user role.");
       }
 
@@ -639,7 +670,29 @@ const Admin = () => {
         await supabase.from("profiles").update({ subscription_tier: "enterprise" }).eq("id", userId);
       }
 
-      toast({ title: "Role Updated", description: `User role changed to ${targetRole}.` });
+      toast({ title: "Role Updated Immediately", description: `User role changed to ${targetRole.toUpperCase()}.` });
+
+      // Dispatch branded role change notification email to target user
+      const targetUser = profiles.find(p => p.id === userId);
+      if (targetUser?.email) {
+        sendBrandedEmail({
+          type: "status_broadcast",
+          to: targetUser.email,
+          subject: `SightLine Security: Access Role Updated to ${targetRole.toUpperCase()}`,
+          branding: {
+            companyName: branding?.company_name || "SightLine Command Center",
+            logoUrl: branding?.logo_url || null,
+            primaryColor: branding?.accent_color || "#4f46e5",
+          },
+          data: {
+            fullName: targetUser.full_name || targetUser.email.split("@")[0],
+            role: targetRole,
+            assignedBy: currentUser?.email,
+            loginUrl: `${getProductionPortalUrl()}/`,
+          },
+        }).catch(() => {});
+      }
+
       loadAllData();
     } catch (err: any) {
       toast({ title: "Action Failed", description: err.message, variant: "destructive" });
@@ -844,6 +897,7 @@ const Admin = () => {
       const userName = targetUser?.full_name || userEmail?.split("@")[0] || "User";
 
       if (isCurrentlyAssigned) {
+        setMemberships(prev => prev.filter(m => !(m.project_id === editingProject.id && m.user_id === userId)));
         const { error } = await supabase
           .from("project_members")
           .delete()
@@ -877,7 +931,15 @@ const Admin = () => {
         }
       } else {
         const targetRoleRow = userRoles.find(r => r.user_id === userId);
-        const assignedRole = targetRoleRow?.role === "pm" ? "project_manager" : "client";
+        const userSystemRole = targetRoleRow?.role || targetUser?.role || "client";
+        const assignedRole = (userSystemRole === "pm" || userSystemRole === "admin" || userSystemRole === "super_admin")
+          ? "project_manager"
+          : "client";
+
+        setMemberships(prev => [
+          ...prev.filter(m => !(m.project_id === editingProject.id && m.user_id === userId)),
+          { id: Math.random().toString(), project_id: editingProject.id, user_id: userId }
+        ]);
 
         const { error } = await supabase
           .from("project_members")
@@ -1143,9 +1205,12 @@ const Admin = () => {
   // User Plan Distribution Counts
   const planCounts = useMemo(() => {
     let enterprise = 0, premium = 0, free = 0;
+    const roleRank: Record<string, number> = { super_admin: 1, admin: 2, pm: 3, client: 4 };
     profiles.forEach(p => {
-      const roleRow = userRoles.find(r => r.user_id === p.id);
-      const isAdm = roleRow?.role === "admin" || p.id === currentUser?.id;
+      const userRoleRows = userRoles.filter(r => r.user_id === p.id);
+      const sorted = [...userRoleRows].sort((a, b) => (roleRank[a.role] || 99) - (roleRank[b.role] || 99));
+      const role = sorted[0]?.role || "client";
+      const isAdm = role === "admin" || role === "super_admin" || p.id === currentUser?.id;
       const tier = isAdm ? "enterprise" : (p.subscription_tier || "free");
       if (tier === "enterprise") enterprise++;
       else if (tier === "premium") premium++;
@@ -1156,11 +1221,13 @@ const Admin = () => {
 
   // Filtered User List with Plan Tier
   const filteredUsers = useMemo(() => {
+    const roleRank: Record<string, number> = { super_admin: 1, admin: 2, pm: 3, client: 4 };
     const list = profiles.map(p => {
-      const roleRow = userRoles.find(r => r.user_id === p.id);
+      const userRoleRows = userRoles.filter(r => r.user_id === p.id);
+      const sorted = [...userRoleRows].sort((a, b) => (roleRank[a.role] || 99) - (roleRank[b.role] || 99));
+      const role = sorted[0]?.role || "client";
       const assignedCount = memberships.filter(m => m.user_id === p.id).length;
-      const role = roleRow?.role || "client";
-      const isAdm = role === "admin" || p.id === currentUser?.id;
+      const isAdm = role === "admin" || role === "super_admin" || p.id === currentUser?.id;
       const planTier: "free" | "premium" | "enterprise" = isAdm
         ? "enterprise"
         : ((p.subscription_tier as any) || "free");

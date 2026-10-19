@@ -43,10 +43,10 @@ Deno.serve(async (req) => {
     });
 
     // Fetch target user's current role & profile
-    const { data: targetRoleData } = await adminClient.from("user_roles").select("role").eq("user_id", userId).single();
+    const { data: targetRoleData } = await adminClient.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
     const targetRole = targetRoleData?.role || "client";
 
-    const { data: targetProfile } = await adminClient.from("profiles").select("email, status").eq("id", userId).single();
+    const { data: targetProfile } = await adminClient.from("profiles").select("email, status").eq("id", userId).maybeSingle();
     const targetEmail = targetProfile?.email || userId;
 
     // Prevent actor from modifying their own role or deleting themselves
@@ -92,9 +92,27 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { error } = await adminClient.from("user_roles").update({ role: newRole }).eq("user_id", userId);
-      if (error) throw error;
+      // 1. Authoritative DB role update: Cleanly remove any other role rows for this user and insert newRole
+      await adminClient.from("user_roles").delete().eq("user_id", userId);
+      const { error: insertErr } = await adminClient.from("user_roles").insert({ user_id: userId, role: newRole });
+      if (insertErr) throw insertErr;
 
+      // 2. Synchronize to auth.users app_metadata and user_metadata for IMMEDIATE token claims update
+      try {
+        await adminClient.auth.admin.updateUserById(userId, {
+          app_metadata: { role: newRole },
+          user_metadata: { role: newRole },
+        });
+      } catch (metaErr) {
+        console.warn("Could not sync auth metadata:", metaErr);
+      }
+
+      // 3. If elevated to admin or super_admin, update profile to enterprise subscription
+      if (newRole === "admin" || newRole === "super_admin") {
+        await adminClient.from("profiles").update({ subscription_tier: "enterprise" }).eq("id", userId);
+      }
+
+      // 4. Record audit log
       await adminClient.from("audit_logs").insert({
         actor_id: caller.id,
         actor_email: caller.email,
@@ -105,7 +123,7 @@ Deno.serve(async (req) => {
         status: "success",
       });
 
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ success: true, newRole }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

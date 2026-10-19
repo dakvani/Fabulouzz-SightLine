@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --pool=threads --poolOptions.threads.singleThread=true",
     "test:watch": "vitest",
     "service:start": "scripts\\start-sightline.bat",
     "service:start-silent": "wscript scripts\\start-sightline-silent.vbs",

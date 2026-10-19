@@ -56,14 +56,21 @@ Deno.serve(async (req) => {
 
     const newPassword = generateRandomPassword();
 
+    const userRole = role || "client";
+
     const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
       password: newPassword,
-      user_metadata: { must_change_password: true },
+      app_metadata: { role: userRole },
+      user_metadata: { must_change_password: true, role: userRole, full_name: fullName || "" },
     });
 
     if (updateError) {
       throw new Error(updateError.message);
     }
+
+    // Synchronize role in user_roles
+    await adminClient.from("user_roles").delete().eq("user_id", userId);
+    await adminClient.from("user_roles").insert({ user_id: userId, role: userRole });
 
     // Send invitation email via send-invitation function with authoritative production domain
     const loginUrl = `https://sightline.fabulouzz.com/onboarding?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role || "client")}&name=${encodeURIComponent(fullName || "")}`;

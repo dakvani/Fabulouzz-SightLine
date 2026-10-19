@@ -81,12 +81,21 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    const initialTier = (role === "admin" || role === "super_admin")
+      ? "enterprise"
+      : (["free", "premium", "enterprise"].includes(subscriptionTier) ? subscriptionTier : "free");
+
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password: finalPassword,
       email_confirm: true,
+      app_metadata: {
+        role,
+      },
       user_metadata: {
+        role,
         full_name: fullName || "",
+        subscription_tier: initialTier,
         must_change_password: generatePassword || sendInvite ? true : false,
       },
     });
@@ -97,17 +106,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update role from default 'client' to specified role
-    if (role !== "client") {
-      await adminClient.from("user_roles").update({ role }).eq("user_id", newUser.user.id);
+    // Authoritative role assignment in user_roles table
+    await adminClient.from("user_roles").delete().eq("user_id", newUser.user.id);
+    const { error: roleErr } = await adminClient.from("user_roles").insert({
+      user_id: newUser.user.id,
+      role,
+    });
+    if (roleErr) {
+      console.error("Error setting user role in user_roles:", roleErr);
     }
 
-    // Set subscription tier in profiles (defaults to 'enterprise' for super_admin/admin, or passed tier, or 'free')
-    const initialTier = (role === "admin" || role === "super_admin")
-      ? "enterprise"
-      : (["free", "premium", "enterprise"].includes(subscriptionTier) ? subscriptionTier : "free");
-
-    await adminClient.from("profiles").update({ subscription_tier: initialTier, status: "active" }).eq("id", newUser.user.id);
+    // Set subscription tier and ensure active status in profiles table
+    await adminClient.from("profiles").upsert({
+      id: newUser.user.id,
+      email,
+      full_name: fullName || "",
+      subscription_tier: initialTier,
+      status: "active",
+    });
 
     // Audit Logging
     await adminClient.from("audit_logs").insert({
@@ -144,6 +160,13 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
+      user: {
+        id: newUser.user.id,
+        email,
+        full_name: fullName || "",
+        role,
+        subscription_tier: initialTier,
+      },
       userId: newUser.user.id,
       emailSent,
       generatedPassword: generatePassword ? finalPassword : undefined,

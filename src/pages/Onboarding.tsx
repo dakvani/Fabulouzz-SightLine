@@ -121,12 +121,14 @@ const Onboarding = () => {
         }
       }
 
-      // Update password to the new permanent password
+      // Update password to the new permanent password and ensure assigned role is locked into metadata
+      const assignedRole = detectedRole || normalizeRole(paramRole);
       const { error: updateErr } = await supabase.auth.updateUser({
         password: newPassword,
         data: {
           must_change_password: false,
           full_name: fullName.trim() || undefined,
+          role: assignedRole,
         },
       });
 
@@ -136,10 +138,21 @@ const Onboarding = () => {
         return;
       }
 
+      // Refresh session so updated token claims apply immediately
+      await supabase.auth.refreshSession();
+
+      // Ensure profile record is kept in sync
+      if (fullName.trim()) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("profiles").update({ full_name: fullName.trim() }).eq("id", user.id);
+        }
+      }
+
       setStep("success");
       toast({
         title: "Account Activated",
-        description: "Your permanent password has been set. Welcome to SightLine!",
+        description: `Your permanent password has been set as ${assignedRole.toUpperCase()}. Welcome to SightLine!`,
       });
     } catch (err: any) {
       setErrorMessage(err?.message || "Failed to complete onboarding. Please try again.");
@@ -151,11 +164,13 @@ const Onboarding = () => {
   const handleProceedToWorkspace = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const auth = await resolveUserAuth(session?.user?.id, session?.user?.email);
+      const auth = await resolveUserAuth(session?.user);
       
-      if (auth?.isSuperAdmin || auth?.isAdmin) {
+      const effectiveRole = auth?.userRole || detectedRole || normalizeRole(paramRole);
+
+      if (effectiveRole === "super_admin" || effectiveRole === "admin" || auth?.isSuperAdmin || auth?.isAdmin) {
         navigate("/admin", { replace: true });
-      } else if (auth?.isProjectManager) {
+      } else if (effectiveRole === "pm" || auth?.isProjectManager) {
         navigate("/?view=tasks", { replace: true });
       } else {
         // Client or standard user
