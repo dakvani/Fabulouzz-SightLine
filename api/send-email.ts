@@ -31,19 +31,6 @@ export default async function handler(req: any, res: any) {
     return res.status(200).end();
   }
 
-  // Diagnostic / sync route for Supabase edge function configuration
-  if (req.method === "GET") {
-    const authHeader = (req.headers["authorization"] || "").replace(/^Bearer\s+/i, "").trim();
-    const queryKey = (req.query?.key as string || "").trim();
-    const token = authHeader || queryKey;
-    const hardcodedKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVla3NwZWtoc2F4d2Z5YW54eGpuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjI1ODQ1MywiZXhwIjoyMTA3ODM0NDUzfQ.8TpOOqbW6dDINx2z80ywPwvSV__nCnVYx5iuitRCm_4";
-    
-    if (token && (token === (SERVICE_ROLE_KEY || "").trim() || token === hardcodedKey)) {
-      const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
-      return res.status(200).json({ resendApiKey, hasKey: Boolean(resendApiKey) });
-    }
-    return res.status(401).json({ error: "Unauthorized" });
-  }
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed. Only POST is supported." });
