@@ -246,7 +246,9 @@ export const TaskManagement = () => {
           const map = stored ? JSON.parse(stored) : {};
           map[editData.task_number] = editData.description;
           localStorage.setItem("sightline_task_descriptions", JSON.stringify(map));
-        } catch (e) {}
+        } catch {
+          // Ignore local storage error
+        }
       }
 
       // Update in Supabase
@@ -356,7 +358,9 @@ export const TaskManagement = () => {
           const map = stored ? JSON.parse(stored) : {};
           map[nextNumber] = newTask.description;
           localStorage.setItem("sightline_task_descriptions", JSON.stringify(map));
-        } catch (e) {}
+        } catch {
+          // Ignore local storage error
+        }
       }
 
       const { error } = await supabase.from("tasks").insert({

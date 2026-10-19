@@ -21,7 +21,9 @@ if (typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.removeItem(k);
       }
     }
-  } catch (_) {}
+  } catch {
+    // Ignore legacy cache clear errors
+  }
 }
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {

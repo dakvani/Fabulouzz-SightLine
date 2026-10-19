@@ -4,6 +4,7 @@ import { X, Plus, Loader2, UserPlus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SAUDI_CITIES } from "@/data/saudiCities";
+import { logAuditEvent } from "@/lib/auth/audit";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -91,17 +92,39 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }: CreateProjectModalPr
         const memberRows = selectedMembers.map((uid) => ({
           project_id: project.id,
           user_id: uid,
+          assigned_role: "client",
+          assignment_status: "active",
         }));
-        await supabase.from("project_members").insert(memberRows);
+        await supabase.from("project_members").upsert(memberRows, { onConflict: "project_id,user_id" });
       }
 
-      // Also add the creator as a member
+      // Also add the creator as a member with admin authority
       if (userId && project) {
-        await supabase.from("project_members").insert({
+        await supabase.from("project_members").upsert({
           project_id: project.id,
           user_id: userId,
-        }).select(); // ignore duplicate error
+          assigned_role: "admin",
+          assignment_status: "active",
+        }, { onConflict: "project_id,user_id" });
       }
+
+      // Record System Integrity Audit Event
+      await logAuditEvent({
+        action: "PROJECT_CREATED",
+        resourceType: "project",
+        resourceId: project.id,
+        target_resource: `project:${project.id}`,
+        actorId: userId,
+        actorEmail: session.session?.user?.email,
+        details: {
+          title: form.title,
+          client_name: form.client_name,
+          project_manager: form.project_manager,
+          location: form.location,
+          assigned_members_count: selectedMembers.length,
+          assigned_members: selectedMembers,
+        },
+      });
 
       toast({ title: "Project created successfully with contact directory!" });
       setForm({ title: "", client_name: "", project_ref: "", project_manager: "", reporting_to: "", project_engineer: "", location: "", company: "", start_date: "", end_date: "" });
@@ -110,7 +133,14 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }: CreateProjectModalPr
       onCreated();
       onClose();
     } catch (err: any) {
-      toast({ title: "Error creating project", description: err.message, variant: "destructive" });
+      const isRlsError = err.message?.includes("row-level security policy");
+      toast({
+        title: isRlsError ? "Admin Authority Required" : "Error creating project",
+        description: isRlsError
+          ? "Permission Denied: Only accounts with Administrator authority (Tier 1 Super Admin or Tier 2 Admin) can create projects. Please sign in as an Administrator (e.g. support@fabulouzz.com) or run the migration."
+          : err.message,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

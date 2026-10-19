@@ -125,7 +125,9 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
       try {
         const saved = localStorage.getItem(`sightline_project_contacts_${p.id}`);
         if (saved) contacts = JSON.parse(saved);
-      } catch (e) {}
+      } catch {
+        // Ignore JSON parse error on legacy contact payload
+      }
     }
 
     const clientContactPerson = contacts.clientContactPerson || p.client_contact_person || p.reporting_to || "Mohammed Burhan";
@@ -157,7 +159,9 @@ export const ProjectDataProvider = ({ children }: { children: ReactNode }) => {
       try {
         const stored = localStorage.getItem("sightline_task_descriptions");
         if (stored) Object.assign(localDescMap, JSON.parse(stored));
-      } catch (e) {}
+      } catch {
+        // Ignore JSON parse error on legacy descriptions
+      }
     }
 
     setTasks(

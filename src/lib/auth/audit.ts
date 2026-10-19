@@ -46,6 +46,7 @@ export const logAuditEvent = async ({
       action,
       resource_type: resourceType || "system",
       resource_id: resourceId,
+      target_resource: target_resource || (resourceType && resourceId ? `${resourceType}:${resourceId}` : null),
       details: details || {},
       actor_email: resolvedEmail,
       actor_id: resolvedId,

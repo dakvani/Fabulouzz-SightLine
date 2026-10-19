@@ -43,6 +43,7 @@ import { generateReportPdf } from "@/lib/generateReportPdf";
 import TaskManagement from "./TaskManagement";
 import MediaLightbox from "./MediaLightbox";
 import { SAUDI_CITIES } from "@/data/saudiCities";
+import { logAuditEvent } from "@/lib/auth/audit";
 import ProjectTimelineManager from "./ProjectTimelineManager";
 import ProjectBrandingManager from "./ProjectBrandingManager";
 import { Palette } from "lucide-react";
@@ -154,6 +155,21 @@ export const ProjectDetailsPage = ({
         title: "Project details saved",
         description: "All project information and contact directory have been updated.",
       });
+
+      // System Integrity Audit Event
+      await logAuditEvent({
+        action: "PROJECT_UPDATED",
+        resourceType: "project",
+        resourceId: projectId,
+        target_resource: `project:${projectId}`,
+        details: {
+          title: form.title.trim(),
+          client: form.client.trim(),
+          project_manager: form.projectManager.trim(),
+          project_ref: form.projectRef.trim(),
+        },
+      });
+
       setInfoDirty(false);
       await refresh();
     } catch (err: any) {
@@ -251,6 +267,21 @@ export const ProjectDetailsPage = ({
         });
       }
 
+      // System Integrity Audit Event
+      await logAuditEvent({
+        action: "MEMBER_ASSIGNED",
+        resourceType: "project_members",
+        resourceId: selectedNewMember,
+        target_resource: `project:${projectId}`,
+        details: {
+          project_id: projectId,
+          project_title: projectInfo.title,
+          member_id: selectedNewMember,
+          member_name: memberName,
+          member_email: memberEmail,
+        },
+      });
+
       toast({ title: "Team member assigned to project", description: `Assigned ${memberName} with notification dispatched.` });
       setSelectedNewMember("");
       await fetchProjectMembers();
@@ -275,6 +306,21 @@ export const ProjectDetailsPage = ({
         .eq("id", membershipId);
 
       if (error) throw error;
+
+      // System Integrity Audit Event
+      await logAuditEvent({
+        action: "MEMBER_REVOKED",
+        resourceType: "project_members",
+        resourceId: membershipId,
+        target_resource: `project:${projectId}`,
+        details: {
+          project_id: projectId,
+          project_title: projectInfo.title,
+          membership_id: membershipId,
+          member_name: name,
+          member_email: memberEmail,
+        },
+      });
 
       if (memberEmail) {
         sendBrandedEmail({
