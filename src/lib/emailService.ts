@@ -59,6 +59,7 @@ export type EmailType =
   | "project_unassignment"
   | "task_assignment"
   | "status_broadcast"
+  | "role_change"
   | "plan_change";
 
 export interface SendEmailPayload {
@@ -371,6 +372,51 @@ export function buildBrandedEmailHtml(payload: SendEmailPayload): { subject: str
       `;
       break;
 
+    case "role_change":
+      title = "ACCESS PRIVILEGES UPDATED";
+      subject = payload.subject || `Security Notice: Account Role Updated to ${(d.role || "Admin").toUpperCase()}`;
+      contentHtml = `
+        <p style="color: #1f2937; font-size: 15px; margin: 0 0 12px; font-weight: 600;">Dear${name},</p>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
+          Your system access role on <strong>SightLine Command Center</strong> has been formally updated to 
+          <strong style="color: ${accent}; text-transform: uppercase;">${(d.role || "Admin").toUpperCase()}</strong>
+          ${d.assignedBy ? ` by <strong>${d.assignedBy}</strong>` : ""}.
+        </p>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 0 0 24px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #64748b; width: 140px;">New System Role</td>
+              <td style="padding: 6px 0; font-size: 15px; color: #0f172a; font-weight: 800; text-transform: uppercase;">${(d.role || "Admin").toUpperCase()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #64748b;">Account Scope</td>
+              <td style="padding: 6px 0; font-size: 13px; color: #334155; font-weight: 600;">
+                ${d.role === "admin" || d.role === "super_admin"
+                  ? "Full Administrative Control, Team Provisioning & Enterprise Dashboard Access"
+                  : d.role === "pm"
+                  ? "Project Management, Scope Deck Assignment & Task Milestones"
+                  : "Client Telemetry, Live Progress Monitoring & Executive Reporting"}
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 14px 18px; margin: 0 0 24px;">
+          <p style="color: #065f46; font-size: 13px; margin: 0; line-height: 1.5;">
+            <strong>Immediate Effect:</strong> Your updated security policies are now active. Log in to access your newly authorized workspace features.
+          </p>
+        </div>
+
+        <div style="text-align: center; margin: 28px 0 16px;">
+          <a href="${d.loginUrl || APP_PORTAL_URL}" 
+             style="display: inline-block; background: ${accent}; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(47, 191, 47, 0.25);">
+            Open SightLine Workspace →
+          </a>
+        </div>
+      `;
+      break;
+
     case "status_broadcast":
     default:
       title = "PROJECT STATUS UPDATE";
@@ -476,7 +522,11 @@ export async function sendBrandedEmail(payload: SendEmailPayload): Promise<{ suc
     // Tier 1: Dispatch via Vercel Serverless Function (/api/send-email)
     // Runs securely on the same domain without browser CORS blocks and accesses RESEND_API_KEY
     try {
-      const serverlessRes = await fetch("/api/send-email", {
+      const serverlessUrl = typeof window !== "undefined" && window.location?.origin && (window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1"))
+        ? "https://sightline.fabulouzz.com/api/send-email"
+        : "/api/send-email";
+
+      const serverlessRes = await fetch(serverlessUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -485,7 +535,7 @@ export async function sendBrandedEmail(payload: SendEmailPayload): Promise<{ suc
           to: recipients,
           subject,
           html,
-          type: "branded_notification",
+          type: payload.type || "branded_notification",
           data: payload.data,
         }),
       });
@@ -493,10 +543,10 @@ export async function sendBrandedEmail(payload: SendEmailPayload): Promise<{ suc
       if (serverlessRes.ok) {
         const serverlessData = await serverlessRes.json();
         if (serverlessData.dispatched) {
-          console.info(`[Email Service] Dispatched via /api/send-email from ${BRAND_MAIN_EMAIL}:`, serverlessData);
+          console.info(`[Email Service] Dispatched via ${serverlessUrl} from ${BRAND_MAIN_EMAIL}:`, serverlessData);
           return { success: true, message: `Branded email dispatched from ${BRAND_MAIN_EMAIL} to ${recipients.join(", ")}` };
         } else if (serverlessData.note) {
-          console.info(`[Email Service] /api/send-email handled with note:`, serverlessData.note);
+          console.info(`[Email Service] ${serverlessUrl} handled with note:`, serverlessData.note);
           return { success: true, message: serverlessData.note };
         }
       }

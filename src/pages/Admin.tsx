@@ -607,7 +607,7 @@ const Admin = () => {
   };
 
   // Change Role
-  const handleChangeRole = async (userId: string, targetRole: string, currentRole: string) => {
+  const handleChangeRole = async (userId: string, targetRole: string, currentRole: string, userEmail?: string, userName?: string) => {
     // Permission checks
     if (!isSuperAdminUser && (targetRole === "admin" || targetRole === "super_admin")) {
       toast({
@@ -674,10 +674,13 @@ const Admin = () => {
 
       // Dispatch branded role change notification email to target user
       const targetUser = profiles.find(p => p.id === userId);
-      if (targetUser?.email) {
+      const recipientEmail = (userEmail || targetUser?.email || "").trim().toLowerCase();
+      const recipientName = userName || targetUser?.full_name || recipientEmail.split("@")[0] || "Team Member";
+
+      if (recipientEmail) {
         sendBrandedEmail({
-          type: "status_broadcast",
-          to: targetUser.email,
+          type: "role_change",
+          to: recipientEmail,
           subject: `SightLine Security: Access Role Updated to ${targetRole.toUpperCase()}`,
           branding: {
             companyName: branding?.company_name || "SightLine Command Center",
@@ -685,12 +688,21 @@ const Admin = () => {
             primaryColor: branding?.accent_color || "#4f46e5",
           },
           data: {
-            fullName: targetUser.full_name || targetUser.email.split("@")[0],
+            fullName: recipientName,
             role: targetRole,
-            assignedBy: currentUser?.email,
+            assignedBy: currentUser?.email || "Super Administrator",
             loginUrl: `${getProductionPortalUrl()}/`,
           },
-        }).catch(() => {});
+        }).then(res => {
+          if (res?.success) {
+            toast({
+              title: "Notification Dispatched",
+              description: `Email confirmation delivered to ${recipientEmail}.`,
+            });
+          }
+        }).catch((emailErr) => {
+          console.warn("Could not dispatch role change notification email:", emailErr);
+        });
       }
 
       loadAllData();
@@ -2299,7 +2311,7 @@ const Admin = () => {
                               <div className="flex items-center justify-end gap-1.5">
                                 <select
                                   value={u.role}
-                                  onChange={(e) => handleChangeRole(u.id, e.target.value, u.role)}
+                                  onChange={(e) => handleChangeRole(u.id, e.target.value, u.role, u.email, u.full_name)}
                                   className="bg-card border border-border/40 text-[11px] rounded-lg px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
                                 >
                                   <option value="client">Client</option>
